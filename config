@@ -1,0 +1,22 @@
+# == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
+
+# Your platform. See PLATS for possible values.
+PLAT= none
+
+LUA_HOME= /usr/local
+LUA_INC= $(LUA_HOME)/include
+LUA_LIB= $(LUA_HOME)/lib
+LUA_BIN= $(LUA_HOME)/bin
+LUA_VER= 5.2
+
+TIM_M=	time.so
+PRC_M=	process.so
+NET_M=	network.so
+EVT_M=	event.so
+FLS_M=	filesys.so
+LIB_A=	libluaoski.a
+
+# == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
+
+# Convenience platforms targets.
+PLATS= generic linux macosx solaris
