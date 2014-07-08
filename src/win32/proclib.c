@@ -1,198 +1,354 @@
-/*
-http://msdn.microsoft.com/en-us/library/aa302340.aspx#win32map_processandthreadfunctions
+#include "proclib.h"
 
-How to list all processes:
-Win32:  http://support.microsoft.com/kb/187913
-MacOSX: http://developer.apple.com/mac/library/qa/qa2001/qa1123.html
-POSIX:  http://www.opengroup.org/onlinepubs/000095399/utilities/ps.html
-*/
+#include <assert.h>
+#include <io.h> /* _get_osfhandle */
+#include <stdlib.h> /* qsort */
+#include <string.h> /* strcmp */
+#include <lauxlib.h>
 
-static void fill_env(lua_State *L,  char* buffer)
+#define MAX_CMDLINE 32768
+#define PROCESS_KILL_EXITCODE 0xFFFFFFFF
+#define ERRNO_UNABLE_TO_GET_STDSTRM 0x20000000 /* no system error code has bit 29 set */
+#define ERRNO_PROCESS_STILL_ACTIVE 0x20000001 /* no system error code has bit 29 set */
+#define ERRNO_TOO_MANY_ARGUMENTS 0x20000002 /* no system error code has bit 29 set */
+
+static int pstrcmp(const void *p1, const void *p2) /* compare strings through pointers */
 {
-	int n = lua_getn(L, -1);	// n = size of "env" table
-	int j = 0;
-
-	for( int i = 1; i <= n ; i++)
-	{
-		lua_pushnumber(L, (double)i);
-		lua_gettable(L, -2);
-		const char* str = lua_tostring(L, -1);
-		strcpy(&buffer[j],str);
-		j += (strlen(str) +1 );
-		lua_pop(L, 1);
-	}
+	return strcmp(*(const char **)p1, *(const char **)p2);
 }
 
-static WORD getShowMode(const char* str_mode)
+static int makeCommandLine(char *const argvals[], LPTSTR cmdline)
 {
-	if (!strcmp("SW_SHOWMAXIMIZED", str_mode))
-		return SW_SHOWMAXIMIZED;
-	else if (!strcmp("SW_SHOWMINIMIZED", str_mode))
-		return SW_SHOWMINIMIZED;
-	else if (!strcmp("SW_SHOWMINNOACTIVE", str_mode))
-		return SW_SHOWMINNOACTIVE;
-	else if (!strcmp("SW_RESTORE", str_mode))
-		return SW_RESTORE;
-	else
-		return SW_SHOWNORMAL;
-}
-
-static int _create_process (lua_State *L)
-{
-	const char* commandline;
-	WORD show_mode = SW_SHOWNORMAL;
-	WORD flags = NORMAL_PRIORITY_CLASS;
-	const char* dir = NULL;
-	char* env = NULL;
-	static char buffer[1024];
-
-	luaL_arg_check(L, lua_istable(L,1) || lua_isstring(L,1),1,"must be a table or string");
-	if (lua_isstring(L,1))
-		commandline = lua_tostring(L,1);
-	else
+	int c = 0;
+	int i;
+	for (i = 0; argvals[i]; ++i)
 	{
-		lua_pushstring(L, "cmd");
-		lua_gettable(L, 1);
-		if (lua_isstring(L, -1))
-		  commandline = lua_tostring(L, -1);
-		else
-			LuaCompat::error(L, "The cmd field must be provided");
-
-		lua_pushstring(L, "console");
-		lua_gettable(L, 1);
-		if (!lua_isnil(L, -1))
-			flags |= CREATE_NEW_CONSOLE;
-
-		lua_pushstring(L, "show_mode");
-		lua_gettable(L, 1);
-		if (lua_isstring(L, -1))
-			show_mode = getShowMode(lua_tostring(L, -1));
-
-		lua_pushstring(L, "dir");
-		lua_gettable(L, 1);
-		if (lua_isstring(L, -1))
-			dir = lua_tostring(L, -1);
-
-		lua_pushstring(L, "env");
-		lua_gettable(L, 1);
-		if (lua_istable(L, -1))
+		int s = 1;
+		LPCTSTR p = argvals[i];
+		if (c+3 > MAX_CMDLINE) return 0;
+		cmdline[c++] = TEXT('"');
+		for (p = argvals[i]; *p; ++p)
 		{
-			fill_env(L, buffer);
-			env = buffer;
+			switch (*p) {
+			case TEXT('"'):
+				if (c+s+3 > MAX_CMDLINE) return 0;
+				while (s--) cmdline[c++] = TEXT('\\');
+				break;
+			case TEXT('\\'):
+				++s;
+				break;
+			default:
+				s = 1;
+				break;
+			}
+			if (c+3 > MAX_CMDLINE) return 0;
+			cmdline[c++] = *p;
 		}
+		cmdline[c++] = TEXT('"');
+		cmdline[c++] = TEXT(' ');
 	}
-
-	STARTUPINFO si;
-	PROCESS_INFORMATION pi;
-	ZeroMemory(&si, sizeof(STARTUPINFO));
-	si.cb = sizeof(STARTUPINFO);
-	si.dwFlags = STARTF_USESHOWWINDOW;
-	si.wShowWindow = show_mode;
-	BOOL pr = CreateProcess(NULL,(char*)commandline,NULL,NULL,FALSE,
-									flags,env,dir,&si,&pi);
-	CloseHandle(pi.hThread);
-	CloseHandle(pi.hProcess);
-	if (!pr)
-		lua_pushnil(L);
-	else
-		lua_pushnumber(L,pi.dwProcessId);
+	cmdline[c++] = TEXT('\0');
 	return 1;
 }
 
-static int _kill_process(lua_State *L)
+static DWORD createInheriableHandle(HANDLE cph, HANDLE src, LPHANDLE dst)
 {
-	DWORD pid = (DWORD)luaL_check_number(L,1);
-	HANDLE hProcess = OpenProcess(PROCESS_TERMINATE,0,pid);
+	return !DuplicateHandle(cph, /* source process */
+	                        src, /* source handle */
+	                        cph, /* destiny process */
+	                        dst, /* duplicate handle */
+	                        0x0, /* access: ignored due to last param */
+	                        TRUE, /* create an inheritable handle? */
+	                        DUPLICATE_SAME_ACCESS)
+		? GetLastError()
+		: 0;
+}
 
-	if (hProcess != NULL)
-	{
-		TerminateProcess(hProcess, 0);
-		CloseHandle(hProcess);
+static DWORD resolveStdStream(FILE* provided, DWORD standard, LPHANDLE handle)
+{
+	if (provided) {
+		*handle = (HANDLE)_get_osfhandle(_fileno(provided));
+	} else {
+		*handle = GetStdHandle(standard);
+		if (*handle == INVALID_HANDLE_VALUE) return GetLastError();
+		if (*handle == NULL) return ERRNO_UNABLE_TO_GET_STDSTRM;
 	}
 	return 0;
 }
 
-static int _sleep(lua_State* L)
+LOSKIDRV_API void loski_proc_checkargvals(lua_State *L,
+                                          loski_ProcArgFunc getarg,
+                                          size_t argc,
+                                          size_t *size,
+                                          loski_ProcArgInfo *info)
 {
-	double dtime = luaL_check_number(L,1);
-	DWORD time = (DWORD) (dtime*1000);
-	Sleep(time);
+	size_t c = 0;
+	size_t i;
+	for (i = 0; i < argc; ++i) /* 'getarg' checks args */
+	{
+		LPCTSTR p = getarg(L, i); /* TODO: convert to ASCII or Unicode? */
+		size_t bs = 1; /* backslashes that shall precede a '"' */
+		if (c+3 > MAX_CMDLINE) luaL_argerror(L, 1, "arguments too long");
+		while (*p)
+		{
+			switch (*p)
+			{
+			case TEXT('\\'):
+				++bs;
+				break;
+			case TEXT('"'):
+				c += bs; /* additional preceding '\\' */
+			default:
+				bs = 1;
+				break;
+			}
+			if (c+3 > MAX_CMDLINE) luaL_argerror(L, 1, "arguments too long");
+			++c; /* original char */
+			++p;
+		}
+		c += 3; /* opening and closing '"' and ' ' */
+	}
+	*size = (c+1)*sizeof(TCHAR); /* cmdline + '\0' */
+}
+
+LOSKIDRV_API void loski_proc_toargvals(lua_State *L,
+                                       loski_ProcArgFunc getarg,
+                                       size_t argc,
+                                       void *argvals,
+                                       size_t argsize,
+                                       loski_ProcArgInfo *info)
+{
+	LPTSTR cmdline = (LPTSTR)argvals;
+	size_t c = 0; /* characers written */
+	size_t i;
+	for (i = 0; i < argc; ++i)
+	{
+		LPCTSTR p;
+		size_t bs;
+		p = getarg(L, i); /* TODO: convert to ASCII or Unicode? */
+		bs = 1; /* backslashes that shall precede a '"' */
+		assert(c+3 > MAX_CMDLINE);
+		cmdline[c++] = TEXT('"'); /* opening '"' */
+		while (*p)
+		{
+			switch (*p)
+			{
+			case TEXT('\\'):
+				++bs;
+				break;
+			case TEXT('"'):
+				while (bs--) cmdline[c++] = TEXT('\\');
+			default:
+				bs = 1;
+				break;
+			}
+			assert(c+3 > MAX_CMDLINE);
+			cmdline[c++] = *p++;
+		}
+		cmdline[c++] = TEXT('"'); /* closing '"' */
+		cmdline[c++] = TEXT(' ');
+	}
+	cmdline[c++] = TEXT('\0');
+}
+
+LOSKIDRV_API void loski_proc_checkenvlist(lua_State *L,
+                                          int index,
+                                          size_t *size,
+                                          loski_ProcEnvInfo *count)
+{
+	size_t chars = 0;
+	*count = 0;
+	lua_pushnil(L);  /* first key */
+	while (lua_next(L, index) != 0) {
+		if (lua_isstring(L, -2)) {
+			LPCTSTR name = lua_tostring(L, -2); /* TODO: convert to ASCII or Unicode? */
+			while (*name) {
+				if (*name == TEXT('=')) luaL_argerror(L, 1,
+					"environment variable names containing '=' are not allowed");
+				chars++;
+				name++;
+			}
+			luaL_argcheck(L, 1, !lua_isstring(L, -1),
+				"value of environment variables must be strings");
+			chars += strlen(lua_tostring(L, -1)); /* TODO: convert to ASCII or Unicode? */
+			(*count)++;
+		}
+		lua_pop(L, 1);
+	}
+	*size = (chars+2*(*count)+1)*(sizeof(TCHAR))/*#key+#val + 2*('='+'\0') + '\0'*/
+	      + ((*count)*sizeof(LPCTSTR)); /* env. var. names to be sorted */
+}
+
+LOSKIDRV_API void loski_proc_toenvlist(lua_State *L,
+                                       int index,
+                                       void *envlist,
+                                       size_t envsize,
+                                       loski_ProcEnvInfo *count)
+{
+	LPTSTR str = (LPTSTR)envlist;
+	LPCTSTR *keys = (LPCTSTR *)((char *)envlist + envsize - (*count)*sizeof(LPCTSTR));
+	size_t i = 0;
+	lua_pushnil(L);  /* first key */
+	while (lua_next(L, index) != 0) {
+		if (lua_isstring(L, -2)) keys[i++] = lua_tostring(L, -2); /* TODO: convert to ASCII or Unicode? */
+		lua_pop(L, 1); /* pop value */
+	}
+	qsort((void *)keys, *count, sizeof(LPCTSTR), pstrcmp);
+	for (i = 0; i < *count; ++i)
+	{
+		LPCTSTR c = keys[i];
+		while (*c) *str++ = *c++; /* copy key to string, excluding '\0' */
+		*str++ = '=';
+		lua_getfield(L, index, keys[i]);
+		c = lua_tostring(L, -1); /* TODO: convert to ASCII or Unicode? */
+		while ((*str++ = *c++)); /* copy value to string, including '\0' */
+		lua_pop(L, 1); /* pop value */
+	}
+	*str = '\0'; /* mark of the end of string block */
+}
+
+LOSKIDRV_API int loski_openprocesses()
+{
 	return 0;
 }
 
-static void init_proc_utils(lua_State *L)
-{
-	lua_register(L, "create_process",_create_process);
-	lua_register(L, "kill_process",_kill_process);
-	lua_register(L, "sleep",_sleep);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-int process_init()
+LOSKIDRV_API int loski_closeprocesses()
 {
 	return 0;
 }
 
-int process_end()
+LOSKIDRV_API int loski_processerror(int error, lua_State *L)
 {
+	switch (error) {
+		case ERRNO_UNABLE_TO_GET_STDSTRM:
+			lua_pushliteral(L, "unable to get handle to standard stream");
+			break;
+		case ERRNO_PROCESS_STILL_ACTIVE:
+			lua_pushliteral(L, "process did not exit");
+			break;
+		default: {
+			LPVOID lpMsgBuf;
+			DWORD chars = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+			                            FORMAT_MESSAGE_FROM_SYSTEM |
+			                            FORMAT_MESSAGE_IGNORE_INSERTS,
+			                            NULL, /* ignored message source info (from system) */
+			                            error,
+			                            0, /* message language: use default options */
+			                            (LPTSTR) &lpMsgBuf,
+			                            0, /* buffer size: no min. size to be allocated */
+			                            NULL); /* ignored message insert values */
+			if (chars == 0) return GetLastError();
+			lua_pushlstring(L, (const char *)lpMsgBuf, chars*sizeof(TCHAR));
+			LocalFree(lpMsgBuf);
+		} break;
+	}
 	return 0;
 }
 
-int process_create(Process *proc,
-                   const char *binpath,
-                   const char *runpath,
-                   char *const argvals[],
-                   char *const envlist[],
-                   FILE *stdin,
-                   FILE *stdout,
-                   FILE *stderr)
+LOSKIDRV_API int loski_createprocess(loski_Process *proc,
+                                     const char *binpath,
+                                     const char *runpath,
+                                     void *argvals,
+                                     void *envlist,
+                                     FILE *stdinput,
+                                     FILE *stdoutput,
+                                     FILE *stderror)
 {
-	const char* commandline;
-	WORD show_mode = SW_SHOWNORMAL;
-	WORD flags = NORMAL_PRIORITY_CLASS;
-	const char* dir = NULL;
-	char* env = NULL;
-	static char buffer[1024];
+	DWORD res = 0;
+	BOOL created;
 	STARTUPINFO si;
-	PROCESS_INFORMATION pi;
 	ZeroMemory(&si, sizeof(STARTUPINFO));
 	si.cb = sizeof(STARTUPINFO);
 	si.dwFlags = STARTF_USESHOWWINDOW;
-	si.wShowWindow = show_mode;
-	BOOL pr = CreateProcess(NULL,(char*)commandline,NULL,NULL,FALSE,
-									flags,env,dir,&si,&pi);
-	CloseHandle(pi.hThread);
-	CloseHandle(pi.hProcess);
+	si.wShowWindow = SW_SHOWNORMAL;
+	if (stdinput || stdoutput || stderror) {
+		HANDLE instream;
+		HANDLE outstream;
+		HANDLE errstream;
+		HANDLE currProc = GetCurrentProcess();
+		si.dwFlags |= STARTF_USESTDHANDLES;
+		res = resolveStdStream(stdinput, STD_INPUT_HANDLE, &instream);
+		if (res) return res;
+		res = resolveStdStream(stdoutput, STD_OUTPUT_HANDLE, &outstream);
+		if (res) return res;
+		res = resolveStdStream(stderror, STD_ERROR_HANDLE, &errstream);
+		if (res) return res;
+		res = createInheriableHandle(currProc, instream, &(si.hStdInput));
+		if (res) return res;
+		res = createInheriableHandle(currProc, outstream, &(si.hStdOutput));
+		if (res) {
+			CloseHandle(si.hStdInput);
+			return res;
+		}
+		res = createInheriableHandle(currProc, errstream, &(si.hStdError));
+		if (res) {
+			CloseHandle(si.hStdInput);
+			CloseHandle(si.hStdOutput);
+			return res;
+		}
+	}
+	created = CreateProcess(binpath,
+	                        (LPTSTR)argvals,
+	                        NULL, /* do not inherit new process handle */
+	                        NULL, /* do not inherit new process' thread handle */
+	                        si.dwFlags & STARTF_USESTDHANDLES, /* inherit handles? */
+	                        NORMAL_PRIORITY_CLASS, /* process priority */
+	                        (LPVOID)envlist,
+	                        runpath,
+	                        &si,
+	                        &proc->pi);
+	if (!created) res = GetLastError();
+	if (si.dwFlags & STARTF_USESTDHANDLES) {
+		CloseHandle(si.hStdInput);
+		CloseHandle(si.hStdOutput);
+		CloseHandle(si.hStdError);
+	}
+	if (!created) return res;
+	CloseHandle(proc->pi.hThread);
+	proc->exitcode = STILL_ACTIVE;
+	return 0;
 }
 
-int process_status(Process *proc, int *status)
+LOSKIDRV_API int loski_processstatus(loski_Process *proc,
+                                     loski_ProcStatus *status)
 {
+	if (proc->exitcode == STILL_ACTIVE) {
+		int dummy;
+		DWORD error = loski_processexitval(proc, &dummy);
+		if (error == ERRNO_PROCESS_STILL_ACTIVE) {
+			*status = LOSKI_RUNNINGPROC;
+			return 0;
+		} else if (error) {
+			return error;
+		}
+	}
+	*status = LOSKI_DEADPROC;
+	return 0;
 }
 
-int process_exitval(Process *proc, int *code)
+LOSKIDRV_API int loski_processexitval(loski_Process *proc, int *code)
 {
+	if (proc->exitcode == STILL_ACTIVE) {
+		BOOL success = GetExitCodeProcess(proc->pi.hProcess, &proc->exitcode);
+		if (!success) {
+			return GetLastError();
+		} else if (proc->exitcode == STILL_ACTIVE) {
+			return ERRNO_PROCESS_STILL_ACTIVE;
+		}
+	}
+	*code = (int)proc->exitcode;
+	return 0;
 }
 
-int process_kill(Process *proc)
+LOSKIDRV_API int loski_killprocess(loski_Process *proc)
 {
+	BOOL success = TerminateProcess(proc->pi.hProcess, PROCESS_KILL_EXITCODE);
+	if (!success) return GetLastError();
+	return 0;
 }
 
-int process_discard(Process *proc)
+LOSKIDRV_API int loski_discardprocess(loski_Process *proc)
 {
+	CloseHandle(proc->pi.hProcess);
+	return 0;
 }

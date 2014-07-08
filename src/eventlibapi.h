@@ -1,7 +1,9 @@
 #ifndef eventlibapi_h
 #define eventlibapi_h
 
-#include <stdio.h>  /* definition of 'FILE*' */
+#include <stdio.h> /* definition of 'FILE*' */
+#include <lua.h> /* to copy error messages to Lua */
+
 #include "timelib.h"
 #include "proclib.h"
 #include "netlib.h"
@@ -34,7 +36,7 @@ LOSKIDRV_API int loski_openevents();
 
 LOSKIDRV_API int loski_closeevents();
 
-LOSKIDRV_API const char *loski_eventerror(int error);
+LOSKIDRV_API int loski_eventerror(int error, lua_State *L);
 
 LOSKIDRV_API int loski_initwatcher(loski_EventWatcher *watcher);
 

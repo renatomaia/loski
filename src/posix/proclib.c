@@ -10,8 +10,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <lauxlib.h>
 
 #define TABLE_INITSZ 4
+#define ERRNO_NO_EXIT_VALUE (-1)
 
 static char hastable = 0;
 static loski_ProcTable table;
@@ -75,6 +77,82 @@ static void childsignal(int signo)
 	}
 }
 
+LOSKIDRV_API void loski_proc_checkargvals(lua_State *L,
+                                          loski_ProcArgFunc getarg,
+                                          size_t argc,
+                                          size_t *size,
+                                          loski_ProcArgInfo *info)
+{
+	int i;
+	for (i = 0; i < argc; ++i) getarg(L, i); /* 'getarg' checks args */
+	*size = (argc+1)*sizeof(const char *); /* args + NULL */
+}
+
+LOSKIDRV_API void loski_proc_toargvals(lua_State *L,
+                                       loski_ProcArgFunc getarg,
+                                       size_t argc,
+                                       void *argvals,
+                                       size_t argsize,
+                                       loski_ProcArgInfo *info)
+{
+	const char **argv = (const char **)argvals;
+	int i;
+	for (i = 0; i < argc; ++i) argv[i] = getarg(L, i);
+	argv[argc] = NULL;
+}
+
+LOSKIDRV_API void loski_proc_checkenvlist(lua_State *L,
+                                          int index,
+                                          size_t *size,
+                                          loski_ProcEnvInfo *count)
+{
+	size_t chars = 0;
+	*count = 0;
+	lua_pushnil(L);  /* first key */
+	while (lua_next(L, index) != 0) {
+		if (lua_isstring(L, -2)) {
+			const char *name = lua_tostring(L, -2);
+			while (*name) {
+				if (*name == '=') luaL_argerror(L, 1,
+					"environment variable names containing '=' are not allowed");
+				chars++;
+				name++;
+			}
+			luaL_argcheck(L, 1, !lua_isstring(L, -1),
+				"value of environment variables must be strings");
+			chars += strlen(lua_tostring(L, -1));
+			(*count)++;
+		}
+		lua_pop(L, 1);
+	}
+	*size = ((*count)+1)*(sizeof(char *)) /* the 'envl' array + NULL */
+	      + (chars+2*(*count))*(sizeof(char)); /* #key + #value + '=' + '\0' */
+}
+
+LOSKIDRV_API void loski_proc_toenvlist(lua_State *L,
+                                       int index,
+                                       void *envlist,
+                                       size_t envsize,
+                                       loski_ProcEnvInfo *count)
+{
+	char **envl = (char **)envlist;
+	char *str = (char *)(envlist + ((*count)+1)*sizeof(char *));
+	int i = 0;
+	lua_pushnil(L);  /* first key */
+	while (lua_next(L, index) != 0) {
+		if (lua_isstring(L, -2)) {
+			const char *c = lua_tostring(L, -2);
+			envl[i++] = str; /* put string in 'envl' array */
+			while (*c) *str++ = *c++; /* copy key to string, excluding '\0' */
+			*str++ = '=';
+			c = lua_tostring(L, -1);
+			while ((*str++ = *c++)); /* copy value to string, including '\0' */
+		}
+		lua_pop(L, 1); /* pop value */
+	}
+	envl[i] = NULL; /* put NULL to mark the end of 'envl' array */
+}
+
 /* TODO: let application provide a memory allocation function */
 LOSKIDRV_API int loski_openprocesses()
 {
@@ -99,24 +177,29 @@ LOSKIDRV_API int loski_closeprocesses()
 	return -1;
 }
 
-LOSKIDRV_API const char *loski_processerror(int error)
+LOSKIDRV_API int loski_processerror(int error, lua_State *L)
 {
-	return strerror(error);
+	switch (error) {
+		case ERRNO_NO_EXIT_VALUE: lua_pushliteral(L, "process did not exit"); break;
+		default: lua_pushstring(L, strerror(error)); break;
+	}
+	return 0;
 }
 
 LOSKIDRV_API int loski_createprocess(loski_Process *proc,
-                                   const char *binpath,
-                                   const char *runpath,
-                                   char *const argvals[],
-                                   char *const envlist[],
-                                   FILE *stdin,
-                                   FILE *stdout,
-                                   FILE *stderr)
+                                     const char *binpath,
+                                     const char *runpath,
+                                     void *argvals,
+                                     void *envlist,
+                                     FILE *stdin,
+                                     FILE *stdout,
+                                     FILE *stderr)
 {
 	proc->pid = fork();
 	proc->status = 0;
 	if (proc->pid == -1) return errno;
 	else if (proc->pid > 0) {
+		// TODO: http://www.cs.utah.edu/dept/old/texinfo/glibc-manual-0.02/library_21.html#SEC368
 		loski_proctabput(&table, proc);
 		return 0;
 	}
@@ -131,14 +214,15 @@ LOSKIDRV_API int loski_createprocess(loski_Process *proc,
 		if (max > 0) {
 			int i;
 			for (i=3; i<max; ++i) close(i); /* close all open file descriptors */
-			if (envlist) execvep(binpath, argvals, envlist);
-			else execvp(binpath, argvals);
+			if (envlist) execvep(binpath, (char *const *)argvals, (char *const *)envlist);
+			else execvp(binpath, (char *const *)argvals);
 		}
 	}
 	_exit(errno);
 }
 
-LOSKIDRV_API int loski_processstatus(loski_Process *proc, loski_ProcStatus *status)
+LOSKIDRV_API int loski_processstatus(loski_Process *proc,
+                                     loski_ProcStatus *status)
 {
 	if (proc->pid != 0) {
 		pid_t res = waitpid(proc->pid, &proc->status, WNOHANG);
@@ -173,7 +257,7 @@ LOSKIDRV_API int loski_processexitval(loski_Process *proc, int *code)
 		*code = WEXITSTATUS(proc->status);
 		return 0;
 	}
-	return -1;
+	return ERRNO_NO_EXIT_VALUE;
 }
 
 LOSKIDRV_API int loski_killprocess(loski_Process *proc)

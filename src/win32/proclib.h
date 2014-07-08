@@ -2,12 +2,11 @@
 #define proclib_h
 
 
-#include <sys/types.h>
+#include <windows.h>
 
 struct loski_Process {
-	pid_t pid;
-	int status;
-	struct loski_Process *next;
+	PROCESS_INFORMATION pi;
+	DWORD exitcode;
 };
 
 typedef int loski_ProcArgInfo;

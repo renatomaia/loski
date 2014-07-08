@@ -6,8 +6,10 @@
 #include <lauxlib.h>
 
 
+LUALIB_API void *luaL_alloctemporary(lua_State *L, size_t size);
+LUALIB_API void luaL_freetemporary(lua_State *L, void *memo, size_t size);
 LUALIB_API int luaL_pushresults(lua_State *L, int nres, int err,
-                                const char *(*geterrmsg) (int));
+                                int (*pusherrmsg) (int, lua_State *));
 LUALIB_API int luaL_pushobjtab(lua_State *L, int regidx, int validx);
 LUALIB_API void luaL_newsentinel(lua_State *L, lua_CFunction f);
 LUALIB_API void luaL_cancelsentinel(lua_State *L);

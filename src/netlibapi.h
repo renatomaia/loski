@@ -3,6 +3,8 @@
 
 #include "loskiconf.h"
 
+#include <lua.h> /* to copy error messages to Lua */
+
 enum loski_SocketSite { LOSKI_REMOTESITE, LOSKI_LOCALSITE, LOSKI_BOTHSITES };
 enum loski_SocketType { LOSKI_DGRMSOCKET, LOSKI_CONNSOCKET, LOSKI_LSTNSOCKET };
 enum loski_SocketOption {
@@ -27,7 +29,7 @@ LOSKIDRV_API int loski_opennetwork();
 LOSKIDRV_API int loski_closenetwork();
 
 
-LOSKIDRV_API const char *loski_addresserror(int error);
+LOSKIDRV_API int loski_addresserror(int error, lua_State *L);
 
 LOSKIDRV_API int loski_resolveaddress(loski_Address *address,
                                     const char *host, unsigned short port);
@@ -36,7 +38,7 @@ LOSKIDRV_API int loski_extractaddress(const loski_Address *address,
                                     const char **host, unsigned short *port);
 
 
-LOSKIDRV_API const char *loski_socketerror(int error);
+LOSKIDRV_API int loski_socketerror(int error, lua_State *L);
 
 LOSKIDRV_API int loski_socketincompleteop(int res);
 

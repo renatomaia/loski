@@ -1,8 +1,6 @@
 #include "proclib.h"
 #include "loskiaux.h"
 
-#include <assert.h>
-
 #define LOSKI_PROCESSCLS LOSKI_PREFIX"process.ChildProcess"
 
 #define pushresults(L,n,e) luaL_pushresults(L,n,e,loski_processerror)
@@ -56,89 +54,37 @@ static FILE* optfilefield(lua_State *L, int tabidx, const char *field)
 	return NULL;
 }
 
-static char ** allocargs(lua_State *L, int argc)
+static const char *argfromindex (lua_State *L, size_t index)
 {
-	void *userdata;
-	lua_Alloc alloc = lua_getallocf(L, &userdata);
-	size_t size = (argc+1)*sizeof(char *const) + sizeof(size_t);
-	void *memo = alloc(userdata, NULL, 0, size);
-	if (memo != NULL) {
-		size_t *psize = (size_t *)memo;
-		char **argv = (char **)(memo + sizeof(size_t));
-		*psize = size;
-		argv[argc] = NULL;
-		return argv;
-	}
-	luaL_error(L, "not enough memory");
-	return NULL; /* to avoid warnings */
+	return luaL_checkstring(L, index+1);
 }
 
-static char *const * table2env(lua_State *L)
+static const char *argfromtable (lua_State *L, size_t index)
 {
-	size_t envc = 0;
-	size_t size = 0;
-	lua_pushnil(L);  /* first key */
-	while (lua_next(L, -2) != 0) {
-		if (lua_isstring(L, -2)) {
-			luaL_argcheck(L, 1, !lua_isstring(L, -1),
-				"field "LUA_QL("environment")" must contain only strings");
-			envc++;
-			size += lua_rawlen(L, -2) /* key length */
-			      + lua_rawlen(L, -1) /* value length */
-			      + 2;                /* '=' and '\0' */
-		}
-		lua_pop(L, 1);
+	const char *argv;
+	if (index == 0) {
+		argv = getstrfield(L, 1, "execfile");
+	} else {
+		lua_rawgeti(L, 2, index);
+		luaL_argcheck(L, 1, !lua_isstring(L, 3),
+			"field "LUA_QL("arguments")" must contain only strings");
+		argv = (char *)lua_tostring(L, 3);
+		lua_pop(L, 1); /* pop an argument string */
 	}
-	if (envc > 0) {
-		void *userdata, *memo;
-		lua_Alloc alloc = lua_getallocf(L, &userdata);
-		++envc;                            /* memory for the ending NULL of 'envl' */
-		size += sizeof(size_t)             /* space to store the memory size */
-		      + envc*(sizeof(char *const)) /* memory of 'envl' array */
-		      + size*(sizeof(char));       /* memory of all 'envl[i]' strings */
-		if ((memo = alloc(userdata, NULL, 0, size)) != NULL) {
-			size_t *psize = (size_t *)memo;
-			char **envl = (char **)(memo += sizeof(size_t));
-			char *str = (char *)(memo += envc*sizeof(char *));
-			*psize = size;
-			envl[--envc] = NULL;
-			lua_pushnil(L);  /* first key */
-			while (lua_next(L, -2) != 0) {
-				if (lua_isstring(L, -2)) {
-					envl[--envc] = str; /* put string in 'envl' array */
-					const char *c = lua_tostring(L, -2);
-					while (*c) *str++ = *c++; /* copy key to string, excluding '\0' */
-					*str++ = '=';
-					c = lua_tostring(L, -1);
-					while ((*str++ = *c++)); /* copy value to string, including '\0' */
-				}
-				lua_pop(L, 1); /* pop value */
-			}
-			return envl;
-		}
-		else luaL_error(L, "not enough memory");
-	}
-	return NULL;
+	return argv;
 }
 
-static void freememory(lua_State *L, void *memo)
-{
-	if (memo != NULL) {
-		void *userdata;
-		lua_Alloc alloc = lua_getallocf(L, &userdata);
-		memo -= sizeof(size_t);
-		memo = alloc(userdata, memo, *((size_t *)memo), 0);
-		assert(memo == NULL);
-	}
-}
 
-static loski_Process* newproc(lua_State *L)
-{
-	loski_Process *proc = (loski_Process *)lua_newuserdata(L, sizeof(loski_Process));
-	luaL_getmetatable(L, LOSKI_PROCESSCLS);
-	lua_setmetatable(L, -2);
-	return proc;
-}
+
+
+typedef struct LuaProcess {
+	loski_Process process;
+	int closed;
+} LuaProcess;
+
+
+#define tolproc(L)	((LuaProcess *)luaL_checkinstance(L, 1, LOSKI_PROCESSCLS))
+
 
 static int lp_create(lua_State *L)
 {
@@ -146,65 +92,72 @@ static int lp_create(lua_State *L)
 	loski_Process *proc;
 	const char *exec;
 	const char *path = NULL;
-	char **argv = NULL;
-	char *const *envl = NULL;
-	FILE *stdin = NULL;
-	FILE *stdout = NULL;
-	FILE *stderr = NULL;
+	FILE *stdinput = NULL;
+	FILE *stdoutput = NULL;
+	FILE *stderror = NULL;
+	void *argv = NULL;
+	void *envl = NULL;
+	size_t argsz = 0;
+	size_t envsz = 0;
+	loski_ProcArgInfo arginf;
+	loski_ProcEnvInfo envinf;
 	
 	if (lua_isstring(L, 1)) {
-		
-		int i;
-		int argc = lua_gettop(L);
-		argv = allocargs(L, argc); /* TODO: memory leak in case of arg erros */
-		argv[0] = (char *)luaL_checkstring(L, 1);
-		for (i = 1; i < argc; ++i)
-			argv[i] = (char *)luaL_checkstring(L, i+1);
-		exec = argv[0];
-		
+
+		size_t argc = lua_gettop(L);
+		exec = luaL_checkstring(L, 1);
+		loski_proc_checkargvals(L, argfromindex, argc, &argsz, &arginf);
+		argv = luaL_alloctemporary(L, argsz);
+		loski_proc_toargvals(L, argfromindex, argc, argv, argsz, &arginf);
+
 	} else if (lua_istable(L, 1)) {
-		
+		size_t argc = 1; /* execfile */
+
 		lua_settop(L, 1);
 		exec = getstrfield(L, 1, "execfile");
 		path = optstrfield(L, 1, "runpath", path);
-		stdin = optfilefield(L, 1, "stdin");
-		stdout = optfilefield(L, 1, "stdout");
-		stderr = optfilefield(L, 1, "stderr");
-		
+		stdinput = optfilefield(L, 1, "stdin");
+		stdoutput = optfilefield(L, 1, "stdout");
+		stderror = optfilefield(L, 1, "stderr");
+
 		lua_getfield(L, 1, "arguments");
 		if (lua_istable(L, 2)) {
-			size_t i;
-			size_t argc = lua_rawlen(L, 2);
-			argv = allocargs(L, argc+1); /* TODO: memory leak in case of arg erros */
-			argv[0] = (char *)exec;
-			for(i = 1; i <= argc; ++i) {
-				lua_rawgeti(L, 2, i);
-				luaL_argcheck(L, 1, !lua_isstring(L, 3),
-					"field "LUA_QL("arguments")" must contain only strings");
-				argv[i] = (char *)lua_tostring(L, 3);
-				lua_pop(L, 1); /* pop an argument string */
-			}
+			argc += lua_rawlen(L, 2);
+			loski_proc_checkargvals(L, argfromtable, argc, &argsz, &arginf);
 		} else if (!lua_isnil(L, 2)) {
 			luaL_argerror(L, 1, "field "LUA_QL("arguments")" must be a table");
 		}
-		lua_pop(L, 1); /* pop field 'arguments' */
-		
+
 		lua_getfield(L, 1, "environment");
-		if (lua_istable(L, 2)) {
-			envl = table2env(L);
-		} else if (!lua_isnil(L, 2)) {
+		if (lua_istable(L, -1)) {
+			size_t index = lua_gettop(L);
+			loski_proc_checkenvlist(L, index, &envsz, &envinf);
+			envl = luaL_alloctemporary(L, envsz);
+			loski_proc_toenvlist(L, index, envl, envsz, &envinf);
+		} else if (!lua_isnil(L, -1)) {
 			luaL_argerror(L, 1, "field "LUA_QL("environment")" must be a table");
 		}
 		lua_pop(L, 1); /* pop field 'environment' */
-		
+
+		if (lua_istable(L, 2)) {
+			argv = luaL_alloctemporary(L, argsz);
+			loski_proc_toargvals(L, argfromtable, argc, argv, argsz, &arginf);
+		}
+		lua_pop(L, 1); /* pop field 'arguments' */
+
 	} else {
 		return luaL_argerror(L, 1, "table or string expected");
 	}
-	proc = newproc(L); /* push a new proc structure on the stack */
-	err = loski_createprocess(proc, exec, path, argv, envl, stdin, stdout, stderr);
-	freememory(L, (void *)argv);
-	freememory(L, (void *)envl);
-	return pushresults(L, 1, err); /* return process */
+	/* push a new proc structure on the stack */
+	proc = (loski_Process *)lua_newuserdata(L, sizeof(loski_Process));
+	err = loski_createprocess(proc, exec, path, argv, envl, stdinput, stdoutput, stderror);
+	if (argv != NULL) luaL_freetemporary(L, argv, argsz);
+	if (envl != NULL) luaL_freetemporary(L, envl, envsz);
+	if (err) return pushresults(L, 1, err); /* return process */
+	/* setup the new proc structure */
+	luaL_getmetatable(L, LOSKI_PROCESSCLS);
+	lua_setmetatable(L, -2);
+	return 1;
 }
 
 const char *StatusName[] = { "running", "suspended", "dead" };
@@ -223,9 +176,8 @@ static int lp_exitval(lua_State *L)
 	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
 	int code;
 	int err = loski_processexitval(proc, &code);
-	if (err) lua_pushnil(L);
-	else lua_pushinteger(L, code);
-	return 1;
+	if (err == 0) lua_pushinteger(L, code);
+	return pushresults(L, 1, err);
 }
 
 static int lp_kill(lua_State *L)
@@ -240,6 +192,13 @@ static int lp_gc(lua_State *L)
 	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
 	loski_discardprocess(proc);
 	return 0;
+}
+
+static int lp_tostring (lua_State *L)
+{
+	loski_Process *proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
+	lua_pushfstring(L, "process (%p)", proc);
+	return 1;
 }
 
 static int lp_sentinel(lua_State *L)
@@ -258,6 +217,7 @@ static const luaL_Reg cls[] = {
 	{"exitval", lp_exitval},
 	{"kill", lp_kill},
 	{"__gc", lp_gc},
+	{"__tostring", lp_tostring},
 	{NULL, NULL}
 };
 
@@ -265,6 +225,11 @@ LUAMOD_API int luaopen_process(lua_State *L)
 {
 	/* create sentinel */
 	luaL_newsentinel(L, lp_sentinel);
+	/* initialize library */
+	if (loski_openprocesses() != 0) {
+		luaL_cancelsentinel(L);
+		return luaL_error(L, "unable to initialize library");
+	}
 	/* create process class */
 	lua_pushvalue(L, -1);  /* push sentinel */
 	luaL_newclass(L, LOSKI_PROCESSCLS, cls, 1);
@@ -273,10 +238,5 @@ LUAMOD_API int luaopen_process(lua_State *L)
 	luaL_newlibtable(L, lib);
 	lua_pushvalue(L, -2);  /* push sentinel */
 	luaL_setfuncs(L, lib, 1);
-	/* initialize library */
-	if (loski_openprocesses() != 0) {
-		luaL_cancelsentinel(L);
-		return luaL_error(L, "unable to initialize library");
-	}
 	return 1;
 }

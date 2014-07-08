@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <netinet/tcp.h> /* TCP options (nagle algorithm disable) */
 #include <fcntl.h> /* fnctnl function and associated constants */
+#include <lua.h> /* to copy error messages to Lua */
 
 #define LOSKI_EAFNOSUPPORT (-1)
 
@@ -22,15 +23,16 @@ LOSKIDRV_API int loski_closenetwork() {
 	return 0;
 }
 
-LOSKIDRV_API const char *loski_addresserror(int error) {
+LOSKIDRV_API int loski_addresserror(int error, lua_State *L) {
 	switch (error) {
-		case HOST_NOT_FOUND: return "not found";
-		case TRY_AGAIN: return "in progress";
-		case NO_RECOVERY: return "failed";
-		case NO_DATA: return "no address";
-		case LOSKI_EAFNOSUPPORT: return "address not supported";
-		default: return hstrerror(error);
+		case HOST_NOT_FOUND: lua_pushstring(L, "not found");
+		case TRY_AGAIN: lua_pushstring(L, "in progress");
+		case NO_RECOVERY: lua_pushstring(L, "failed");
+		case NO_DATA: lua_pushstring(L, "no address");
+		case LOSKI_EAFNOSUPPORT: lua_pushstring(L, "address not supported");
+		default: lua_pushstring(L, hstrerror(error));
 	}
+	return 0;
 }
 
 LOSKIDRV_API int loski_resolveaddress(loski_Address *address,
@@ -63,43 +65,44 @@ LOSKIDRV_API int loski_extractaddress(const loski_Address *address,
 	return 0;
 }
 
-LOSKIDRV_API const char *loski_socketerror(int error) {
+LOSKIDRV_API int loski_socketerror(int error, lua_State *L) {
 	if (error == EAGAIN) error = EWOULDBLOCK;
 	switch (error) {
 		/* errors due to internal factors */
 		case EALREADY:
 		case EWOULDBLOCK:
-		case EINPROGRESS: return "not ready";
+		case EINPROGRESS: lua_pushliteral(L, "not ready"); break;
 		case ECONNABORTED:
 		case ECONNRESET:
 		case EPIPE:
-		case ENOTCONN: return "disconnected";
-		case EISCONN: return "connected";
+		case ENOTCONN: lua_pushliteral(L, "disconnected"); break;
+		case EISCONN: lua_pushliteral(L, "connected"); break;
 		/* errors due to external factors */
-		case EACCES: return "permission denied";
-		case EADDRINUSE: return "address in use";
-		case EADDRNOTAVAIL: return "address unavailable";
-		case ECONNREFUSED: return "connection refused";
-		case EHOSTUNREACH: return "host unreachable";
-		case ENETUNREACH: return "network unreachable";
-		case ENETDOWN: return "network down";
+		case EACCES: lua_pushliteral(L, "permission denied"); break;
+		case EADDRINUSE: lua_pushliteral(L, "address in use"); break;
+		case EADDRNOTAVAIL: lua_pushliteral(L, "address unavailable"); break;
+		case ECONNREFUSED: lua_pushliteral(L, "connection refused"); break;
+		case EHOSTUNREACH: lua_pushliteral(L, "host unreachable"); break;
+		case ENETUNREACH: lua_pushliteral(L, "network unreachable"); break;
+		case ENETDOWN: lua_pushliteral(L, "network down"); break;
 		/* errors due to misuse */
-		case EAFNOSUPPORT: return "address not supported";
-		case EDESTADDRREQ: return "address required";
-		case EMSGSIZE: return "message too long";
+		case EAFNOSUPPORT: lua_pushliteral(L, "address not supported"); break;
+		case EDESTADDRREQ: lua_pushliteral(L, "address required"); break;
+		case EMSGSIZE: lua_pushliteral(L, "message too long"); break;
 		/* system errors */
-		case ENOBUFS: return "no buffer space";
-		case ENOMEM: return "out of memory";
-		case ETIMEDOUT: return "timeout";
-		case EINTR: return "interrupted";
-		case EIO: return "system error";
+		case ENOBUFS: lua_pushliteral(L, "no buffer space"); break;
+		case ENOMEM: lua_pushliteral(L, "out of memory"); break;
+		case ETIMEDOUT: lua_pushliteral(L, "timeout"); break;
+		case EINTR: lua_pushliteral(L, "interrupted"); break;
+		case EIO: lua_pushliteral(L, "system error"); break;
 		/* unexpected errors (probably a bug in the library) */
-		case EBADF: return "bad file descriptor";
-		case EINVAL: return "invalid argument";
-		case ENOTSOCK: return "not a socket";
-		case EOPNOTSUPP: return "not supported";
-		default: return strerror(error);
+		case EBADF: lua_pushliteral(L, "bad file descriptor"); break;
+		case EINVAL: lua_pushliteral(L, "invalid argument"); break;
+		case ENOTSOCK: lua_pushliteral(L, "not a socket"); break;
+		case EOPNOTSUPP: lua_pushliteral(L, "not supported"); break;
+		default: lua_pushstring(L, strerror(error)); break;
 	}
+	return 0;
 }
 
 LOSKIDRV_API int loski_socketincompleteop(int res) {

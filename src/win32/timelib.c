@@ -20,5 +20,5 @@ loski_Seconds loski_now()
 
 void loski_sleep(loski_Seconds seconds)
 {
-	Sleep((int)(n*1000));
+	Sleep((int)(seconds*1000));
 }

@@ -1,12 +1,36 @@
 #include "loskiaux.h"
 
+#include <assert.h>
 #include <string.h>
 
+LUALIB_API void *luaL_alloctemporary(lua_State *L, size_t size)
+{
+	void *userdata;
+	lua_Alloc alloc = lua_getallocf(L, &userdata);
+	return alloc(userdata, NULL, 0, size);
+}
+
+LUALIB_API void luaL_freetemporary(lua_State *L, void *memo, size_t size)
+{
+	void *userdata;
+	lua_Alloc alloc = lua_getallocf(L, &userdata);
+	memo = alloc(userdata, memo, size, 0);
+	assert(memo == NULL);
+}
+
 LUALIB_API int luaL_pushresults(lua_State *L, int nres, int err,
-                                const char *(*geterrmsg) (int)) {
+                                int (*pusherrmsg) (int, lua_State *)) {
 	if (err) {
+		int msgerr;
 		lua_pushnil(L);
-		lua_pushstring(L, geterrmsg(err));
+		msgerr = pusherrmsg(err, L);
+		if (msgerr) {
+			lua_pushfstring(L, "unable to get message for error code %d: ", err);
+			if (pusherrmsg(msgerr, L) != 0) {
+				lua_pushfstring(L, "message retrival error code %d", msgerr);
+			}
+			lua_concat(L, 2);
+		}
 		lua_pushinteger(L, err);
 		nres = 3;
 	} else if (nres == 0) {

@@ -3,6 +3,7 @@
 
 #include <errno.h>
 #include <sys/select.h>
+#include <lua.h> /* to copy error messages to Lua */
 
 #define UNWATCHABLE_OBJECT_ERROR (-1)
 
@@ -16,12 +17,17 @@ LOSKIDRV_API int loski_closeevents()
 	return 0;
 }
 
-LOSKIDRV_API const char *loski_eventerror(int error)
+LOSKIDRV_API int loski_eventerror(int error, lua_State* L)
 {
 	switch (error) {
-		case UNWATCHABLE_OBJECT_ERROR: return "unwatchable";
+	case UNWATCHABLE_OBJECT_ERROR:
+		lua_pushliteral(L, "unwatchable");
+		break;
+	default:
+		lua_pushstring(L, strerror(error));
+		break;
 	}
-	return strerror(error);
+	return 0;
 }
 
 LOSKIDRV_API int loski_initwatcher(loski_EventWatcher *watcher)
@@ -37,7 +43,7 @@ LOSKIDRV_API int loski_endwatcher(loski_EventWatcher *watcher)
 }
 
 LOSKIDRV_API int loski_addwatch(loski_EventWatcher *watcher,
-                              loski_EventWatch *watch)
+                                loski_EventWatch *watch)
 {
 	int fd;
 	switch (watch->kind) {
@@ -53,7 +59,7 @@ LOSKIDRV_API int loski_addwatch(loski_EventWatcher *watcher,
 }
 
 LOSKIDRV_API int loski_delwatch(loski_EventWatcher *watcher,
-                              loski_EventWatch *watch)
+                                loski_EventWatch *watch)
 {
 	int fd, i;
 	switch (watch->kind) {
@@ -74,15 +80,15 @@ LOSKIDRV_API int loski_delwatch(loski_EventWatcher *watcher,
 }
 
 LOSKIDRV_API size_t loski_eventqueuesize(loski_EventWatcher *watcher,
-                                       size_t count)
+                                         size_t count)
 {
 	return 2*sizeof(fd_set);
 }
 
 LOSKIDRV_API int loski_waitevent(loski_EventWatcher *watcher,
-                               void *queue,
-                               size_t *count,
-                               loski_Seconds timeout)
+                                 void *queue,
+                                 size_t *count,
+                                 loski_Seconds timeout)
 {
 	int res;
 	fd_set *sets = (fd_set *)queue;
@@ -101,8 +107,8 @@ LOSKIDRV_API int loski_waitevent(loski_EventWatcher *watcher,
 }
 
 LOSKIDRV_API int loski_getevent(void *queue,
-                              size_t index,
-                              loski_EventWatch *watch)
+                                size_t index,
+                                loski_EventWatch *watch)
 {
 	fd_set *sets = (fd_set *)queue;
 	int si = index%2;

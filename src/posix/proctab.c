@@ -1,5 +1,6 @@
 #include "proctab.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #define FULL_RATIO .75
@@ -54,10 +55,7 @@ int loski_proctabinit(loski_ProcTable *tab, size_t capacity)
 	tab->count = 0;
 	tab->capacity = capacity;
 	tab->table = newtable(capacity);
-	if (tab->table == NULL) {
-		free(tab);
-		return -1;
-	}
+	if (tab->table == NULL) return -1;
 	return 0;
 }
 
@@ -96,7 +94,7 @@ loski_Process *loski_proctabdel(loski_ProcTable *tab, pid_t pid)
 			*pos = proc->next;
 			proc->next = NULL;
 			--(tab->count);
-			if (tab->count <= tab->capacity*EMPTY_RATIO)
+			if (tab->count > 0 && tab->count < tab->capacity*EMPTY_RATIO)
 				rehashtable(tab, tab->capacity/INC_RATIO);
 			return proc;
 		}
