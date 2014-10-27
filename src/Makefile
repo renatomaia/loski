@@ -108,4 +108,19 @@ solaris:
 .PHONY: all $(PLATS) default o a so clean depend echo none
 
 # DO NOT DELETE
-
+leventlib.o: posix/eventlib.h eventlibapi.h timelib.h loskiconf.h
+leventlib.o: posix/proclib.h proclibapi.h posix/netlib.h netlibapi.h
+leventlib.o: loskiaux.h lnetlib.h
+lnetlib.o: lnetlib.h loskiconf.h posix/netlib.h netlibapi.h loskiaux.h
+loskiaux.o: loskiaux.h
+lproclib.o: posix/proclib.h proclibapi.h loskiconf.h loskiaux.h
+ltimelib.o: timelib.h loskiconf.h
+luaoski.o: luaoski.h
+posix/eventlib.o: posix/eventlib.h eventlibapi.h timelib.h loskiconf.h
+posix/eventlib.o: posix/proclib.h proclibapi.h posix/netlib.h netlibapi.h
+posix/eventlib.o: ./posix/timeaux.h
+posix/netlib.o: posix/netlib.h netlibapi.h loskiconf.h
+posix/proclib.o: posix/proclib.h proclibapi.h loskiconf.h ./posix/proctab.h
+posix/proctab.o: ./posix/proctab.h posix/proclib.h proclibapi.h loskiconf.h
+posix/timeaux.o: ./posix/timeaux.h timelib.h loskiconf.h
+posix/timelib.o: timelib.h loskiconf.h

@@ -147,7 +147,7 @@ static const char *const sck_opts[] = {
 
 /* value [, errmsg] = socket:getoption(name) */
 static int sck_getoption (lua_State *L) {
-	loski_Socket *socket = tosock(L, LOSKI_STRMSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_BASESOCKET);
 	int opt = luaL_checkoption(L, 2, NULL, sck_opts);
 	int val;
 	int res = loski_getsocketoption(socket, opt, &val);
@@ -165,7 +165,7 @@ static int sck_getoption (lua_State *L) {
 
 /* succ [, errmsg] = socket:setoption(name, value) */
 static int sck_setoption (lua_State *L) {
-	loski_Socket *socket = tosock(L, LOSKI_STRMSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_BASESOCKET);
 	int opt = luaL_checkoption(L, 2, NULL, sck_opts);
 	int val, res;
 	switch (opt) {
@@ -194,7 +194,7 @@ static int sck_connect (lua_State *L) {
 
 
 /* sent [, errmsg] = socket:send(data [, i [, j [, host, port]]]) */
-static int udp_send (lua_State *L) {
+static int sck_send (lua_State *L) {
 	loski_Socket *socket = tosock(L, LOSKI_STRMSOCKET);
 	size_t sz, sent;
 	const char *data = luaL_checklstring(L, 2, &sz);
@@ -215,7 +215,7 @@ static int udp_send (lua_State *L) {
 
 
 /* data [, errmsg] = socket:receive(pattern [, getfrom]) */
-static int udp_receive (lua_State *L) {
+static int sck_receive (lua_State *L) {
 	loski_Socket *socket = tosock(L, LOSKI_STRMSOCKET);
 	size_t len;  /* number of chars actually read */
 	char *buf;
@@ -241,16 +241,6 @@ static int udp_receive (lua_State *L) {
 	}
 	return pushsockres(L, nr, res);
 }
-
-
-//static int tcp_send (lua_State *L) {
-//
-//}
-//
-//
-//static int tcp_receive (lua_State *L) {
-//
-//}
 
 
 /* succ [, errmsg] = socket:shutdown([mode]) */
@@ -308,18 +298,16 @@ static const luaL_Reg sck[] = {
 
 static const luaL_Reg str[] = {
 	{"connect",     sck_connect},
+	{"send",        sck_send},
+	{"receive",     sck_receive},
 	{NULL,          NULL}
 };
 
 static const luaL_Reg udp[] = {
-	{"send",        udp_send},
-	{"receive",     udp_receive},
 	{NULL,          NULL}
 };
 
 static const luaL_Reg tcp[] = {
-	{"send",        udp_send},
-	{"receive",     udp_receive},
 	{"shutdown",    tcp_shutdown},
 	{NULL,          NULL}
 };
@@ -383,7 +371,8 @@ LOSKILIB_API int loski_issocket (lua_State *L, int idx, int cls) {
 }
 
 LOSKILIB_API loski_Socket *loski_tosocket (lua_State *L, int idx, int cls) {
+	LuaSocket *ls;
 	if (!loski_issocket(L, idx, cls)) return NULL;
-	LuaSocket *ls = ((LuaSocket *)lua_touserdata(L, idx));
+	ls = ((LuaSocket *)lua_touserdata(L, idx));
 	return &ls->socket;
 }

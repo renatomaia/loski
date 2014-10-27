@@ -19,7 +19,7 @@ LUAMOD_API int (luaopen_time) (lua_State *L);
 LUAMOD_API int (luaopen_process) (lua_State *L);
 
 #define LUA_NETLIBNAME	"network"
-LUAMOD_API int (luaopen_net) (lua_State *L);
+LUAMOD_API int (luaopen_network) (lua_State *L);
 
 #define LUA_EVENTLIBNAME	"event"
 LUAMOD_API int (luaopen_event) (lua_State *L);

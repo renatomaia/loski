@@ -11,7 +11,7 @@
 #define LOSKIDRV_API LUALIB_API
 #endif
 
-#define LOSKI_PREFIX "Operating System Kernel Interface: "
+#define LOSKI_PREFIX "LOSKI:"
 
 
 #endif

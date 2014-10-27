@@ -29,7 +29,7 @@
 static const luaL_Reg loadedlibs[] = {
   {LUA_TIMELIBNAME, luaopen_time},
   {LUA_PROCLIBNAME, luaopen_process},
-  {LUA_NETLIBNAME, luaopen_net},
+  {LUA_NETLIBNAME, luaopen_network},
   {LUA_EVENTLIBNAME, luaopen_event},
   {LUA_FILESYSLIBNAME, luaopen_filesys},
   {NULL, NULL}

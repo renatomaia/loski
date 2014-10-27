@@ -1,7 +1,7 @@
 local time = require "time"
 local process = require "process"
 
-local nop = 100
+local nop = 10
 local proc = {}
 
 for i=1, nop do
@@ -42,5 +42,4 @@ for i=1, nop do
 	assert(proc[i]:status() == "dead")
 end
 
-io.write("\nCompleted!")
-io.read()
+print("\nCompleted!")
