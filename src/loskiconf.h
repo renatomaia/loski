@@ -11,7 +11,7 @@
 #define LOSKIDRV_API LUALIB_API
 #endif
 
-#define LOSKI_PREFIX "LOSKI:"
+#define LOSKI_PREFIX "loski:"
 
 
 #endif

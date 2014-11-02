@@ -8,9 +8,9 @@
 #define LOSKI_BASESOCKET 4
 
 static const char *const loski_SocketClasses[] = {
-	LOSKI_PREFIX"network.DatagramSocket",
-	LOSKI_PREFIX"network.ConnectionSocket",
 	LOSKI_PREFIX"network.ListenSocket",
+	LOSKI_PREFIX"network.ConnectionSocket",
+	LOSKI_PREFIX"network.DatagramSocket",
 	LOSKI_PREFIX"network.StreamSocket",
 	LOSKI_PREFIX"network.Socket"
 };

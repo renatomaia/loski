@@ -5,8 +5,8 @@
 
 #include <lua.h> /* to copy error messages to Lua */
 
-enum loski_SocketSite { LOSKI_REMOTESITE, LOSKI_LOCALSITE, LOSKI_BOTHSITES };
-enum loski_SocketType { LOSKI_DGRMSOCKET, LOSKI_CONNSOCKET, LOSKI_LSTNSOCKET };
+enum loski_SocketSite { LOSKI_LOCALSITE, LOSKI_REMOTESITE, LOSKI_BOTHSITES };
+enum loski_SocketType { LOSKI_LSTNSOCKET, LOSKI_CONNSOCKET, LOSKI_DGRMSOCKET };
 enum loski_SocketOption {
 	/* BASESOCKET */
 	LOSKI_SOCKOPT_BLOCKING,

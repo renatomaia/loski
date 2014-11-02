@@ -232,7 +232,7 @@ LUAMOD_API int luaopen_process(lua_State *L)
 	}
 	/* create process class */
 	lua_pushvalue(L, -1);  /* push sentinel */
-	luaL_newclass(L, LOSKI_PROCESSCLS, cls, 1);
+	luaL_newclass(L, LOSKI_PROCESSCLS, NULL, cls, 1);
 	lua_pop(L, 1);  /* remove new class */
 	/* create library table */
 	luaL_newlibtable(L, lib);

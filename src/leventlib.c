@@ -282,7 +282,7 @@ LUAMOD_API int luaopen_event(lua_State *L)
 	}
 	/* create abstract base socket class */
 	lua_pushvalue(L, -1);  /* push sentinel */
-	luaL_newclass(L, WATCHER_CLASS, ew, 1);
+	luaL_newclass(L, WATCHER_CLASS, NULL, ew, 1);
 	lua_pop(L, 1);  /* remove new class */
 	/* create library table */
 	luaL_newlibtable(L, lib);

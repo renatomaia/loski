@@ -72,35 +72,29 @@ LUALIB_API void luaL_cancelsentinel(lua_State *L)
 
 LUALIB_API void luaL_newclass(lua_State *L,
                               const char *name,
+                              const char *super,
                               const luaL_Reg *mth,
                               int nup)
 {
-	luaL_newmetatable(L, name);  /* create metatable for file handles */
+	static const char *const metameth[] = {"__gc", "__tostring", NULL};
+	int i;
+	luaL_newmetatable(L, name);  /* create metatable for instances */
 	lua_pushvalue(L, -1);  /* push metatable */
 	lua_setfield(L, -2, "__index");  /* metatable.__index = metatable */
 	lua_insert(L, -(nup+1));  /* place new metatable under the upvalues */
 	luaL_setfuncs(L, mth, nup);  /* add methods to new metatable */
-}
-
-LUALIB_API void luaL_newsubclass(lua_State *L,
-                                 const char *super,
-                                 const char *name,
-                                 const luaL_Reg *mth,
-                                 int nup)
-{
-	static const char *const metameth[] = {"__gc", "__tostring", NULL};
-	int i;
-	luaL_newclass(L, name, mth, nup);
-	luaL_getmetatable(L, super);
-	for (i=0; metameth[i]; ++i) {
-		lua_getfield(L, -2, metameth[i]);  /* get metamethod from subclass */
-		if (lua_isnil(L, -1)) {
-			lua_pop(L, 1);  /* remove nil */
-			lua_getfield(L, -1, metameth[i]);  /* get metamethod from superclass */
-			lua_setfield(L, -3, metameth[i]);  /* set metamethod of subclass */
+	if (super) {
+		luaL_getmetatable(L, super);
+		for (i=0; metameth[i]; ++i) {
+			lua_getfield(L, -2, metameth[i]);  /* get metamethod from subclass */
+			if (lua_isnil(L, -1)) {
+				lua_pop(L, 1);  /* remove nil */
+				lua_getfield(L, -1, metameth[i]);  /* get metamethod from superclass */
+				lua_setfield(L, -3, metameth[i]);  /* set metamethod of subclass */
+			}
 		}
+		lua_setmetatable(L, -2);
 	}
-	lua_setmetatable(L, -2);
 }
 
 LUALIB_API void *luaL_testinstance(lua_State *L, int idx, const char *cls)

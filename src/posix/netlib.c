@@ -25,12 +25,12 @@ LOSKIDRV_API int loski_closenetwork() {
 
 LOSKIDRV_API int loski_addresserror(int error, lua_State *L) {
 	switch (error) {
-		case HOST_NOT_FOUND: lua_pushstring(L, "host not found"); break;
-		case TRY_AGAIN: lua_pushstring(L, "in progress"); break;
-		case NO_RECOVERY: lua_pushstring(L, "failed"); break;
-		case NO_DATA: lua_pushstring(L, "no address"); break;
+		case HOST_NOT_FOUND: lua_pushstring(L, "host unknown"); break;
+		case TRY_AGAIN: lua_pushstring(L, "unfulfilled"); break;
+		case NO_RECOVERY: lua_pushstring(L, "address failed"); break;
+		case NO_DATA: lua_pushstring(L, "address unavailable"); break;
 		case LOSKI_EAFNOSUPPORT: lua_pushstring(L, "unsupported"); break;
-		default: lua_pushstring(L, hstrerror(error)); break;
+		default: lua_pushstring(L, "unspecified error"); break;
 	}
 	return 0;
 }
@@ -71,17 +71,17 @@ LOSKIDRV_API int loski_socketerror(int error, lua_State *L) {
 		/* errors due to internal factors */
 		case EALREADY:
 		case EWOULDBLOCK:
-		case EINPROGRESS: lua_pushliteral(L, "in progress"); break;
+		case EINPROGRESS: lua_pushliteral(L, "unfulfilled"); break;
 		case ECONNABORTED:
 		case ECONNRESET:
 		case EPIPE: /* not in win32 */
 		case ENOTCONN: lua_pushliteral(L, "disconnected"); break;
 		case EISCONN: lua_pushliteral(L, "connected"); break;
 		/* errors due to external factors */
-		case EACCES: lua_pushliteral(L, "permission denied"); break;
-		case EADDRINUSE: lua_pushliteral(L, "address in use"); break;
+		case ECONNREFUSED: lua_pushliteral(L, "refused"); break;
+		case EACCES: lua_pushliteral(L, "access denied"); break;
+		case EADDRINUSE: lua_pushliteral(L, "address used"); break;
 		case EADDRNOTAVAIL: lua_pushliteral(L, "address unavailable"); break;
-		case ECONNREFUSED: lua_pushliteral(L, "connection refused"); break;
 		case EHOSTUNREACH: lua_pushliteral(L, "host unreachable"); break;
 		case ENETUNREACH: lua_pushliteral(L, "network unreachable"); break;
 		case ENETRESET: lua_pushliteral(L, "network reset"); break;
@@ -90,16 +90,16 @@ LOSKIDRV_API int loski_socketerror(int error, lua_State *L) {
 		case EDESTADDRREQ: lua_pushliteral(L, "address required"); break;
 		case EMSGSIZE: lua_pushliteral(L, "message too long"); break;
 		/* system errors */
+		case ENOBUFS: lua_pushliteral(L, "no buffer"); break;
 		case ETIMEDOUT: lua_pushliteral(L, "timeout"); break;
 		case EINTR: lua_pushliteral(L, "interrupted"); break;
 		case EMFILE:
 		case ENFILE: lua_pushliteral(L, "no resources"); break; /* not in win32 */
-		case ENOMEM: lua_pushliteral(L, "out of memory"); break; /* not in win32 */
+		case ENOMEM: lua_pushliteral(L, "no memory"); break; /* not in win32 */
 		case EIO: lua_pushliteral(L, "system error"); break; /* not in win32 */
 		/* unexpected errors (probably a bug in the library) */
 		case EBADF: /* bad file descriptor */
 		case EFAULT: /* bad address */
-		case ENOTSOCK: /* socket operation on nonsocket */
 		case EDOM: /* numeric argument out of domain of function */
 		case EISDIR: /* is a directory. */
 		case ENOTDIR: /* is not a directory. */
@@ -107,15 +107,16 @@ LOSKIDRV_API int loski_socketerror(int error, lua_State *L) {
 		case ENAMETOOLONG: /* filename too long. */
 		case ENOENT: /* no such file or directory. */
 		case EROFS: /* read-only file system. */
-		case EINVAL: /* invalid argument */
 			lua_pushstring(L, "invalid operation"); break;
+		case EINVAL: /* invalid argument */
+		case ENOTSOCK: /* socket operation on nonsocket */
 		case EPROTOTYPE: /* protocol wrong type for socket */
 		case ENOPROTOOPT: /* the option is not supported by the protocol. */
 		case EPROTONOSUPPORT: /* protocol not supported */
 		case EAFNOSUPPORT: /* address family not supported */
 		case EOPNOTSUPP: /* operation not supported on socket */
 			lua_pushstring(L, "unsupported"); break;
-		default: lua_pushstring(L, strerror(error)); break;
+		default: lua_pushstring(L, "unspecified error"); break;
 	}
 	return 0;
 }
@@ -227,8 +228,8 @@ LOSKIDRV_API int loski_socketaddress(loski_Socket *sock,
                                      loski_SocketSite site) {
 	int res;
 	socklen_t len = sizeof(loski_Address);
-	if (site == LOSKI_REMOTESITE) res = getpeername(*sock, address, &len);
-	else                          res = getsockname(*sock, address, &len);
+	if (site == LOSKI_LOCALSITE) res = getsockname(*sock, address, &len);
+	else                         res = getpeername(*sock, address, &len);
 	if (res != 0) return errno;
 	return 0;
 }
@@ -244,13 +245,14 @@ LOSKIDRV_API int loski_sendtosocket(loski_Socket *sock,
                                     size_t size,
                                     size_t *bytes,
                                     const loski_Address *address) {
+	ssize_t res;
 	if (address) {
-		*bytes = (size_t)sendto(*sock, data, size, 0,
-		                        address, sizeof(loski_Address));
+		res = sendto(*sock, data, size, 0, address, sizeof(loski_Address));
 	} else {
-		*bytes = (size_t)send(*sock, data, size, 0);
+		res = send(*sock, data, size, 0);
 	}
-	if (*bytes < 0) return errno;
+	if (res < 0) return errno;
+	*bytes = (size_t)res;
 	return 0;
 }
 
@@ -259,14 +261,16 @@ LOSKIDRV_API int loski_recvfromsocket(loski_Socket *sock,
                                       size_t size,
                                       size_t *bytes,
                                       loski_Address *address) {
+	ssize_t res;
 	if (address) {
 		socklen_t len = sizeof(loski_Address);
 		memset(address, 0, len);
-		*bytes = (size_t)recvfrom(*sock, buffer, size, 0, address, &len);
+		res = recvfrom(*sock, buffer, size, 0, address, &len);
 	} else {
-		*bytes = (size_t)recv(*sock, buffer, size, 0);
+		res = recv(*sock, buffer, size, 0);
 	}
-	if (*bytes < 0) return errno;
+	if (res < 0) return errno;
+	*bytes = (size_t)res;
 	return 0;
 }
 
@@ -274,11 +278,11 @@ LOSKIDRV_API int loski_shutdownsocket(loski_Socket *sock,
                                       loski_SocketSite site) {
 	int how;
 	switch (site) {
-		case LOSKI_REMOTESITE:
-			how = SHUT_RD;
-			break;
 		case LOSKI_LOCALSITE:
 			how = SHUT_WR;
+			break;
+		case LOSKI_REMOTESITE:
+			how = SHUT_RD;
 			break;
 		case LOSKI_BOTHSITES:
 			how = SHUT_RDWR;

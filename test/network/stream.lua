@@ -1,75 +1,46 @@
-local WIN = require("os").getenv("PATHEXT")~=nil
-
+local time = require "time"
 local network = require "network"
+local tests = require "test.network.utils"
 
 for _, kind in ipairs{"datagram", "connection"} do
-	-- socket = network.socket(type)
-	local socket = network.socket(kind)
-	assert(type(socket) == "userdata")
-	assert(string.match(tostring(socket), "^socket %(.-%)$"))
+	local socket = tests.testcreatesocket(kind)
 
-	-- succ [, errmsg] = socket:connect(host, port)
-	if WIN then
-		local res, errmsg = socket:connect("*", 80)
-		assert(res == nil)
-		assert(errmsg == "address unavailable")
+	if tests.IsWindows then
+		tests.testerrmsg("address unavailable", socket:connect("0.0.0.0", 80))
+	elseif kind == "connection" then
+		tests.testerrmsg("refused", socket:connect("0.0.0.0", 80))
 	else
-		if kind == "datagram" then
-			assert(socket:connect("*", 80) == true)
-		else
-			local res, errmsg = socket:connect("*", 80)
-			assert(res == nil)
-			assert(errmsg == "connection refused")
-		end
+		assert(socket:connect("0.0.0.0", 80) == true)
 	end
 
-	-- succ [, errmsg] = socket:close()
-	assert(socket:close() == true)
-	for _, op in ipairs{
-		"close",
-		"bind",
-		"getaddress",
-		"getoption",
-		"setoption",
-		"connect",
-		"send",
-		"receive",
-	} do
-		local ok, errmsg = pcall(socket[op], socket)
-		assert(not ok)
-		assert(errmsg == "attempt to use a closed socket")
-	end
+	tests.testoptions(socket, kind, "refused")
+	tests.testclose(socket)
 end
 
 for _, kind in ipairs{"datagram", "connection"} do
-	-- socket = network.socket(type)
-	local socket = network.socket(kind)
-	assert(type(socket) == "userdata")
-	assert(string.match(tostring(socket), "^socket %(.-%)$"))
+	local socket = tests.testcreatesocket(kind)
 
-	assert(socket:connect("www.google.com", 80) == true)
+	assert(socket:connect(tests.RemoteTCP.host, tests.RemoteTCP.port) == true)
 	if kind == "datagram" then
-		assert(socket:connect("www.google.com.br", 80) == true)
+		assert(socket:connect(tests.OtherTCP.host, tests.OtherTCP.port) == true)
 	else
-		local res, errmsg = socket:connect("www.google.com.br", 80)
-		assert(res == nil)
-		assert(errmsg == "connected")
+		tests.testerrmsg("connected", socket:connect(tests.OtherTCP.host, tests.OtherTCP.port))
 	end
 
-	-- succ [, errmsg] = socket:close()
-	assert(socket:close() == true)
-	for _, op in ipairs{
-		"close",
-		"bind",
-		"getaddress",
-		"getoption",
-		"setoption",
-		"connect",
-		"send",
-		"receive",
-	} do
-		local ok, errmsg = pcall(socket[op], socket)
-		assert(not ok)
-		assert(errmsg == "attempt to use a closed socket")
+	tests.testoptions(socket, kind)
+	tests.testclose(socket)
+end
+
+for _, kind in ipairs{"datagram", "connection"} do
+	local socket = tests.testcreatesocket(kind)
+	assert(socket:setoption("blocking", false) == true)
+
+	if kind == "datagram" then
+		assert(socket:connect(tests.RemoteTCP.host, tests.RemoteTCP.port) == true)
+	else
+		tests.testerrmsg("connected",
+			tests.tcall(true, socket.connect, socket, tests.RemoteTCP.host, tests.RemoteTCP.port))
 	end
+
+	tests.testclose(socket)
 end
