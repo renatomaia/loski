@@ -16,7 +16,5 @@ typedef struct sockaddr loski_Address;
 
 #include "netlibapi.h"
 
-#define loski_pushsocketkey(L,ps) lua_pushinteger(L,*ps)
-
 
 #endif

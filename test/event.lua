@@ -31,7 +31,7 @@ repeat
 			local size = assert(tonumber(assert(conn:receive(]]..szlen..[[))))
 			if size > 0 then
 				local data = assert(conn:receive(size))
-				local result = assert(loadstring(data))()
+				local result = assert(load(data))()
 				local msg = msgfmt:format(#result, result)
 				assert(assert(conn:send(msg)) == #msg)
 			else

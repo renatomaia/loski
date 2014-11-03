@@ -18,21 +18,13 @@ static const char *const WatchableEvents[3][3] = {
 	{"exited", NULL, NULL},  /* process events */
 };
 
-static void pushObjKey(lua_State *L, loski_EventWatch *watch) {
-	switch (watch->kind) {
-		case LOSKI_WATCHSOCKET:
-			loski_pushsocketkey(L, watch->object.socket);
-			break;
-		default:
-			lua_pushnil(L);
-	}
-}
-
-static void checkWatch(lua_State *L, loski_EventWatch *watch) {
+static void checkWatch(lua_State *L,
+                       loski_EventWatch *watch,
+                       loski_WatchableReference *ref) {
 	lua_settop(L, 3);
 	if (loski_issocket(L, 2, LOSKI_BASESOCKET)) {
 		watch->kind = LOSKI_WATCHSOCKET;
-		watch->object.socket = loski_tosocket(L, 2, LOSKI_BASESOCKET);
+		ref->socket = loski_tosocket(L, 2, LOSKI_BASESOCKET);
 	}
 	else luaL_argerror(L, 2, "invalid watchable object");
 	watch->event = luaL_checkoption(L, 3, NULL, WatchableEvents[watch->kind]);
@@ -50,7 +42,7 @@ static void saveWatchObjRef(lua_State *L, loski_EventWatch *watch) {
 	lua_pushinteger(L, watch->kind);    /* pol,obj,evt,map,knd */
 	luaL_pushobjtab(L, 4, 5);           /* pol,obj,evt,map,knd,ref */
 	/* save object reference */
-	pushObjKey(L, watch);               /* pol,obj,evt,map,knd,ref,key */
+	loski_pushwachedkey(L, watch);      /* pol,obj,evt,map,knd,ref,key */
 	lua_pushvalue(L, 2);                /* pol,obj,evt,map,knd,ref,key,obj */
 	lua_settable(L, -3);                /* pol,obj,evt,map,knd,ref */
 	lua_pop(L, 2);                      /* pol,obj,evt,map */
@@ -88,7 +80,7 @@ static int deleteWatchObjRef(lua_State *L, loski_EventWatch *watch) {
 				lua_rawgeti(L, -2, watch->kind);  /* pol,obj,evt,map,reg,ref */
 				if (lua_istable(L, -1)) {         /* pol,obj,evt,map,reg,ref */
 					/* free object reference */
-					pushObjKey(L, watch);           /* pol,obj,evt,map,reg,ref,key */
+					loski_pushwachedkey(L, watch);  /* pol,obj,evt,map,reg,ref,key */
 					lua_pushnil(L);                 /* pol,obj,evt,map,reg,ref,key,nil */
 					lua_settable(L, -3);            /* pol,obj,evt,map,reg,ref */
 					lua_pop(L, 1);                  /* pol,obj,evt,map,reg */
@@ -111,7 +103,7 @@ static int pushWatchObjRef(lua_State *L, loski_EventWatch *watch) {
 		return 0;
 	}
 	lua_remove(L, -2);                /* pol,...,ref */
-	pushObjKey(L, watch);             /* pol,...,ref,key */
+	loski_pushwachedkey(L, watch);    /* pol,...,ref,key */
 	lua_gettable(L, -2);              /* pol,...,ref,obj */
 	lua_remove(L, -2);                /* pol,...,obj */
 	return 1;
@@ -191,9 +183,10 @@ static int evt_watcher (lua_State *L) {
 static int ew_add (lua_State *L) {
 	loski_EventWatcher *watcher = towatcher(L);
 	loski_EventWatch watch;
+	loski_WatchableReference ref;
 	int res;
-	checkWatch(L, &watch);
-	res = loski_addwatch(watcher, &watch);
+	checkWatch(L, &watch, &ref);
+	res = loski_addwatch(watcher, &watch, &ref);
 	if (res == 0) saveWatchObjRef(L, &watch);
 	return pushresults(L, 1, res);
 }
@@ -203,9 +196,10 @@ static int ew_add (lua_State *L) {
 static int ew_remove (lua_State *L) {
 	loski_EventWatcher *watcher = towatcher(L);
 	loski_EventWatch watch;
+	loski_WatchableReference ref;
 	int res;
-	checkWatch(L, &watch);
-	res = loski_delwatch(watcher, &watch);
+	checkWatch(L, &watch, &ref);
+	res = loski_delwatch(watcher, &watch, &ref);
 	if (res == 0 && !deleteWatchObjRef(L, &watch)) {
 		lua_pushnil(L);
 		lua_pushliteral(L, "not found");
@@ -228,7 +222,7 @@ static int ew_wait (lua_State *L) {
 	queue = lua_newuserdata(L, qsize);                 /* wat,max,tim,usd */
 	res = loski_waitevent(watcher, queue, &count, timeout);
 	if (res == 0) {
-		int i;
+		size_t i;
 		lua_newtable(L);                                 /* wat,max,tim,usd,tab */
 		for (i = 0; i < count; ++i) {
 			loski_EventWatch watch;

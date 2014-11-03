@@ -15,10 +15,17 @@ enum loski_WatchableKind {
 };
 typedef enum loski_WatchableKind loski_WatchableKind;
 
-union loski_WatchableObject {
+union loski_WatchableReference {
 	FILE *file;
 	loski_Socket *socket;
 	loski_Process *process;
+};
+typedef union loski_WatchableReference loski_WatchableReference;
+
+union loski_WatchableObject {
+	loski_WatchableFile file;
+	loski_WatchableSocket socket;
+	loski_WatchableProcess process;
 };
 typedef union loski_WatchableObject loski_WatchableObject;
 
@@ -42,22 +49,27 @@ LOSKIDRV_API int loski_initwatcher(loski_EventWatcher *watcher);
 
 LOSKIDRV_API int loski_endwatcher(loski_EventWatcher *watcher);
 
+LOSKIDRV_API void loski_pushwachedkey(lua_State *L,
+                                      loski_EventWatch *watch);
+
 LOSKIDRV_API int loski_addwatch(loski_EventWatcher *watcher,
-                              loski_EventWatch *watch);
+                                loski_EventWatch *watch,
+                                loski_WatchableReference *ref);
 
 LOSKIDRV_API int loski_delwatch(loski_EventWatcher *watcher,
-                              loski_EventWatch *watch);
+                                loski_EventWatch *watch,
+                                loski_WatchableReference *ref);
 
 LOSKIDRV_API size_t loski_eventqueuesize(loski_EventWatcher *watcher,
-                                       size_t count);
+                                         size_t count);
 
 LOSKIDRV_API int loski_waitevent(loski_EventWatcher *watcher,
-                               void *queue,
-                               size_t *count,
-                               loski_Seconds timeout);
+                                 void *queue,
+                                 size_t *count,
+                                 loski_Seconds timeout);
 
 LOSKIDRV_API int loski_getevent(void *queue,
-                              size_t index,
-                              loski_EventWatch *watch);
+                                size_t index,
+                                loski_EventWatch *watch);
 
 #endif

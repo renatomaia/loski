@@ -1,8 +1,6 @@
 #include "eventlib.h"
 #include "timeaux.h"
 
-#include <errno.h>
-#include <sys/select.h>
 #include <lua.h> /* to copy error messages to Lua */
 
 #define UNWATCHABLE_OBJECT_ERROR (-1)
@@ -62,7 +60,7 @@ LOSKIDRV_API int loski_addwatch(loski_EventWatcher *watcher,
 	int fd;
 	switch (watch->kind) {
 		case LOSKI_WATCHSOCKET:
-			fd = *(ref->socket);
+			fd = ref->socket->id;
 			watch->object.file = fd;
 			watch->kind = LOSKI_WATCHFILE;
 			break;
@@ -81,7 +79,7 @@ LOSKIDRV_API int loski_delwatch(loski_EventWatcher *watcher,
 	int fd, i;
 	switch (watch->kind) {
 		case LOSKI_WATCHSOCKET:
-			fd = *(ref->socket);
+			fd = ref->socket->id;
 			watch->object.file = fd;
 			watch->kind = LOSKI_WATCHFILE;
 			break;
@@ -116,12 +114,12 @@ LOSKIDRV_API int loski_waitevent(loski_EventWatcher *watcher,
 	if (timeout >= 0) {
 		struct timeval tm;
 		seconds2timeval(timeout, &tm);
-		res = select(watcher->maxfd, &sets[0], &sets[1], NULL, &tm);
+		res = select(0, &sets[0], &sets[1], NULL, &tm);
 	} else {
-		res = select(watcher->maxfd, &sets[0], &sets[1], NULL, NULL);
+		res = select(0, &sets[0], &sets[1], NULL, NULL);
 	}
-	if (res == -1) return errno;
-	*count = 2*(watcher->maxfd);
+	if (res == SOCKET_ERROR) return WSAGetLastError();
+	*count = (res == 0) ? 0 : 2*(watcher->maxfd);
 	return 0;
 }
 

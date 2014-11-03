@@ -2,7 +2,7 @@
 #define eventlib_h
 
 
-#include <sys/select.h>
+#include <winsock.h>
 #include <string.h>
 
 typedef struct loski_EventWatcher {
