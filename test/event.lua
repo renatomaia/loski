@@ -5,8 +5,16 @@ local process = require "process"
 local port = ...
 local szlen = 4
 local msgfmt = "%"..szlen.."d%s"
+local luabin = "lua"
+do
+	local i = -1
+	while arg[i] ~= nil do
+		luabin = arg[i]
+		i = i-1
+	end
+end
 
-local server = assert(process.create("lua", "-e", [[
+local server = assert(process.create(luabin, "-e", [[
 local event = require "event"
 local network = require "network"
 
