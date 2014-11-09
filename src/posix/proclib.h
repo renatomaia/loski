@@ -7,6 +7,7 @@
 struct loski_Process {
 	pid_t pid;
 	int status;
+	struct loski_Process **place;
 	struct loski_Process *next;
 };
 

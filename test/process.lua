@@ -23,7 +23,7 @@ for i=1, nop do
 	io.flush()
 end
 
-assert(process.create("lua", "-e", [[print("I'll become a zombie")]]))
+z = assert(process.create("lua", "-e", [[print("I won't become a zombie")]]))
 
 for i=1, nop do
 	io.write(".")

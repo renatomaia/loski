@@ -15,8 +15,10 @@
 #define TABLE_INITSZ 4
 #define ERRNO_NO_EXIT_VALUE (-1)
 
-static char hastable = 0;
+static volatile char hastable = 0;
 static loski_ProcTable table;
+static struct sigaction chldsig_action;
+static sigset_t chldsig_mask;
 
 
 static int stdfile(int stdfd, FILE* file)
@@ -62,18 +64,49 @@ static int execvep(const char *file, char *const argv[], char *const envp[])
 	return execve(file, argv, envp);
 }
 
-static void childsignal(int signo)
+static void chldsig_handler(int signo)
 {
 	pid_t pid;
 	int status;
-	signal(SIGCHLD, childsignal); /* to catch SIGCHLD for next time */
-	pid = wait(&status); /* After wait, child is definitely freed */
-	if (hastable) {
-		loski_Process *proc = loski_proctabdel(&table, pid);
-		if (proc) {
-			proc->pid = 0;
-			proc->status = status;
+	while (1) {
+		pid = waitpid(-1, &status, WNOHANG);
+		if (pid < 0) {
+			if (errno != EINTR) break;
+		} else if (pid == 0) {
+			break; /* process information not available anymore */
+		} else if (hastable) {
+			loski_Process *proc = loski_proctabget(&table, pid);
+			if (proc) {
+				proc->pid = 0;
+				proc->status = status;
+			}
 		}
+	}
+}
+
+static void blockchldsig()
+{
+	if (!loski_proctabisempty(&table)) {
+		sigprocmask(SIG_BLOCK, &chldsig_mask, NULL);
+	}
+}
+
+static void unblockchldsig()
+{
+	void (*handler)(int);
+	if (loski_proctabisempty(&table)) {
+		handler = SIG_DFL;
+	} else {
+		handler = chldsig_handler;
+	}
+	if (handler != chldsig_action.sa_handler) {
+		chldsig_action.sa_handler = handler;
+		sigaction(SIGCHLD, &chldsig_action, NULL);
+		if (handler == SIG_DFL) {
+			sigprocmask(SIG_UNBLOCK, &chldsig_mask, NULL);
+		}
+	} else if (handler == chldsig_handler) {
+		sigprocmask(SIG_UNBLOCK, &chldsig_mask, NULL);
 	}
 }
 
@@ -157,7 +190,13 @@ LOSKIDRV_API void loski_proc_toenvlist(lua_State *L,
 LOSKIDRV_API int loski_openprocesses()
 {
 	if (!hastable) {
-		signal(SIGCHLD, childsignal);
+		/* setup signal action */
+		chldsig_action.sa_handler = SIG_DFL;
+		sigemptyset(&chldsig_action.sa_mask);
+		chldsig_action.sa_flags = 0;
+		/* setup signal block mask */
+		sigemptyset(&chldsig_mask);
+		sigaddset(&chldsig_mask, SIGCHLD);
 		if (loski_proctabinit(&table, TABLE_INITSZ) == 0) {
 			hastable = 1;
 			return 0;
@@ -169,8 +208,9 @@ LOSKIDRV_API int loski_openprocesses()
 LOSKIDRV_API int loski_closeprocesses()
 {
 	if (hastable) {
-		signal(SIGCHLD, SIG_DFL);
+		blockchldsig();
 		loski_proctabclose(&table);
+		unblockchldsig();
 		hastable = 0;
 		return 0;
 	}
@@ -195,60 +235,68 @@ LOSKIDRV_API int loski_createprocess(loski_Process *proc,
                                      FILE *stdout,
                                      FILE *stderr)
 {
+	int res;
+	blockchldsig();
 	proc->pid = fork();
 	proc->status = 0;
-	if (proc->pid == -1) return errno;
+	if (proc->pid == -1) res = errno;
 	else if (proc->pid > 0) {
-		// TODO: http://www.cs.utah.edu/dept/old/texinfo/glibc-manual-0.02/library_21.html#SEC368
 		loski_proctabput(&table, proc);
-		return 0;
-	}
-	/* child process */
-	int res = 0;
-	if (res == 0 && stdin  ) res = stdfile(0, stdin);
-	if (res == 0 && stdout ) res = stdfile(1, stdout);
-	if (res == 0 && stderr ) res = stdfile(2, stderr);
-	if (res == 0 && runpath) res = chdir(runpath);
-	if (res == 0) {
-		int max = sysconf(_SC_OPEN_MAX);
-		if (max > 0) {
-			int i;
-			for (i=3; i<max; ++i) close(i); /* close all open file descriptors */
-			if (envlist) execvep(binpath, (char *const *)argvals, (char *const *)envlist);
-			else execvp(binpath, (char *const *)argvals);
+		res = 0;
+	} else {
+		/* child process */
+		int res = 0;
+		if (res == 0 && stdin  ) res = stdfile(0, stdin);
+		if (res == 0 && stdout ) res = stdfile(1, stdout);
+		if (res == 0 && stderr ) res = stdfile(2, stderr);
+		if (res == 0 && runpath) res = chdir(runpath);
+		if (res == 0) {
+			int max = sysconf(_SC_OPEN_MAX);
+			if (max > 0) {
+				int i;
+				for (i=3; i<max; ++i) close(i); /* close all open file descriptors */
+				if (envlist) execvep(binpath, (char *const *)argvals, (char *const *)envlist);
+				else execvp(binpath, (char *const *)argvals);
+			}
 		}
+		_exit(errno);
+		res = errno; /* avoid warning */
 	}
-	_exit(errno);
+	unblockchldsig();
+	return res;
 }
 
 LOSKIDRV_API int loski_processstatus(loski_Process *proc,
                                      loski_ProcStatus *status)
 {
+	int res = 0;
+	blockchldsig();
 	if (proc->pid != 0) {
-		pid_t res = waitpid(proc->pid, &proc->status, WNOHANG);
-		if (res == -1) return errno;
-		
-		if (proc->status == 0) {
-			if (res == proc->pid) {
-				*status = LOSKI_DEADPROC;
-				proc->pid = 0;
-			} else {
-				*status = LOSKI_RUNNINGPROC;
+		do {
+			pid_t waitres = waitpid(proc->pid, &proc->status, WNOHANG);
+			if (waitres != -1) {
+				if (proc->status == 0) {
+					*status = (waitres == proc->pid) ? LOSKI_DEADPROC : LOSKI_RUNNINGPROC;
+				} else if (WIFEXITED(proc->status)) {
+					*status = LOSKI_DEADPROC;
+				} else if (WIFSIGNALED(proc->status)) {
+					*status = LOSKI_DEADPROC;
+				} else if (WIFSTOPPED(proc->status)) {
+					*status = LOSKI_SUSPENDEDPROC;
+				} else if (WIFCONTINUED(proc->status)) {
+					*status = LOSKI_RUNNINGPROC;
+				}
 			}
-		} else if (WIFEXITED(proc->status)) {
-			*status = LOSKI_DEADPROC;
-			proc->pid = 0;
-		} else if (WIFSIGNALED(proc->status)) {
-			*status = LOSKI_DEADPROC;
-			proc->pid = 0;
-		} else if (WIFSTOPPED(proc->status)) {
-			*status = LOSKI_SUSPENDEDPROC;
-		} else if (WIFCONTINUED(proc->status)) {
-			*status = LOSKI_RUNNINGPROC;
-		}
+			else res = errno;
+		} while (res == EINTR);
 	}
 	else *status = LOSKI_DEADPROC;
-	return 0;
+	if (res == 0 && *status == LOSKI_DEADPROC) {
+		loski_proctabdel(&table, proc);
+		proc->pid = 0;
+	}
+	unblockchldsig();
+	return res;
 }
 
 LOSKIDRV_API int loski_processexitval(loski_Process *proc, int *code)
@@ -271,10 +319,12 @@ LOSKIDRV_API int loski_killprocess(loski_Process *proc)
 
 LOSKIDRV_API int loski_discardprocess(loski_Process *proc)
 {
-	if (proc->pid>0 && loski_proctabdel(&table, proc->pid)) {
+	blockchldsig();
+	if (proc->pid >= 0) {
+		loski_proctabdel(&table, proc);
 		proc->pid = -1;
 		proc->status = 0;
-		return 0;
 	}
-	return -1;
+	unblockchldsig();
+	return 0;
 }

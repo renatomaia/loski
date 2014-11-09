@@ -22,9 +22,10 @@ static loski_Process **newtable(size_t capacity)
 
 static void addtotable(loski_Process **table, size_t capacity, loski_Process *proc)
 {
-	loski_Process **pos = table+calchash(proc->pid, capacity);
-	for (; *pos; pos=&((*pos)->next));
-	*pos = proc;
+	loski_Process **place = table+calchash(proc->pid, capacity);
+	for (; *place; place=&((*place)->next));
+	*place = proc;
+	proc->place = place;
 	proc->next = NULL;
 }
 
@@ -34,11 +35,10 @@ static int rehashtable(loski_ProcTable *tab, size_t capacity)
 	loski_Process **table = newtable(capacity);
 	if (table == NULL) return 1;
 	for (i = 0; i < tab->capacity; ++i) {
-		loski_Process* proc = tab->table[i];
+		loski_Process *proc = tab->table[i];
 		tab->table[i] = NULL;
 		while (proc) {
-			loski_Process* next = proc->next;
-			proc->next = NULL;
+			loski_Process *next = proc->next;
 			addtotable(table, capacity, proc);
 			proc = next;
 		}
@@ -66,6 +66,7 @@ void loski_proctabclose(loski_ProcTable *tab)
 		loski_Process* proc = tab->table[i];
 		while (proc) {
 			loski_Process* next = proc->next;
+			proc->place = NULL;
 			proc->next = NULL;
 			proc = next;
 		}
@@ -85,26 +86,29 @@ loski_Process *loski_proctabput(loski_ProcTable *tab, loski_Process *proc)
 	return proc;
 }
 
-loski_Process *loski_proctabdel(loski_ProcTable *tab, pid_t pid)
+loski_Process *loski_proctabdel(loski_ProcTable *tab, loski_Process *proc)
 {
-	loski_Process **pos = tab->table+calchash(pid, tab->capacity);
-	for (; *pos; pos=&((*pos)->next))
-		if ((*pos)->pid==pid) {
-			loski_Process *proc = *pos;
-			*pos = proc->next;
-			proc->next = NULL;
-			--(tab->count);
-			if (tab->count > 0 && tab->count < tab->capacity*EMPTY_RATIO)
-				rehashtable(tab, tab->capacity/INC_RATIO);
-			return proc;
-		}
+	loski_Process **place = proc->place;
+	if (place) {
+		*place = proc->next;
+		proc->place = NULL;
+		proc->next = NULL;
+		--(tab->count);
+		if (tab->count > 0 && tab->count < tab->capacity*EMPTY_RATIO)
+			rehashtable(tab, tab->capacity/INC_RATIO);
+		return proc;
+	}
 	return NULL;
 }
-/*
+
 loski_Process *loski_proctabget(loski_ProcTable *tab, pid_t pid)
 {
 	loski_Process *proc = tab->table[calchash(pid, tab->capacity)];
 	for (; proc; proc=proc->next) if (proc->pid==pid) break;
 	return proc;
 }
-*/
+
+int loski_proctabisempty(loski_ProcTable *tab)
+{
+	return tab->count == 0;
+}
