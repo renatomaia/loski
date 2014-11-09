@@ -1,0 +1,211 @@
+http://pubs.opengroup.org/onlinepubs/009604599/basedefs/errno.h.html
+http://msdn.microsoft.com/en-us/library/windows/desktop/ms740668(v=vs.85).aspx
+
+Network Errors
+________________________________________________________________________________
+socket
+
+[EPROTOTYPE] The socket type is not supported by the protocol.
+[WSAEPROTOTYPE] The specified protocol is the wrong type for this socket.
+[EAFNOSUPPORT] The implementation does not support the specified address family.
+[WSAEAFNOSUPPORT] The specified address family is not supported. For example, an application tried to create a socket for the AF_IRDA address family but an infrared adapter and device driver is not installed on the local computer.
+[EPROTONOSUPPORT] The protocol is not supported by the address family, or the protocol is not supported by the implementation.
+[WSAEPROTONOSUPPORT] The specified protocol is not supported.
+[ENOBUFS] Insufficient resources were available in the system to perform the operation.
+[WSAENOBUFS] No buffer space is available. The socket cannot be created.
+[EMFILE] No more file descriptors are available for this process.
+[WSAEMFILE] No more socket descriptors are available.
+POSIX:
+	[ENFILE] No more file descriptors are available for the system.
+	[EACCES] The process does not have appropriate privileges.
+	[ENOMEM] Insufficient memory was available to fulfill the request.
+Windows:
+	[WSAENETDOWN] The network subsystem or the associated service provider has failed.
+	[WSAEINPROGRESS] A blocking Windows Sockets 1.1 call is in progress, or the service provider is still processing a callback function.
+	[WSAEINVAL] An invalid argument was supplied. This error is returned if the af parameter is set to AF_UNSPEC and the type and protocol parameter are unspecified.
+	[WSAEINVALIDPROVIDER] The service provider returned a version other than 2.2.
+	[WSAEINVALIDPROCTABLE] The service provider returned an invalid or incomplete procedure table to the WSPStartup.
+	[WSANOTINITIALISED] A successful WSAStartup call must occur before using this function.
+	[WSAEPROVIDERFAILEDINIT] The service provider failed to initialize. This error is returned if a layered service provider (LSP) or namespace provider was improperly installed or the provider fails to operate correctly.
+	[WSAESOCKTNOSUPPORT] The specified socket type is not supported in this address family.
+________________________________________________________________________________
+close
+
+[EINTR] The close() function was interrupted by a signal.
+[WSAEINTR] The (blocking) Windows Socket 1.1 call was canceled through WSACancelBlockingCall.
+POSIX:
+	[EBADF] The fildes argument is not a valid file descriptor.
+	[EIO] An I/O error occurred while reading from or writing to the file system.
+Windows:
+	[WSAENETDOWN] The network subsystem has failed.
+	[WSAENOTSOCK] The descriptor is not a socket.
+	[WSAEINPROGRESS] A blocking Windows Sockets 1.1 call is in progress, or the service provider is still processing a callback function.
+	[WSAEWOULDBLOCK] The socket is marked as nonblocking, but the l_onoff member of the linger structure is set to nonzero and the l_linger member of the linger structure is set to a nonzero timeout value.
+	[WSANOTINITIALISED] A successful WSAStartup call must occur before using this function.
+________________________________________________________________________________
+bind
+
+[EACCES] A component of the path prefix denies search permission, or the requested name requires writing in a directory with a mode that denies write permission.
+[EACCES] The specified address is protected and the current user does not have permission to bind to it.
+[WSAEACCES] An attempt was made to access a socket in a way forbidden by its access permissions. This error is returned if nn attempt to bind a datagram socket to the broadcast address failed because the setsockopt option SO_BROADCAST is not enabled.
+[EADDRINUSE] The specified address is already in use.
+[WSAEADDRINUSE] Only one usage of each socket address (protocol/network address/port) is normally permitted. This error is returned if a process on the computer is already bound to the same fully qualified address and the socket has not been marked to allow address reuse with SO_REUSEADDR. For example, the IP address and port specified in the name parameter are already bound to another socket being used by another application. For more information, see the SO_REUSEADDR socket option in the SOL_SOCKET Socket Options reference, Using SO_REUSEADDR and SO_EXCLUSIVEADDRUSE, and SO_EXCLUSIVEADDRUSE.
+[EADDRNOTAVAIL] The specified address is not available from the local machine.
+[WSAEADDRNOTAVAIL] The requested address is not valid in its context. This error is returned if the specified address pointed to by the name parameter is not a valid local IP address on this computer.
+[EINVAL] The socket is already bound to an address, and the protocol does not support binding to a new address; or the socket has been shut down.
+[EINVAL] The address_len argument is not a valid length for the address family.
+[WSAEINVAL] An invalid argument was supplied. This error is returned of the socket s is already bound to an address.
+[ENOBUFS] Insufficient resources were available to complete the call.
+[WSAENOBUFS] An operation on a socket could not be performed because the system lacked sufficient buffer space or because a queue was full. This error is returned of not enough buffers are available or there are too many connections.
+[ENOTSOCK] The socket argument does not refer to a socket.
+[WSAENOTSOCK] An operation was attempted on something that is not a socket. This error is returned if the descriptor in the s parameter is not a socket.
+POSIX:
+	[EAFNOSUPPORT] The specified address is not a valid address for the address family of the specified socket.
+	[EBADF] The socket argument is not a valid file descriptor.
+	[EOPNOTSUPP] The socket type of the specified socket does not support binding to an address.
+	[EDESTADDRREQ] or [EISDIR] The address argument is a null pointer.
+	[EIO] An I/O error occurred.
+	[ELOOP] A loop exists in symbolic links encountered during resolution of the pathname in address.
+	[ELOOP] More than {SYMLOOP_MAX} symbolic links were encountered during resolution of the pathname in address.
+	[ENAMETOOLONG] A component of a pathname exceeded {NAME_MAX} characters, or an entire pathname exceeded {PATH_MAX} characters.
+	[ENAMETOOLONG] Pathname resolution of a symbolic link produced an intermediate result whose length exceeds {PATH_MAX}.
+	[ENOENT] A component of the pathname does not name an existing file or the pathname is an empty string.
+	[ENOTDIR] A component of the path prefix of the pathname in address is not a directory.
+	[EROFS] The name would reside on a read-only file system.
+	[EISCONN] The socket is already connected.
+Windows:
+	[WSANOTINITIALISED] Note  A successful WSAStartup call must occur before using this function.
+	[WSAENETDOWN] The network subsystem has failed.
+	[WSAEFAULT] The system detected an invalid pointer address in attempting to use a pointer argument in a call. This error is returned if the name parameter is NULL, the name or namelen parameter is not a valid part of the user address space, the namelen parameter is too small, the name parameter contains an incorrect address format for the associated address family, or the first two bytes of the memory block specified by name do not match the address family associated with the socket descriptor s.
+	[WSAEINPROGRESS] A blocking Windows Sockets 1.1 call is in progress, or the service provider is still processing a callback function.
+________________________________________________________________________________
+get(peer|sock)name
+
+[ENOTCONN] The socket is not connected or otherwise has not had the peer pre-specified.
+[WSAENOTCONN] The socket is not connected.
+[ENOTSOCK] The socket argument does not refer to a socket.
+[WSAENOTSOCK] The descriptor is not a socket.
+POSIX:
+	[EBADF] The socket argument is not a valid file descriptor.
+	[EINVAL] The socket has been shut down.
+	[EOPNOTSUPP] The operation is not supported for the socket protocol.
+	[ENOBUFS] Insufficient resources were available in the system to complete the call.
+Windows:
+	[WSANOTINITIALISED] A successful WSAStartup call must occur before using this function.
+	[WSAENETDOWN] The network subsystem has failed.
+	[WSAEFAULT] The name or the namelen parameter is not in a valid part of the user address space, or the namelen parameter is too small.
+	[WSAEINPROGRESS] A blocking Windows Sockets 1.1 call is in progress, or the service provider is still processing a callback function.
+________________________________________________________________________________
+getsockopt
+
+[EINVAL] The specified option is invalid at the specified socket level.
+[EINVAL] The socket has been shut down.
+[WSAEINVAL] The level parameter is unknown or invalid.
+[ENOPROTOOPT] The option is not supported by the protocol.
+[WSAENOPROTOOPT] The option is unknown or unsupported by the indicated protocol family.
+[ENOTSOCK] The socket argument does not refer to a socket.
+[WSAENOTSOCK] The descriptor is not a socket.
+POSIX:
+	[EBADF] The socket argument is not a valid file descriptor.
+	[EACCES] The calling process does not have the appropriate privileges.
+	[ENOBUFS] Insufficient resources are available in the system to complete the function.
+Windows:
+	[WSANOTINITIALISED] A successful WSAStartup call must occur before using this function.
+	[WSAENETDOWN] Note  The network subsystem has failed.
+	[WSAEFAULT] One of the optval or the optlen parameters is not a valid part of the user address space, or the optlen parameter is too small.
+	[WSAEINPROGRESS] A blocking Windows Sockets 1.1 call is in progress, or the service provider is still processing a callback function.
+________________________________________________________________________________
+setsockopt
+
+[EINVAL] The specified option is invalid at the specified socket level or the socket has been shut down.
+[WSAEINVAL] The level parameter is not valid, or the information in the buffer pointed to by the optval parameter is not valid.
+[ENOPROTOOPT] The option is not supported by the protocol.
+[WSAENOPROTOOPT] The option is unknown or unsupported for the specified provider or socket (see SO_GROUP_PRIORITY limitations).
+[ENOTSOCK] The socket argument does not refer to a socket.
+[WSAENOTSOCK] The descriptor is not a socket.
+POSIX:
+	[EBADF] The socket argument is not a valid file descriptor.
+	[EDOM] The send and receive timeout values are too big to fit into the timeout fields in the socket structure.
+	[EISCONN] The socket is already connected, and a specified option cannot be set while the socket is connected.
+	[ENOMEM] There was insufficient memory available for the operation to complete.
+	[ENOBUFS] Insufficient resources are available in the system to complete the call.
+Windows:
+	[WSANOTINITIALISED] A successful WSAStartup call must occur before using this function.
+	[WSAENETDOWN] The network subsystem has failed.
+	[WSAEFAULT] The buffer pointed to by the optval parameter is not in a valid part of the process address space or the optlen parameter is too small.
+	[WSAEINPROGRESS] A blocking Windows Sockets 1.1 call is in progress, or the service provider is still processing a callback function.
+	[WSAENETRESET] The connection has timed out when SO_KEEPALIVE is set.
+	[WSAENOTCONN] The connection has been reset when SO_KEEPALIVE is set.
+________________________________________________________________________________
+fcntl
+
+POSIX:
+	[EACCES] or [EAGAIN] The cmd argument is F_SETLK; the type of lock ( l_type) is a shared (F_RDLCK) or exclusive (F_WRLCK) lock and the segment of a file to be locked is already exclusive-locked by another process, or the type is an exclusive lock and some portion of the segment of a file to be locked is already shared-locked or exclusive-locked by another process.
+	[EBADF] The fildes argument is not a valid open file descriptor, or the argument cmd is F_SETLK or F_SETLKW, the type of lock, l_type, is a shared lock (F_RDLCK), and fildes is not a valid file descriptor open for reading, or the type of lock, l_type, is an exclusive lock (F_WRLCK), and fildes is not a valid file descriptor open for writing.
+	[EINTR] The cmd argument is F_SETLKW and the function was interrupted by a signal.
+	[EINVAL] The cmd argument is invalid, or the cmd argument is F_DUPFD and arg is negative or greater than or equal to {OPEN_MAX}, or the cmd argument is F_GETLK, F_SETLK, or F_SETLKW and the data pointed to by arg is not valid, or fildes refers to a file that does not support locking.
+	[EMFILE] The argument cmd is F_DUPFD and {OPEN_MAX} file descriptors are currently open in the calling process, or no file descriptors greater than or equal to arg are available.
+	[ENOLCK] The argument cmd is F_SETLK or F_SETLKW and satisfying the lock or unlock request would result in the number of locked regions in the system exceeding a system-imposed limit.
+	[EOVERFLOW] One of the values to be returned cannot be represented correctly.
+	[EOVERFLOW] The cmd argument is F_GETLK, F_SETLK, or F_SETLKW and the smallest or, if l_len is non-zero, the largest offset of any byte in the requested segment cannot be represented correctly in an object of type off_t.
+	[EDEADLK] The cmd argument is F_SETLKW, the lock is blocked by a lock from another process, and putting the calling process to sleep to wait for that lock to become free would cause a deadlock.
+________________________________________________________________________________
+ioctlsocket
+
+Windows:
+	[WSANOTINITIALISED] A successful WSAStartup call must occur before using this function.
+	[WSAENETDOWN] The network subsystem has failed.
+	[WSAEINPROGRESS] A blocking Windows Sockets 1.1 call is in progress, or the service provider is still processing a callback function.
+	[WSAENOTSOCK] The descriptor s is not a socket.
+	[WSAEFAULT] The argp parameter is not a valid part of the user address space.
+________________________________________________________________________________
+connect
+
+[EALREADY] A connection request is already in progress for the specified socket.
+[WSAEALREADY] A nonblocking connect call is in progress on the specified socket. Note  In order to preserve backward compatibility, this error is reported as WSAEINVAL to Windows Sockets 1.1 applications that link to either Winsock.dll or Wsock32.dll.
+[EADDRNOTAVAIL] The specified address is not available from the local machine.
+[WSAEADDRNOTAVAIL] The remote address is not a valid address (such as INADDR_ANY or in6addr_any) .
+[EAFNOSUPPORT] The specified address is not a valid address for the address family of the specified socket.
+[WSAEAFNOSUPPORT] Addresses in the specified family cannot be used with this socket.
+[ECONNREFUSED] The target address was not listening for connections or refused the connection request.
+[WSAECONNREFUSED] The attempt to connect was forcefully rejected.
+[EINPROGRESS] O_NONBLOCK is set for the file descriptor for the socket and the connection cannot be immediately established; the connection shall be established asynchronously.
+[WSAEINPROGRESS] A blocking Windows Sockets 1.1 call is in progress, or the service provider is still processing a callback function.
+[ENETUNREACH] No route to the network is present.
+[WSAENETUNREACH] The network cannot be reached from this host at this time.
+[EISCONN] The specified socket is connection-mode and is already connected.
+[WSAEISCONN] The socket is already connected (connection-oriented sockets only).
+[ENOTSOCK] The socket argument does not refer to a socket.
+[WSAENOTSOCK] The descriptor specified in the s parameter is not a socket.
+[ETIMEDOUT] The attempt to connect timed out before a connection was made.
+[WSAETIMEDOUT] An attempt to connect timed out without establishing a connection.
+[EACCES] Search permission is denied for a component of the path prefix; or write access to the named socket is denied.
+[WSAEACCES] An attempt to connect a datagram socket to broadcast address failed because setsockopt option SO_BROADCAST is not enabled.
+[EHOSTUNREACH] The destination host cannot be reached (probably because the host is down or a remote router cannot reach it).
+[WSAEHOSTUNREACH] A socket operation was attempted to an unreachable host.
+[EINVAL] The address_len argument is not a valid length for the address family; or invalid address family in the sockaddr structure.
+[WSAEINVAL] The parameter s is a listening socket.
+[ENOBUFS] No buffer space is available.
+[WSAENOBUFS] Note  No buffer space is available. The socket cannot be connected.
+[EINTR] The attempt to establish a connection was interrupted by delivery of a signal that was caught; the connection shall be established asynchronously.
+[WSAEINTR] The blocking Windows Socket 1.1 call was canceled through WSACancelBlockingCall.
+[EADDRINUSE] Attempt to establish a connection that uses addresses that are already in use.
+[WSAEADDRINUSE] The socket's local address is already in use and the socket was not marked to allow address reuse with SO_REUSEADDR. This error usually occurs when executing bind, but could be delayed until the connect function if the bind was to a wildcard address (INADDR_ANY or in6addr_any) for the local IP address. A specific address needs to be implicitly bound by the connect function.
+[ENETDOWN] The local network interface used to reach the destination is down.
+[WSAENETDOWN] The network subsystem has failed.
+POSIX:
+	[EBADF] The socket argument is not a valid file descriptor.
+	[EPROTOTYPE] The specified address has a different type than the socket bound to the specified peer address.
+	[EIO] An I/O error occurred while reading from or writing to the file system.
+	[ELOOP] A loop exists in symbolic links encountered during resolution of the pathname in address.
+	[ELOOP] More than {SYMLOOP_MAX} symbolic links were encountered during resolution of the pathname in address.
+	[ENAMETOOLONG] A component of a pathname exceeded {NAME_MAX} characters, or an entire pathname exceeded {PATH_MAX} characters.
+	[ENAMETOOLONG] Pathname resolution of a symbolic link produced an intermediate result whose length exceeds {PATH_MAX}.
+	[ENOENT] A component of the pathname does not name an existing file or the pathname is an empty string.
+	[ENOTDIR] A component of the path prefix of the pathname in address is not a directory.
+	[ECONNRESET] Remote host reset the connection request.
+	[EOPNOTSUPP] The socket is listening and cannot be connected.
+Windows:
+	[WSANOTINITIALISED] A successful WSAStartup call must occur before using this function.
+	[WSAEFAULT] The sockaddr structure pointed to by the name contains incorrect address format for the associated address family or the namelen parameter is too small. This error is also returned if the sockaddr structure pointed to by the name parameter with a length specified in the namelen parameter is not in a valid part of the user address space.
+	[WSAEWOULDBLOCK] The socket is marked as nonblocking and the connection cannot be completed immediately.

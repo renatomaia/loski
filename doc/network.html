@@ -1,0 +1,244 @@
+<%
+return refman{
+	socket = {
+		type = "table",
+		summary = "Socket",
+		description = [[
+			Object that represents a socket.
+		]],
+		fields = {
+			close = {
+				type = "method",
+				summary = "Closes the socket",
+				description = [[
+					closes the socket releasing all system resources related to the socket.
+				]],
+				results = {
+					{
+						name = "success",
+						type = "boolean",
+						summary = "Flag indicating success",
+						description = [[
+							is <code>true</code> to indicate the operation was successful.
+							In case of errors, this returned value is <code>nil</code>.
+						]],
+					},
+					{
+						name = "errmsg",
+						type = "string",
+						summary = "Error while closing the socket",
+						eventual = "indicates the operation was successful",
+						description = [[
+							a message describing the error that occurred.
+							The expected error messages are described below:
+							<dl>
+								<dt>network down</dt>
+								<dd>The network subsystem has failed.</dd>
+								<dt>unfulfilled</dt>
+								<dd>Socket could not be closed yet (e.g. due to linger option).</dd>
+								<dt>interrupted</dt>
+								<dd>Operation was interrupted by a signal.</dd>
+								<dt>system error</dt>
+								<dd>A system error occurred.</dd>
+							</dl>
+						]],
+					},
+				},
+				examples = {
+					[[assert(socket:close())]],
+					[[ok, errmsg = socket:close()]],
+				},
+			},
+			bind = {
+				type = "method",
+				summary = "Binds a socket to a local address",
+				description = [[
+					assigns a local address to a socket.
+				]],
+				results = {
+					{
+						name = "success",
+						type = "boolean",
+						summary = "Flag indicating success",
+						description = [[
+							is <code>true</code> to indicate the operation was successful.
+							In case of errors, this returned value is <code>nil</code>.
+						]],
+					},
+					{
+						name = "errmsg",
+						type = "string",
+						summary = "Error while closing the socket",
+						eventual = "indicates the operation was successful",
+						description = [[
+							a message describing the error that occurred.
+							The expected error messages are described below:
+							<dl>
+								<dt>unsupported</dt>
+								<dd>The system does not support the operation.</dd>
+								<dt>access denied</dt>
+								<dd>The process does not have appropriate privileges to create the socket.</dd>
+								<dt>address used</dt>
+								<dd>The specified address is already in use.</dd>
+								<dt>address unavailable</dt>
+								<dd>The specified address is not available from the local machine.</dd>
+								<dt>invalid operation</dt>
+								<dd>The operation is currently invalid for this socket (e.g. socket is closed or already bound).</dd>
+								<dt>no buffer</dt>
+								<dd>The system has no buffer space to create the socket.</dd>
+								<dt>system error</dt>
+								<dd>A system error occurred.</dd>
+								<dt>connected</dt>
+								<dd>socket is already connected.</dd>
+								<dt>network down</dt>
+								<dd>The network subsystem has failed.</dd>
+								<dt>unfulfilled</dt>
+								<dd>Operation could not be completed now.</dd>
+							</dl>
+						]],
+					},
+				},
+				examples = {
+					[[assert(socket:close())]],
+					[[ok, errmsg = socket:close()]],
+				},
+			},
+			getaddress = {
+				type = "method",
+				summary = "Binds a socket to a local address",
+				description = [[
+					assigns a local address to a socket.
+				]],
+				parameters = {
+					{
+						name = "site",
+						type = "string",
+						summary = "Indication of remote or local site",
+						description = [[
+							is <code>"local"</code> to indicate the local address of the socket shall be returned,
+							or is <code>"remote"</code> to indicate the address of the remote peer socket shall be returned.
+						]],
+					},
+				},
+				results = {
+					{
+						name = "host",
+						type = "string",
+						summary = "Socket host address",
+						description = [[
+							is address of the host of the socket.
+							In case of errors, this returned value is <code>nil</code>.
+						]],
+					},
+					{
+						name = "port",
+						type = "number|string",
+						summary = "Port number of the socket or an error message",
+						description = [[
+							is a number indicatind the port of the socket or a string containing a message describing the error that occurred.
+							The expected error messages are described below:
+							<dl>
+								<dt>unsupported</dt>
+								<dd>The system does not support the operation.</dd>
+								<dt>access denied</dt>
+								<dd>The process does not have appropriate privileges to create the socket.</dd>
+								<dt>address used</dt>
+								<dd>The specified address is already in use.</dd>
+								<dt>address unavailable</dt>
+								<dd>The specified address is not available from the local machine.</dd>
+								<dt>invalid operation</dt>
+								<dd>The operation is currently invalid for this socket (e.g. socket is closed or already bound).</dd>
+								<dt>no buffer</dt>
+								<dd>The system has no buffer space to create the socket.</dd>
+								<dt>system error</dt>
+								<dd>A system error occurred.</dd>
+								<dt>connected</dt>
+								<dd>socket is already connected.</dd>
+								<dt>network down</dt>
+								<dd>The network subsystem has failed.</dd>
+								<dt>unfulfilled</dt>
+								<dd>Operation could not be completed now.</dd>
+							</dl>
+						]],
+					},
+				},
+				examples = {
+					[[assert(socket:close())]],
+					[[ok, errmsg = socket:close()]],
+				},
+			},
+		},
+	},
+	network = {
+		type = "table",
+		summary = "Network Module",
+		fields = {
+			socket = {
+				type = "function",
+				summary = "Creates an endpoint for communication",
+				description = [[
+					creates a socket that works as an endpoint for communication over a network
+				]],
+				parameters = {
+					{
+						name = "type",
+						type = "string",
+						summary = "Type of socket to be created",
+						description = [[
+							contains the name of the type of socket to be created, which determines the semantics of communication over the socket.
+							The following socket types are defined:
+							<dl>
+								<dt>datagram</dt>
+								<dd>socket that supports datagram, which are connectionless-mode, unreliable messages of fixed maximum length.</dd>
+								<dt>connection</dt>
+								<dd>socket to initiate communication based on sequenced, reliable, bidirectional, connection-mode byte streams.</dd>
+								<dt>listen</dt>
+								<dd>socket to accept communication based on sequenced, reliable, bidirectional, connection-mode byte streams.</dd>
+							</dl>
+						]],
+					},
+				},
+				results = {
+					{
+						name = "socket",
+						type = "socket",
+						summary = "Created socket",
+						description = [[
+							is the created socket of the specified type.
+							In case of errors, this returned value is <code>nil</code>.
+						]],
+					},
+					{
+						name = "errmsg",
+						type = "string",
+						summary = "Error while creating the socket",
+						eventual = "indicates the operation was successful.",
+						description = [[
+							a message describing the error that occurred.
+							The expected error messages are described below:
+							<dl>
+								<dt>unsupported</dt>
+								<dd>The system does not support the requested socket type.</dd>
+								<dt>no resources</dt>
+								<dd>The system has no more resources to create the socket.</dd>
+								<dt>no buffer</dt>
+								<dd>The system has no buffer space to create the socket.</dd>
+								<dt>access denied</dt>
+								<dd>The process does not have appropriate privileges to create the socket.</dd>
+								<dt>no memory</dt>
+								<dd>Insufficient memory to create the socket.</dd>
+								<dt>network down</dt>
+								<dd>The network subsystem has failed.</dd>
+							</dl>
+						]],
+					},
+				},
+				examples = {
+					[[socket = assert(network.socket("connection"))]],
+					[[socket, errmsg = network.socket("datagram")]],
+				},
+			},
+		},
+	},
+}
+%>
