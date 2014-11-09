@@ -1,6 +1,15 @@
 local time = require "time"
 local process = require "process"
 
+local luabin = "lua"
+do
+	local i = -1
+	while arg[i] ~= nil do
+		luabin = arg[i]
+		i = i-1
+	end
+end
+
 local nop = 10
 local proc = {}
 
@@ -9,7 +18,7 @@ for i=1, nop do
 	io.flush()
 	local t = time.now()
 	proc[i] = assert(process.create{
-		execfile = "lua",
+		execfile = luabin,
 		arguments = {"-ltime", "-e", "while true do io.write(' ',os.getenv('PROCID')) io.flush() time.sleep(1) end"},
 		environment = {
 			PATH = os.getenv("PATH"),
