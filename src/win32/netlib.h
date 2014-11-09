@@ -6,12 +6,11 @@
 
 #define LOSKI_SOCKETSTRING "%d"
 
-struct loski_Socket {
+typedef void loski_NetDriver;
+typedef struct loski_Socket {
 	SOCKET id;
 	int blocking;
-};
-
-typedef struct loski_Socket loski_Socket;
+} loski_Socket;
 typedef struct sockaddr loski_Address;
 
 #include "netlibapi.h"

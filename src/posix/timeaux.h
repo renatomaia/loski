@@ -6,7 +6,7 @@
 
 #include <sys/time.h>
 
-void seconds2timeval(loski_Seconds s, struct timeval *t);
+void seconds2timeval(lua_Number s, struct timeval *t);
 
 
 #endif

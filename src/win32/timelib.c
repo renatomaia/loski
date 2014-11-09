@@ -7,7 +7,17 @@
 
 #include <windows.h>
 
-loski_Seconds loski_now()
+int loski_opentime(loski_TimeDriver *drv)
+{
+	return 0;
+}
+
+int loski_closetime(loski_TimeDriver *drv)
+{
+	return 0;
+}
+
+lua_Number loski_now(loski_TimeDriver *drv)
 {
 	FILETIME ft;
 	double t;
@@ -18,7 +28,7 @@ loski_Seconds loski_now()
 	return (t - 11644473600.0);
 }
 
-void loski_sleep(loski_Seconds seconds)
+void loski_sleep(loski_TimeDriver *drv, lua_Number seconds)
 {
 	Sleep((int)(seconds*1000));
 }

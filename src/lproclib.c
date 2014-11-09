@@ -89,6 +89,7 @@ typedef struct LuaProcess {
 static int lp_create(lua_State *L)
 {
 	int err;
+	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	loski_Process *proc;
 	const char *exec;
 	const char *path = NULL;
@@ -106,9 +107,9 @@ static int lp_create(lua_State *L)
 
 		size_t argc = lua_gettop(L);
 		exec = luaL_checkstring(L, 1);
-		loski_proc_checkargvals(L, argfromindex, argc, &argsz, &arginf);
+		loski_proc_checkargvals(drv, &arginf, argfromindex, L, argc, &argsz);
 		argv = luaL_alloctemporary(L, argsz);
-		loski_proc_toargvals(L, argfromindex, argc, argv, argsz, &arginf);
+		loski_proc_toargvals(drv, &arginf, argfromindex, L, argc, argv, argsz);
 
 	} else if (lua_istable(L, 1)) {
 		size_t argc = 1; /* execfile */
@@ -123,7 +124,7 @@ static int lp_create(lua_State *L)
 		lua_getfield(L, 1, "arguments");
 		if (lua_istable(L, 2)) {
 			argc += lua_rawlen(L, 2);
-			loski_proc_checkargvals(L, argfromtable, argc, &argsz, &arginf);
+			loski_proc_checkargvals(drv, &arginf, argfromtable, L, argc, &argsz);
 		} else if (!lua_isnil(L, 2)) {
 			luaL_argerror(L, 1, "field "LUA_QL("arguments")" must be a table");
 		}
@@ -131,9 +132,9 @@ static int lp_create(lua_State *L)
 		lua_getfield(L, 1, "environment");
 		if (lua_istable(L, -1)) {
 			size_t index = lua_gettop(L);
-			loski_proc_checkenvlist(L, index, &envsz, &envinf);
+			loski_proc_checkenvlist(drv, &envinf, L, index, &envsz);
 			envl = luaL_alloctemporary(L, envsz);
-			loski_proc_toenvlist(L, index, envl, envsz, &envinf);
+			loski_proc_toenvlist(drv, &envinf, L, index, envl, envsz);
 		} else if (!lua_isnil(L, -1)) {
 			luaL_argerror(L, 1, "field "LUA_QL("environment")" must be a table");
 		}
@@ -141,7 +142,7 @@ static int lp_create(lua_State *L)
 
 		if (lua_istable(L, 2)) {
 			argv = luaL_alloctemporary(L, argsz);
-			loski_proc_toargvals(L, argfromtable, argc, argv, argsz, &arginf);
+			loski_proc_toargvals(drv, &arginf, argfromtable, L, argc, argv, argsz);
 		}
 		lua_pop(L, 1); /* pop field 'arguments' */
 
@@ -150,7 +151,7 @@ static int lp_create(lua_State *L)
 	}
 	/* push a new proc structure on the stack */
 	proc = (loski_Process *)lua_newuserdata(L, sizeof(loski_Process));
-	err = loski_createprocess(proc, exec, path, argv, envl, stdinput, stdoutput, stderror);
+	err = loski_createprocess(drv, proc, exec, path, argv, envl, stdinput, stdoutput, stderror);
 	if (argv != NULL) luaL_freetemporary(L, argv, argsz);
 	if (envl != NULL) luaL_freetemporary(L, envl, envsz);
 	if (err) return pushresults(L, 1, err); /* return process */
@@ -164,33 +165,37 @@ const char *StatusName[] = { "running", "suspended", "dead" };
 
 static int lp_status(lua_State *L)
 {
+	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
 	loski_ProcStatus status;
-	int err = loski_processstatus(proc, &status);
+	int err = loski_processstatus(drv, proc, &status);
 	if (err == 0) lua_pushstring(L, StatusName[status]);
 	return pushresults(L, 1, err);
 }
 
 static int lp_exitval(lua_State *L)
 {
+	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
 	int code;
-	int err = loski_processexitval(proc, &code);
+	int err = loski_processexitval(drv, proc, &code);
 	if (err == 0) lua_pushinteger(L, code);
 	return pushresults(L, 1, err);
 }
 
 static int lp_kill(lua_State *L)
 {
+	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
-	int err = loski_killprocess(proc);
+	int err = loski_killprocess(drv, proc);
 	return pushresults(L, 0, err);
 }
 
 static int lp_gc(lua_State *L)
 {
+	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
-	loski_discardprocess(proc);
+	loski_discardprocess(drv, proc);
 	return 0;
 }
 
@@ -203,7 +208,8 @@ static int lp_tostring (lua_State *L)
 
 static int lp_sentinel(lua_State *L)
 {
-	loski_closeprocesses();
+	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_closeprocesses(drv);
 	return 0;
 }
 
@@ -224,9 +230,9 @@ static const luaL_Reg cls[] = {
 LUAMOD_API int luaopen_process(lua_State *L)
 {
 	/* create sentinel */
-	luaL_newsentinel(L, lp_sentinel);
+	loski_ProcDriver *drv = (loski_ProcDriver *)luaL_newsentinel(L, sizeof(loski_ProcDriver), lp_sentinel);
 	/* initialize library */
-	if (loski_openprocesses() != 0) {
+	if (loski_openprocesses(drv) != 0) {
 		luaL_cancelsentinel(L);
 		return luaL_error(L, "unable to initialize library");
 	}

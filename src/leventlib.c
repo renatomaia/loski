@@ -138,9 +138,9 @@ static loski_EventWatcher *towatcher (lua_State *L) {
 }
 
 
-static int aux_close(lua_State *L, LuaWatcher *p)
+static int aux_close(loski_EventDriver *drv, lua_State *L, LuaWatcher *p)
 {
-	int res = loski_endwatcher(&p->watcher);
+	int res = loski_endwatcher(drv, &p->watcher);
 	if (res == 0) p->closed = 1;  /* mark watcher as closed */
 	return pushresults(L, 0, res);
 }
@@ -148,16 +148,18 @@ static int aux_close(lua_State *L, LuaWatcher *p)
 
 static int ew_close(lua_State *L)
 {
+	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	LuaWatcher *p = tolwatcher(L);
 	towatcher(L);  /* make sure argument is a valid watcher */
-	return aux_close(L, p);
+	return aux_close(drv, L, p);
 }
 
 
 static int ew_gc(lua_State *L)
 {
+	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	LuaWatcher *p = tolwatcher(L);
-	if (!p->closed) aux_close(L, p);
+	if (!p->closed) aux_close(drv, L, p);
 	return 0;
 }
 
@@ -172,8 +174,9 @@ static LuaWatcher *newwatcher (lua_State *L) {
 
 /* watcher [, errmsg] = event.watcher() */
 static int evt_watcher (lua_State *L) {
+	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	LuaWatcher *p = newwatcher(L);
-	int res = loski_initwatcher(&p->watcher);
+	int res = loski_initwatcher(drv, &p->watcher);
 	if (res == 0) p->closed = 0;
 	return pushresults(L, 1, res);
 }
@@ -181,12 +184,13 @@ static int evt_watcher (lua_State *L) {
 
 /* succ [, errmsg] = watcher:add(object [, event]) */
 static int ew_add (lua_State *L) {
+	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	loski_EventWatcher *watcher = towatcher(L);
 	loski_EventWatch watch;
 	loski_WatchableReference ref;
 	int res;
 	checkWatch(L, &watch, &ref);
-	res = loski_addwatch(watcher, &watch, &ref);
+	res = loski_addwatch(drv, watcher, &watch, &ref);
 	if (res == 0) saveWatchObjRef(L, &watch);
 	return pushresults(L, 1, res);
 }
@@ -194,12 +198,13 @@ static int ew_add (lua_State *L) {
 
 /* succ [, errmsg] = watcher:remove(object [, event]) */
 static int ew_remove (lua_State *L) {
+	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	loski_EventWatcher *watcher = towatcher(L);
 	loski_EventWatch watch;
 	loski_WatchableReference ref;
 	int res;
 	checkWatch(L, &watch, &ref);
-	res = loski_delwatch(watcher, &watch, &ref);
+	res = loski_delwatch(drv, watcher, &watch, &ref);
 	if (res == 0 && !deleteWatchObjRef(L, &watch)) {
 		lua_pushnil(L);
 		lua_pushliteral(L, "not found");
@@ -214,19 +219,20 @@ static int ew_wait (lua_State *L) {
 	size_t qsize;
 	void *queue;
 	int res;
+	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
 	loski_EventWatcher *watcher = towatcher(L);
-	loski_Seconds timeout = luaL_optnumber(L, 2, -1);
+	lua_Number timeout = luaL_optnumber(L, 2, -1);
 	size_t count = luaL_optint(L, 3, 0);
 	lua_settop(L, 3);                                  /* wat,max,tim */
-	qsize = loski_eventqueuesize(watcher, count);
+	qsize = loski_eventqueuesize(drv, watcher, count);
 	queue = lua_newuserdata(L, qsize);                 /* wat,max,tim,usd */
-	res = loski_waitevent(watcher, queue, &count, timeout);
+	res = loski_waitevent(drv, watcher, queue, &count, timeout);
 	if (res == 0) {
 		size_t i;
 		lua_newtable(L);                                 /* wat,max,tim,usd,tab */
 		for (i = 0; i < count; ++i) {
 			loski_EventWatch watch;
-			res = loski_getevent(queue, i, &watch);
+			res = loski_getevent(drv, &watch, queue, i);
 			if (res == 0 && pushWatchObjRef(L, &watch)) {  /* wat,max,tim,usd,tab,obj */
 				const char *ename = WatchableEvents[watch.kind][watch.event];
 				luaL_pushobjtab(L, 5, 6);                    /* wat,max,tim,usd,tab,obj,set */
@@ -243,7 +249,8 @@ static int ew_wait (lua_State *L) {
 
 
 static int evt_sentinel(lua_State *L) {
-	loski_closeevents();
+	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_closeevents(drv);
 	return 0;
 }
 
@@ -265,14 +272,12 @@ static const luaL_Reg lib[] = {
 
 LUAMOD_API int luaopen_event(lua_State *L)
 {
-	int res;
 	/* create sentinel */
-	luaL_newsentinel(L, evt_sentinel);
+	loski_EventDriver *drv = (loski_EventDriver *)luaL_newsentinel(L, sizeof(loski_EventDriver), evt_sentinel);
 	/* initialize library */
-	res = loski_openevents();
-	if (res != 0) {
+	if (loski_openevents(drv) != 0) {
 		luaL_cancelsentinel(L);
-		return luaL_error(L, "unable to initialize library (%s)", strerror(res));
+		return luaL_error(L, "unable to initialize library");
 	}
 	/* create abstract base socket class */
 	lua_pushvalue(L, -1);  /* push sentinel */

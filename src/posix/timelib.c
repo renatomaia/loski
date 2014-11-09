@@ -8,7 +8,17 @@
 #include <time.h>
 #include <sys/time.h>
 
-loski_Seconds loski_now()
+int loski_opentime(loski_TimeDriver *drv)
+{
+	return 0;
+}
+
+int loski_closetime(loski_TimeDriver *drv)
+{
+	return 0;
+}
+
+lua_Number loski_now(loski_TimeDriver *drv)
 {
 	struct timeval v;
 	gettimeofday(&v, (struct timezone *) NULL);
@@ -16,7 +26,7 @@ loski_Seconds loski_now()
 	return v.tv_sec + v.tv_usec/1.0e6;
 }
 
-void loski_sleep(loski_Seconds n)
+void loski_sleep(loski_TimeDriver *drv, lua_Number n)
 {
 	struct timespec t, r;
 	t.tv_sec = (int) n;

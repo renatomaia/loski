@@ -5,12 +5,12 @@
 
 #define UNWATCHABLE_OBJECT_ERROR (-1)
 
-LOSKIDRV_API int loski_openevents()
+LOSKIDRV_API int loski_openevents(loski_EventDriver *drv)
 {
 	return 0;
 }
 
-LOSKIDRV_API int loski_closeevents()
+LOSKIDRV_API int loski_closeevents(loski_EventDriver *drv)
 {
 	return 0;
 }
@@ -28,14 +28,16 @@ LOSKIDRV_API int loski_eventerror(int error, lua_State* L)
 	return 0;
 }
 
-LOSKIDRV_API int loski_initwatcher(loski_EventWatcher *watcher)
+LOSKIDRV_API int loski_initwatcher(loski_EventDriver *drv,
+                                   loski_EventWatcher *watcher)
 {
 	FD_ZERO(&watcher->sets[0]);
 	FD_ZERO(&watcher->sets[1]);
 	return 0;
 }
 
-LOSKIDRV_API int loski_endwatcher(loski_EventWatcher *watcher)
+LOSKIDRV_API int loski_endwatcher(loski_EventDriver *drv,
+                                  loski_EventWatcher *watcher)
 {
 	return 0;
 }
@@ -53,7 +55,8 @@ LOSKIDRV_API void loski_pushwachedkey(lua_State *L,
 	}
 }
 
-LOSKIDRV_API int loski_addwatch(loski_EventWatcher *watcher,
+LOSKIDRV_API int loski_addwatch(loski_EventDriver *drv,
+                                loski_EventWatcher *watcher,
                                 loski_EventWatch *watch,
                                 loski_WatchableReference *ref)
 {
@@ -72,7 +75,8 @@ LOSKIDRV_API int loski_addwatch(loski_EventWatcher *watcher,
 	return 0;
 }
 
-LOSKIDRV_API int loski_delwatch(loski_EventWatcher *watcher,
+LOSKIDRV_API int loski_delwatch(loski_EventDriver *drv,
+                                loski_EventWatcher *watcher,
                                 loski_EventWatch *watch,
                                 loski_WatchableReference *ref)
 {
@@ -96,16 +100,18 @@ LOSKIDRV_API int loski_delwatch(loski_EventWatcher *watcher,
 	return 0;
 }
 
-LOSKIDRV_API size_t loski_eventqueuesize(loski_EventWatcher *watcher,
+LOSKIDRV_API size_t loski_eventqueuesize(loski_EventDriver *drv,
+                                         loski_EventWatcher *watcher,
                                          size_t count)
 {
 	return 2*sizeof(fd_set);
 }
 
-LOSKIDRV_API int loski_waitevent(loski_EventWatcher *watcher,
+LOSKIDRV_API int loski_waitevent(loski_EventDriver *drv,
+                                 loski_EventWatcher *watcher,
                                  void *queue,
                                  size_t *count,
-                                 loski_Seconds timeout)
+                                 lua_Number timeout)
 {
 	int res;
 	fd_set *sets = (fd_set *)queue;
@@ -123,9 +129,10 @@ LOSKIDRV_API int loski_waitevent(loski_EventWatcher *watcher,
 	return 0;
 }
 
-LOSKIDRV_API int loski_getevent(void *queue,
-                                size_t index,
-                                loski_EventWatch *watch)
+LOSKIDRV_API int loski_getevent(loski_EventDriver *drv,
+                                loski_EventWatch *watch,
+                                void *queue,
+                                size_t index)
 {
 	fd_set *sets = (fd_set *)queue;
 	int si = index%2;

@@ -110,23 +110,25 @@ static void unblockchldsig()
 	}
 }
 
-LOSKIDRV_API void loski_proc_checkargvals(lua_State *L,
+LOSKIDRV_API void loski_proc_checkargvals(loski_ProcDriver *drv,
+                                          loski_ProcArgInfo *info,
                                           loski_ProcArgFunc getarg,
+                                          lua_State *L,
                                           size_t argc,
-                                          size_t *size,
-                                          loski_ProcArgInfo *info)
+                                          size_t *size)
 {
 	int i;
 	for (i = 0; i < argc; ++i) getarg(L, i); /* 'getarg' checks args */
 	*size = (argc+1)*sizeof(const char *); /* args + NULL */
 }
 
-LOSKIDRV_API void loski_proc_toargvals(lua_State *L,
+LOSKIDRV_API void loski_proc_toargvals(loski_ProcDriver *drv,
+                                       loski_ProcArgInfo *info,
                                        loski_ProcArgFunc getarg,
+                                       lua_State *L,
                                        size_t argc,
                                        void *argvals,
-                                       size_t argsize,
-                                       loski_ProcArgInfo *info)
+                                       size_t argsize)
 {
 	const char **argv = (const char **)argvals;
 	int i;
@@ -134,10 +136,11 @@ LOSKIDRV_API void loski_proc_toargvals(lua_State *L,
 	argv[argc] = NULL;
 }
 
-LOSKIDRV_API void loski_proc_checkenvlist(lua_State *L,
+LOSKIDRV_API void loski_proc_checkenvlist(loski_ProcDriver *drv,
+                                          loski_ProcEnvInfo *count,
+                                          lua_State *L,
                                           int index,
-                                          size_t *size,
-                                          loski_ProcEnvInfo *count)
+                                          size_t *size)
 {
 	size_t chars = 0;
 	*count = 0;
@@ -162,11 +165,12 @@ LOSKIDRV_API void loski_proc_checkenvlist(lua_State *L,
 	      + (chars+2*(*count))*(sizeof(char)); /* #key + #value + '=' + '\0' */
 }
 
-LOSKIDRV_API void loski_proc_toenvlist(lua_State *L,
+LOSKIDRV_API void loski_proc_toenvlist(loski_ProcDriver *drv,
+                                       loski_ProcEnvInfo *count,
+                                       lua_State *L,
                                        int index,
                                        void *envlist,
-                                       size_t envsize,
-                                       loski_ProcEnvInfo *count)
+                                       size_t envsize)
 {
 	char **envl = (char **)envlist;
 	char *str = (char *)(envlist + ((*count)+1)*sizeof(char *));
@@ -187,7 +191,7 @@ LOSKIDRV_API void loski_proc_toenvlist(lua_State *L,
 }
 
 /* TODO: let application provide a memory allocation function */
-LOSKIDRV_API int loski_openprocesses()
+LOSKIDRV_API int loski_openprocesses(loski_ProcDriver *drv)
 {
 	if (!hastable) {
 		/* setup signal action */
@@ -205,7 +209,7 @@ LOSKIDRV_API int loski_openprocesses()
 	return -1;
 }
 
-LOSKIDRV_API int loski_closeprocesses()
+LOSKIDRV_API int loski_closeprocesses(loski_ProcDriver *drv)
 {
 	if (hastable) {
 		blockchldsig();
@@ -226,7 +230,8 @@ LOSKIDRV_API int loski_processerror(int error, lua_State *L)
 	return 0;
 }
 
-LOSKIDRV_API int loski_createprocess(loski_Process *proc,
+LOSKIDRV_API int loski_createprocess(loski_ProcDriver *drv,
+                                     loski_Process *proc,
                                      const char *binpath,
                                      const char *runpath,
                                      void *argvals,
@@ -266,7 +271,8 @@ LOSKIDRV_API int loski_createprocess(loski_Process *proc,
 	return res;
 }
 
-LOSKIDRV_API int loski_processstatus(loski_Process *proc,
+LOSKIDRV_API int loski_processstatus(loski_ProcDriver *drv,
+                                     loski_Process *proc,
                                      loski_ProcStatus *status)
 {
 	int res = 0;
@@ -299,7 +305,9 @@ LOSKIDRV_API int loski_processstatus(loski_Process *proc,
 	return res;
 }
 
-LOSKIDRV_API int loski_processexitval(loski_Process *proc, int *code)
+LOSKIDRV_API int loski_processexitval(loski_ProcDriver *drv,
+                                      loski_Process *proc,
+                                      int *code)
 {
 	if ( (proc->pid == 0) && WIFEXITED(proc->status) ) {
 		*code = WEXITSTATUS(proc->status);
@@ -308,7 +316,8 @@ LOSKIDRV_API int loski_processexitval(loski_Process *proc, int *code)
 	return ERRNO_NO_EXIT_VALUE;
 }
 
-LOSKIDRV_API int loski_killprocess(loski_Process *proc)
+LOSKIDRV_API int loski_killprocess(loski_ProcDriver *drv,
+                                   loski_Process *proc)
 {
 	if (proc->pid != 0) {
 		int res = kill(proc->pid, SIGKILL);
@@ -317,7 +326,8 @@ LOSKIDRV_API int loski_killprocess(loski_Process *proc)
 	return 0;
 }
 
-LOSKIDRV_API int loski_discardprocess(loski_Process *proc)
+LOSKIDRV_API int loski_discardprocess(loski_ProcDriver *drv,
+                                      loski_Process *proc)
 {
 	blockchldsig();
 	if (proc->pid >= 0) {

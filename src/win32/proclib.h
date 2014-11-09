@@ -4,11 +4,11 @@
 
 #include <windows.h>
 
-struct loski_Process {
+typedef void loski_ProcDriver;
+typedef struct loski_Process {
 	PROCESS_INFORMATION pi;
 	DWORD exitcode;
-};
-
+} loski_Process;
 typedef int loski_ProcArgInfo;
 typedef size_t loski_ProcEnvInfo;
 
