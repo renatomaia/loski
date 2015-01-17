@@ -7,6 +7,7 @@ include ../config
 
 PLAT_DIR= posix
 CC= gcc
+LD= ld
 CFLAGS= -O2 -Wall -I. -I$(LUA_INC) -I$(PLAT_DIR) $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= -L$(LUA_LIB) $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= $(SYSLIBS) $(MYLIBS)
@@ -50,19 +51,19 @@ a:	$(ALL_A)
 m:	$(ALL_M)
 
 $(TIM_M): $(TIM_O) $(AUX_O)
-	$(CC) -o $@ $(LDFLAGS) $^ $(LIBS)
+	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
 $(PRC_M): $(PRC_O) $(AUX_O)
-	$(CC) -o $@ $(LDFLAGS) $^ $(LIBS)
+	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
 $(NET_M): $(NET_O) $(AUX_O)
-	$(CC) -o $@ $(LDFLAGS) $^ $(LIBS)
+	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
 $(EVT_M): $(EVT_O) $(AUX_O)
-	$(CC) -o $@ $(LDFLAGS) $^ $(LIBS)
+	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
 $(FLS_M): $(FLS_O) $(AUX_O)
-	$(CC) -o $@ $(LDFLAGS) $^ $(LIBS)
+	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
 $(LIB_A): $(ALL_O)
 	$(AR) $@ $?
@@ -94,12 +95,13 @@ none:
 generic: $(ALL)
 
 linux:
-	$(MAKE) $(ALL) SYSCFLAGS="-fpic" SYSLDFLAGS="-Wl,-E"
+	$(MAKE) $(ALL) SYSCFLAGS="-fpic" SYSLDFLAGS="-shared"
 
 macosx:
 	$(MAKE) $(ALL) SYSCFLAGS="-fno-common" \
 	               SYSLDFLAGS="-bundle -undefined dynamic_lookup" \
-	               CC='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc'
+	               CC='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc' \
+                   LD='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc'
 
 solaris:
 	$(MAKE) $(ALL) SYSCFLAGS="-fpic" SYSLDFLAGS="-O -shared"
