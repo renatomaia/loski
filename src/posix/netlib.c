@@ -311,6 +311,8 @@ LOSKIDRV_API int loski_shutdownsocket(loski_NetDriver *drv,
 		case LOSKI_BOTHSITES:
 			how = SHUT_RDWR;
 			break;
+		default:
+			return 0;
 	}
 	if (shutdown(*sock, how) != 0) return errno;
 	return 0;

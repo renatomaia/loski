@@ -213,9 +213,9 @@ LOSKIDRV_API int loski_closeprocesses(loski_ProcDriver *drv)
 {
 	if (hastable) {
 		blockchldsig();
+		hastable = 0;
 		loski_proctabclose(&table);
 		unblockchldsig();
-		hastable = 0;
 		return 0;
 	}
 	return -1;
@@ -279,7 +279,7 @@ LOSKIDRV_API int loski_processstatus(loski_ProcDriver *drv,
 	blockchldsig();
 	if (proc->pid != 0) {
 		do {
-			pid_t waitres = waitpid(proc->pid, &proc->status, WNOHANG);
+			pid_t waitres = waitpid(proc->pid, &proc->status, WNOHANG|WCONTINUED|WUNTRACED);
 			if (waitres != -1) {
 				if (proc->status == 0) {
 					*status = (waitres == proc->pid) ? LOSKI_DEADPROC : LOSKI_RUNNINGPROC;
