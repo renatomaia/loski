@@ -291,6 +291,7 @@ LOSKIDRV_API int loski_recvfromsocket(loski_NetDriver *drv,
 	} else {
 		res = recv(*sock, buffer, size, 0);
 	}
+	if (res == 0) return ECONNABORTED;
 	if (res < 0) return errno;
 	*bytes = (size_t)res;
 	return 0;

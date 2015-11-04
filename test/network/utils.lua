@@ -44,12 +44,12 @@ do
 			local results = table.pack(func(...))
 			local res, errmsg = results[1], results[2]
 			if res ~= nil or errmsg ~= "unfulfilled" then
-				if unfulfilled then assert(i > 1) end
+				if unfulfilled then assert(res == nil or i > 1) end
 				return table.unpack(results, 1, results.n)
 			end
 			time.sleep(.1)
 		end
-		error("non blocked call took more than "..timeout.." to complete!")
+		error("non blocked call took more than 1 second to complete!")
 	end
 end
 

@@ -22,7 +22,7 @@ local remotecode = [[
 		assert(port == ]]..tests.FreePort..[[)
 	until string.find(all[i], "0", nil, "noregex")
 	for _, data in ipairs(all) do
-		time.sleep(.1)
+		time.sleep(.9)
 		assert(socket:send(data, 1, -1, "]]..tests.LocalHost..[[", ]]..tests.FreePort..[[) == #data)
 	end
 	assert(socket:close())
@@ -86,20 +86,9 @@ do
 
 	assert(socket:bind(tests.LocalHost, tests.FreePort) == true)
 	assert(socket:connect(tests.LocalHost, tests.LocalPort) == true)
-
-	--[[
-	local res, errmsg
-	repeat
-		res, errmsg = socket:send(data)
-		data = data..data
-	until res == nil
-	assert(errmsg == "unfulfilled")
-	--[=[--]]
 	for i = 1, 3 do
 		assert(socket:send(data) == packsize)
 	end
-	--]=]
-
 	tests.testerrmsg("unfulfilled", socket:receive(packsize))
 	assert(socket:send(final) == packsize)
 	local remaining = 3*packsize

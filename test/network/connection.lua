@@ -3,8 +3,11 @@ local network = require "network"
 local tests = require "test.network.utils"
 
 local packsize = 64
-local data = string.rep("X", packsize)
-local final = string.rep("X", packsize-1).."0"
+local packdata = string.rep(" ", packsize)
+local packhuge = string.rep(packdata, 2^15)
+local packfrmt = "%"..packsize.."s"
+local packback = string.rep("\255", packsize)
+local replycount = 3
 local remotecode = [[
 	local time = require "time"
 	local network = require "network"
@@ -14,19 +17,23 @@ local remotecode = [[
 	assert(port:bind("*", ]]..tests.LocalPort..[[) == true)
 	assert(port:listen() == true)
 	local conn = assert(port:accept())
+	assert(port:close())
 	local packsize = ]]..packsize..[[
-	local all = {}
-	local i = 0
-	repeat
-		i = i+1
-		all[i] = assert(conn:receive(packsize))
-	until string.find(all[i], "0", nil, "noregex")
-	for _, data in ipairs(all) do
-		time.sleep(.1)
-		assert(conn:send(data) == #data)
+	local packdata = string.rep("\255", packsize)
+	local count = 0
+	local message
+	while message == nil do
+		message = conn:receive(packsize)
+		assert(#message <= packsize)
+		count = count + #message
+		message = string.match(message, "[%S]+")
+	end
+	assert(tonumber(message) == count-packsize)
+	for i=1, ]]..replycount..[[ do
+		time.sleep(.9)
+		assert(conn:send(packdata) == packsize)
 	end
 	assert(conn:close())
-	assert(port:close())
 ]]
 
 do
@@ -37,15 +44,14 @@ do
 
 	assert(socket:connect(tests.LocalHost, tests.LocalPort) == true)
 	for i = 1, 3 do
-		assert(socket:send(data) == packsize)
+		assert(socket:send(packdata) == packsize)
 	end
-	assert(socket:send(final) == packsize)
-	local remaining = 3*packsize
+	assert(socket:send(string.format(packfrmt, 3*packsize)) == packsize)
+	local remaining = replycount*packsize
 	while remaining > 0 do
-		assert(socket:receive(remaining) == data)
-		remaining = remaining - #data
+		assert(socket:receive(remaining) == packback)
+		remaining = remaining - packsize
 	end
-	assert(socket:receive(packsize) == final)
 
 	tests.testclose(socket)
 end
@@ -60,27 +66,28 @@ do
 	tests.testerrmsg("connected",
 		tests.tcall(true, socket.connect, socket, tests.LocalHost, tests.LocalPort))
 
-	--[[
-	local res, errmsg
-	repeat
-		res, errmsg = socket:send(data)
-		data = data..data
-	until res == nil
-	assert(errmsg == "unfulfilled")
-	--[=[--]]
-	for i = 1, 3 do
-		assert(socket:send(data) == packsize)
+	local sent = 0
+	while true do
+		local res, errmsg = socket:send(packhuge)
+		if res ~= nil then
+			assert(res <= #packhuge)
+			sent = sent + res
+		else
+			assert(errmsg == "unfulfilled")
+			time.sleep(.1)
+			break
+		end
 	end
-	--]=]
-
 	tests.testerrmsg("unfulfilled", socket:receive(packsize))
-	assert(socket:send(final) == packsize)
-	local remaining = 3*packsize
-	while remaining > 0 do
-		assert(tests.tcall(true, socket.receive, socket, remaining) == data)
-		remaining = remaining - #data
+	assert(socket:send(string.format(packfrmt, sent)) == packsize)
+	local remaining = replycount*packsize
+	local count = 0
+	while count < remaining do
+		local received = tests.tcall(count==0, socket.receive, socket, remaining-count)
+		assert(string.find(received, "[^\255]") == nil)
+		count = count + #received
 	end
-	assert(tests.tcall(true, socket.receive, socket, packsize) == final)
+	tests.testerrmsg("disconnected", tests.tcall(true, socket.receive, socket, 1))
 
 	tests.testclose(socket)
 end

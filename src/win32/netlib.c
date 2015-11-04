@@ -294,6 +294,7 @@ LOSKIDRV_API int loski_recvfromsocket(loski_NetDriver *drv,
 	} else {
 		res = recv(sock->id, buffer, size, 0);
 	}
+	if (res == 0) return WSAECONNABORTED;
 	if (res == SOCKET_ERROR) return WSAGetLastError();
 	*bytes = (size_t)res;
 	return 0;
