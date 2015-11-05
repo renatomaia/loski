@@ -11,3 +11,5 @@ Not Priorized:
 - Support for async file operations
 - Support for file system operations (Lua File System)
 - Support for file system events
+- Add macros to disable `driver` and `sentinel` support.
+- Add IPv6 support.
