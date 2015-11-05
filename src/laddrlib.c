@@ -76,26 +76,27 @@ static const char *str2port (const char *s, loski_PortNo *pn) {
 
 /* address = address.create(type, data [, port]) */
 static int addr_create (lua_State *L) {
-	static const char *const types[] = {"uri","inet","ipv4","inet6","ipv6",NULL};
+	static const char *const format[] = { "uri", "literal", "bytes", NULL };
 	loski_NetAddrDriver *drv = todrv(L);
-	int type = luaL_checkoption(L, 1, NULL, types);
+	int type = luaL_checkoption(L, 3, "uri", format);
 	size_t sz;
-	const char *data = luaL_checklstring(L, 2, &sz);
+	const char *data = luaL_checklstring(L, 1, &sz);
 	loski_PortNo port = 0;
 	loski_Address *na = newaddr(L);
 	int res, raw;
 	if (type == 0) { /* uri */
-		const char *c, *e = addr + addrsz;
-		if (addr[0] == '[')) {
-			c = strchr(++addr, ']');
-			luaL_argcheck(L, c && c[1] == ':', 2, "invalid URI address");
-			addrsz = c - addr;
+		const char *c, *e = data + sz;
+		luaL_argcheck(L, lua_isnil(L, 2), 2, "port provided with URI defintion");
+		if (data[0] == '[')) {
+			c = strchr(++data, ']');
+			luaL_argcheck(L, c && c[1] == ':', 1, "invalid URI address");
+			sz = c - data;
 			type = LOSKI_ADDRTYPE_IPV6;
 			++c;
 		} else {
-			c = strchr(addr, ':');
-			luaL_argcheck(L, c, 2, "invalid URI address");
-			addrsz = c - addr;
+			c = strchr(data, ':');
+			luaL_argcheck(L, c, 1, "invalid URI address");
+			sz = c - data;
 			type = LOSKI_ADDRTYPE_IPV4;
 		}
 		luaL_argcheck(L, str2port(c+1, &port) == e, 2,
@@ -105,18 +106,17 @@ static int addr_create (lua_State *L) {
 		lua_Integer n = luaL_checkinteger(L, 3);
 		luaL_argcheck(L, 0 <= n && n <= LOSKI_ADDRMAXPORT, 3, "invalid port value");
 		port = (loski_PortNo)n;
-		--type;
-		raw = type % 2;
-		type /= 2;
+		if (raw = type % 2) {
+			switch (sz) {
+				case LOSKI_ADDRSIZE_IPV4: type = LOSKI_ADDRTYPE_IPV4; break;
+				case LOSKI_ADDRSIZE_IPV6: type = LOSKI_ADDRTYPE_IPV6; break;
+				default: luaL_argerror(L, 1, "invalid address byte data");
+			}
+		} else {
+			type = strchr(data, ':') ? LOSKI_ADDRTYPE_IPV6 : LOSKI_ADDRTYPE_IPV4;
+		}
 	}
 	if (raw) {
-		size_t datasz = 0;
-		switch (type) {
-			case LOSKI_ADDRTYPE_IPV4: datasz = LOSKI_ADDRSIZE_IPV4; break;
-			case LOSKI_ADDRTYPE_IPV6: datasz = LOSKI_ADDRSIZE_IPV6; break;
-			default: luaL_argerror(L, 1, "unsupported address type");
-		}
-		luaL_argcheck(L, sz == datasz, 2, "invalid address data");
 		res = loski_writeaddrrawdata(drv, na, type, data, port);
 	} else {
 		res = loski_writeaddrliteral(drv, na, type, data, sz, port);
@@ -125,7 +125,7 @@ static int addr_create (lua_State *L) {
 }
 
 /* type = address.type(address) */
-static int addr_uri (lua_State *L) {
+static int addr_type (lua_State *L) {
 	loski_NetAddrDriver *drv = todrv(L);
 	loski_Address *na = toaddr(L);
 	loski_AddressType type;
@@ -144,9 +144,40 @@ static int addr_uri (lua_State *L) {
 static int addr_uri (lua_State *L) {
 	loski_NetAddrDriver *drv = todrv(L);
 	loski_Address *na = toaddr(L);
-	char *uri[LOSKI_ADDRMAXURI];
-	int res = loski_readaddruri(drv, na, uri);
+	char *data[LOSKI_ADDRMAX_URI];
+	loski_PortNo port;
+	int res = loski_readaddruri(drv, na, data, &port);
+	if (res == 0) lua_pushstring(L, data);
 	return pushaddrres(L, 1, res);
+}
+
+/* literal, port = address.literal(address) */
+static int addr_literal (lua_State *L) {
+	loski_NetAddrDriver *drv = todrv(L);
+	loski_Address *na = toaddr(L);
+	char *data[LOSKI_ADDRMAX_LITERAL];
+	loski_PortNo port;
+	int res = loski_readaddrliteral(drv, na, data, &port);
+	if (res == 0) {
+		lua_pushstring(L, data);
+		lua_pushinteger(L, port);
+	}
+	return pushaddrres(L, 2, res);
+}
+
+/* bytes, port = address.bytes(address) */
+static int addr_bytes (lua_State *L) {
+	loski_NetAddrDriver *drv = todrv(L);
+	loski_Address *na = toaddr(L);
+	const char *data;
+	size_t sz;
+	loski_PortNo port;
+	int res = loski_readaddrliteral(drv, na, &data, &sz, &port);
+	if (res == 0) {
+		lua_pushlstring(L, data, sz);
+		lua_pushinteger(L, port);
+	}
+	return pushaddrres(L, 2, res);
 }
 
 
@@ -161,14 +192,13 @@ static const luaL_Reg lib[] = {
 	{"create", addr_create},
 	{"type", addr_type},
 	{"uri", addr_uri},
-	{"rawdata", addr_rawdata},
 	{"literal", addr_literal},
-	{"port", addr_port},
+	{"bytes", addr_bytes},
 	{NULL, NULL}
 };
 
 static const luaL_Reg mth[] = {
-	{"__tostring", addr_tostring},
+	{"__tostring", addr_uri},
 	{NULL, NULL}
 };
 
