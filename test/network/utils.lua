@@ -1,16 +1,15 @@
 local network = require "network"
 
-local tests = {
-	IsWindows = os.getenv("PATHEXT")~=nil,
-	FreePort = 43210,
-	UsedPort = 54321,
-	DeniedPort = 1,
-	LocalHost = "127.0.0.1",
-	LocalPort = 43212,
-	RemoteTCP = {host="www.google.com",port=80},
-	OtherTCP = {host="www.google.com.br",port=80},
-	RemoteUDP = {host="www.google.com",port=80},
-}
+local tests = require "test.utils"
+tests.IsWindows = os.getenv("PATHEXT")~=nil
+tests.FreePort = 43210
+tests.UsedPort = 54321
+tests.DeniedPort = 1
+tests.LocalHost = "127.0.0.1"
+tests.LocalPort = 43212
+tests.RemoteTCP = {host="www.google.com",port=80}
+tests.OtherTCP = {host="www.google.com.br",port=80}
+tests.RemoteUDP = {host="www.google.com",port=80}
 
 do
 	local socket = assert(network.socket("listen"))

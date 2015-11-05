@@ -13,3 +13,4 @@ Not Priorized:
 - Support for file system events
 - Add macros to disable `driver` and `sentinel` support.
 - Add IPv6 support.
+- Treat drivers as external libs by using include with angle brackets.
