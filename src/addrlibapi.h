@@ -42,13 +42,11 @@ LOSKIDRV_API int loski_writeaddrliteral(loski_NetAddrDriver *drv,
 LOSKIDRV_API int loski_readaddrbytes(loski_NetAddrDriver *drv,
                                      loski_Address *address,
                                      const char **data,
-                                     size_t *sz,
-                                     loski_PortNo *port);
+                                     size_t *sz);
 
 LOSKIDRV_API int loski_readaddrliteral(loski_NetAddrDriver *drv,
                                        loski_Address *address,
-                                       char *data,
-                                       loski_PortNo *port);
+                                       char *data);
 
 LOSKIDRV_API int loski_readaddruri(loski_NetAddrDriver *drv,
                                    loski_Address *address,

@@ -4,10 +4,6 @@ Index
 - [`network.address`](#network.address)
 - [`address.create`](#address.create)
 - [`address.type`](#address.type)
-- [`address.uri`](#address.uri)
-- [`address.rawaddr`](#address.rawaddr)
-- [`address.addr`](#address.host)
-- [`address.port`](#address.port)
 
 Contents
 ========
@@ -35,23 +31,24 @@ When `type` is:
 :	`addr` is a byte representation of an IP address, like `"\192\168\0\20"` (IPv4) or `"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1"` (IPv6).
 	`port` must be provided with the port number of the address.
 
+The returned object provides the followin fields:
+
+`type`
+:	Returns the strings `"ipv4"` or `"ipv6"` to indicate address `addr` is either a IPv4 or IPv6 address.
+	Moreover, it returns `nil` if `addr` is not a valid address.
+
+`literal`
+:	Returns a string with the literal representation of the address `addr`, like `"192.168.0.20"` (IPv4) or `::1` (IPv6).
+
+`bytes`
+:	Returns a string with the bytes of the address `addr`, like `"\192\168\0\20"` (IPv4) or `"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1"` (IPv6).
+
+`port`
+:	Returns a port number of the address `addr`.
+
+Moreover, you can pass the object to the standard function `tostring` to obtain the address as a string inside a URI, like `"192.168.0.20:80"` (IPv4) or `[::1]:80` (IPv6).
+
 ### `address.type (addr)` {#address.type}
 
 Returns the strings `"ipv4"` or `"ipv6"` to indicate address `addr` is either a IPv4 or IPv6 address.
 Moreover, it returns `nil` if `addr` is not a valid address.
-
-### `address.uri (addr)` {#address.uri}
-
-Returns a string describing the address `addr` as inside a URI, like `"192.168.0.20:80"` (IPv4) or `[::1]:80` (IPv6).
-
-### `address.literal (addr)` {#address.literal}
-
-Returns a string with the literal representation of the address `addr`, like `"192.168.0.20"` (IPv4) or `::1` (IPv6).
-
-### `address.bytes (addr)` {#address.literal}
-
-Returns a string with the bytes of the address `addr`, like `"\192\168\0\20"` (IPv4) or `"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1"` (IPv6).
-
-### `address.port (addr)` {#address.literal}
-
-Returns a port number of the address `addr`.
