@@ -11,10 +11,12 @@ local replycount = 3
 local remotecode = [[
 	local time = require "time"
 	local network = require "network"
+	local address = require "network.address"
 
+	local addr = address.create("0.0.0.0", ]]..tests.LocalAddress.port..[[)
 	local port = assert(network.socket("listen"))
 	assert(port:setoption("reuseaddr", true) == true)
-	assert(port:bind("*", ]]..tests.LocalPort..[[) == true)
+	assert(port:bind(addr) == true)
 	assert(port:listen() == true)
 	local conn = assert(port:accept())
 	assert(port:close())
@@ -42,7 +44,7 @@ do
 
 	local socket = tests.testcreatesocket("connection")
 
-	assert(socket:connect(tests.LocalHost, tests.LocalPort) == true)
+	assert(socket:connect(tests.LocalAddress) == true)
 	for i = 1, 3 do
 		assert(socket:send(packdata) == packsize)
 	end
@@ -64,7 +66,7 @@ do
 	assert(socket:setoption("blocking", false) == true)
 
 	tests.testerrmsg("connected",
-		tests.tcall(true, socket.connect, socket, tests.LocalHost, tests.LocalPort))
+		tests.tcall(true, socket.connect, socket, tests.LocalAddress))
 
 	local sent = 0
 	while true do

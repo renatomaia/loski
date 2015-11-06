@@ -1,16 +1,18 @@
 local time = require "time"
 local network = require "network"
+local address = require "network.address"
 local tests = require "test.network.utils"
 
+local addr = address.create("0.0.0.0", 80)
 for _, kind in ipairs{"datagram", "connection"} do
 	local socket = tests.testcreatesocket(kind)
 
 	if tests.IsWindows then
-		tests.testerrmsg("address unavailable", socket:connect("0.0.0.0", 80))
+		tests.testerrmsg("address unavailable", socket:connect(addr))
 	elseif kind == "connection" then
-		tests.testerrmsg("refused", socket:connect("0.0.0.0", 80))
+		tests.testerrmsg("refused", socket:connect(addr))
 	else
-		assert(socket:connect("0.0.0.0", 80) == true)
+		assert(socket:connect(addr) == true)
 	end
 
 	tests.testoptions(socket, kind, "refused")
@@ -20,11 +22,11 @@ end
 for _, kind in ipairs{"datagram", "connection"} do
 	local socket = tests.testcreatesocket(kind)
 
-	assert(socket:connect(tests.RemoteTCP.host, tests.RemoteTCP.port) == true)
+	assert(socket:connect(tests.RemoteTCP) == true)
 	if kind == "datagram" then
-		assert(socket:connect(tests.OtherTCP.host, tests.OtherTCP.port) == true)
+		assert(socket:connect(tests.OtherTCP) == true)
 	else
-		tests.testerrmsg("connected", socket:connect(tests.OtherTCP.host, tests.OtherTCP.port))
+		tests.testerrmsg("connected", socket:connect(tests.OtherTCP))
 	end
 
 	tests.testoptions(socket, kind)
@@ -36,10 +38,10 @@ for _, kind in ipairs{"datagram", "connection"} do
 	assert(socket:setoption("blocking", false) == true)
 
 	if kind == "datagram" then
-		assert(socket:connect(tests.RemoteTCP.host, tests.RemoteTCP.port) == true)
+		assert(socket:connect(tests.RemoteTCP) == true)
 	else
 		tests.testerrmsg("connected",
-			tests.tcall(true, socket.connect, socket, tests.RemoteTCP.host, tests.RemoteTCP.port))
+			tests.tcall(true, socket.connect, socket, tests.RemoteTCP))
 	end
 
 	tests.testclose(socket)

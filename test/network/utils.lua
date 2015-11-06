@@ -1,19 +1,23 @@
 local network = require "network"
+local address = require "network.address"
 
 local tests = require "test.utils"
-tests.IsWindows = os.getenv("PATHEXT")~=nil
-tests.FreePort = 43210
-tests.UsedPort = 54321
-tests.DeniedPort = 1
-tests.LocalHost = "127.0.0.1"
-tests.LocalPort = 43212
-tests.RemoteTCP = {host="www.google.com",port=80}
-tests.OtherTCP = {host="www.google.com.br",port=80}
-tests.RemoteUDP = {host="www.google.com",port=80}
+
+do
+	tests.IsWindows = os.getenv("PATHEXT")~=nil
+	tests.LocalHost = "127.0.0.1"
+	tests.FreeAddress = address.create(tests.LocalHost, 43210)
+	tests.UsedAddress = address.create(tests.LocalHost, 54321)
+	tests.DeniedAddress = address.create(tests.LocalHost, 1)
+	tests.LocalAddress = address.create(tests.LocalHost, 43212)
+	tests.RemoteTCP = address.create("8.8.8.8", 53)
+	tests.OtherTCP = address.create("8.8.4.4", 53)
+	tests.RemoteUDP = tests.RemoteTCP
+end
 
 do
 	local socket = assert(network.socket("listen"))
-	local res, errmsg = socket:bind("*", tests.UsedPort)
+	local res, errmsg = socket:bind(tests.UsedAddress)
 	assert(res == true or errmsg == "address used")
 	tests.BindedSocket = socket -- avoid garbage collection
 end

@@ -10,8 +10,10 @@
 LOSKIDRV_API int loski_initaddress(loski_Address *address,
                                    loski_AddressType type)
 {
+	struct sockaddr_in *addr = (struct sockaddr_in *)address;
 	if (type != LOSKI_ADDRTYPE_IPV4) return 0;
 	memset(address, 0, sizeof(loski_Address));
+	addr->sin_family = AF_INET;
 	return 1;
 }
 
@@ -55,7 +57,7 @@ LOSKIDRV_API loski_AddressPort loski_getaddrport(loski_Address *address)
 LOSKIDRV_API const char *loski_getaddrbytes(loski_Address *address, size_t *sz)
 {
 	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	*sz = LOSKI_ADDRSIZE_IPV4;
+	if (sz) *sz = LOSKI_ADDRSIZE_IPV4;
 	return (const char *)(&(addr->sin_addr.s_addr));
 }
 

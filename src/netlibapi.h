@@ -29,17 +29,6 @@ LOSKIDRV_API int loski_opennetwork(loski_NetDriver *drv);
 LOSKIDRV_API int loski_closenetwork(loski_NetDriver *drv);
 
 
-LOSKIDRV_API int loski_addresserror(int error, lua_State *L);
-
-LOSKIDRV_API int loski_resolveaddress(loski_NetDriver *drv,
-                                      loski_Address *address,
-                                      const char *host, unsigned short port);
-
-LOSKIDRV_API int loski_extractaddress(loski_NetDriver *drv,
-                                      const loski_Address *address,
-                                      const char **host, unsigned short *port);
-
-
 LOSKIDRV_API int loski_socketerror(int error, lua_State *L);
 
 LOSKIDRV_API int loski_createsocket(loski_NetDriver *drv,

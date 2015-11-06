@@ -25,52 +25,40 @@ LOSKIDRV_API int loski_closenetwork(loski_NetDriver *drv)
 	return 0;
 }
 
-LOSKIDRV_API int loski_addresserror(int error, lua_State *L)
-{
-	switch (error) {
-		case HOST_NOT_FOUND: lua_pushstring(L, "host unknown"); break;
-		case TRY_AGAIN: lua_pushstring(L, "unfulfilled"); break;
-		case NO_RECOVERY: lua_pushstring(L, "address failed"); break;
-		case NO_DATA: lua_pushstring(L, "address unavailable"); break;
-		case LOSKI_EAFNOSUPPORT: lua_pushstring(L, "unsupported"); break;
-		default: lua_pushstring(L, "unspecified error"); break;
-	}
-	return 0;
-}
-
-LOSKIDRV_API int loski_resolveaddress(loski_NetDriver *drv,
-                                      loski_Address *address,
-                                      const char *host,
-                                      unsigned short port)
-{
-	struct sockaddr_in *addr_in = (struct sockaddr_in *)address;
-	memset(address, 0, sizeof(loski_Address));
-	/* address is either wildcard or a valid ip address */
-	addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
-	addr_in->sin_port = htons(port);
-	addr_in->sin_family = AF_INET;
-	if (strcmp(host, "*") && !inet_aton(host, &addr_in->sin_addr)) {
-		struct hostent *hp = NULL;
-		struct in_addr **addr;
-		hp = gethostbyname(host);
-		if (hp == NULL) return h_errno;
-		addr = (struct in_addr **) hp->h_addr_list;
-		memcpy(&addr_in->sin_addr, *addr, sizeof(struct in_addr));
-	}
-	return 0;
-}
-
-LOSKIDRV_API int loski_extractaddress(loski_NetDriver *drv,
-                                      const loski_Address *address,
-                                      const char **host,
-                                      unsigned short *port)
-{
-	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	if (addr->sin_family != AF_INET) return LOSKI_EAFNOSUPPORT;
-	*host = inet_ntoa(addr->sin_addr);
-	*port = ntohs(addr->sin_port);
-	return 0;
-}
+//LOSKIDRV_API int loski_addresserror(int error, lua_State *L)
+//{
+//	switch (error) {
+//		case HOST_NOT_FOUND: lua_pushstring(L, "host unknown"); break;
+//		case TRY_AGAIN: lua_pushstring(L, "unfulfilled"); break;
+//		case NO_RECOVERY: lua_pushstring(L, "address failed"); break;
+//		case NO_DATA: lua_pushstring(L, "address unavailable"); break;
+//		case LOSKI_EAFNOSUPPORT: lua_pushstring(L, "unsupported"); break;
+//		default: lua_pushstring(L, "unspecified error"); break;
+//	}
+//	return 0;
+//}
+//
+//LOSKIDRV_API int loski_resolveaddress(loski_NetDriver *drv,
+//                                      loski_Address *address,
+//                                      const char *host,
+//                                      unsigned short port)
+//{
+//	struct sockaddr_in *addr_in = (struct sockaddr_in *)address;
+//	memset(address, 0, sizeof(loski_Address));
+//	/* address is either wildcard or a valid ip address */
+//	addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
+//	addr_in->sin_port = htons(port);
+//	addr_in->sin_family = AF_INET;
+//	if (strcmp(host, "*") && !inet_aton(host, &addr_in->sin_addr)) {
+//		struct hostent *hp = NULL;
+//		struct in_addr **addr;
+//		hp = gethostbyname(host);
+//		if (hp == NULL) return h_errno;
+//		addr = (struct in_addr **) hp->h_addr_list;
+//		memcpy(&addr_in->sin_addr, *addr, sizeof(struct in_addr));
+//	}
+//	return 0;
+//}
 
 LOSKIDRV_API int loski_socketerror(int error, lua_State *L)
 {
