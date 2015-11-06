@@ -14,21 +14,14 @@ do
 end
 
 do
-	local function checkaddr(a, p)
-		assert(address.type(a) == "ipv4")
-		assert(tostring(a) == "0.0.0.0:"..(p or 0))
-		assert(a.type == "ipv4")
-		assert(a.port == p or 0)
-		assert(a.literal == "0.0.0.0")
-		assert(a.bytes == "\000\000\000\000")
-	end
+	local a = address.create()
 
-	checkaddr(address.create())
-	checkaddr(address.create(nil))
-	checkaddr(address.create(nil, nil))
-	checkaddr(address.create(nil, nil, nil))
-	checkaddr(address.create(nil, 8080), 8080)
-	checkaddr(address.create(nil, 8080, "literal"), 8080)
+	assert(address.type(a) == "ipv4")
+	assert(tostring(a) == "0.0.0.0:0")
+	assert(a.type == "ipv4")
+	assert(a.port == 0)
+	assert(a.literal == "0.0.0.0")
+	assert(a.bytes == "\000\000\000\000")
 end
 
 do
@@ -42,6 +35,7 @@ do
 	end
 
 	checkaddr(address.create("192.168.0.1:8080"))
+	checkaddr(address.create("192.168.0.1:8080", nil))
 	checkaddr(address.create("192.168.0.1:8080", nil, "uri"))
 	checkaddr(address.create("192.168.0.1", 8080, "literal"))
 	checkaddr(address.create("\192\168\000\001", 8080, "bytes"))
@@ -87,6 +81,22 @@ do
 		address.create, true, 8080, "bytes")
 	utils.testerror("bad argument #1 to '?' (string expected, got boolean)",
 		address.create, true, 8080, "literal")
+	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+		address.create, nil)
+	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+		address.create, nil, nil)
+	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+		address.create, nil, nil, nil)
+	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+		address.create, nil, 8080)
+	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+		address.create, nil, 8080, "bytes")
+	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+		address.create, nil, 8080, "literal")
+	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+		address.create, nil, nil, "bytes")
+	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+		address.create, nil, nil, "literal")
 	utils.testerror("bad argument #2 to '?' (number expected, got string)",
 		address.create, "192.168.0.1", "port", "literal")
 	utils.testerror("bad argument #2 to '?' (port must be nil)",

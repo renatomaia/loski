@@ -46,15 +46,16 @@ static loski_AddressPort int2port (lua_State *L, lua_Integer n, int idx){
 
 /* address = address.create([data [, port [, format]]]) */
 static int addr_create (lua_State *L) {
-	static const char *const formats[] = { "uri", "literal", "bytes", NULL };
-	int format = luaL_checkoption(L, 3, "uri", formats);
-	int bytes = 0;
 	loski_Address *na;
-	loski_AddressType type;
-	loski_AddressPort port;
-	size_t sz;
-	const char *data = luaL_optlstring(L, 1, NULL, &sz);
-	if (data) {
+	loski_AddressType type = LOSKI_ADDRTYPE_IPV4;
+	loski_AddressPort port = 0;
+	size_t sz = 0;
+	const char *data = NULL;
+	int bytes = 0;
+	if (lua_gettop(L) > 0) {
+		static const char *const formats[] = { "uri", "literal", "bytes", NULL };
+		int format = luaL_checkoption(L, 3, "uri", formats);
+		data = luaL_checklstring(L, 1, &sz);
 		if (format == 0) {  /* format == uri */
 			const char *c, *e = data + sz;
 			luaL_argcheck(L, lua_isnoneornil(L, 2), 2, "port must be nil");
@@ -73,21 +74,17 @@ static int addr_create (lua_State *L) {
 			luaL_argcheck(L, str2port(c+1, &port) == e, 1, "invalid port");
 		} else {
 			port = int2port(L, luaL_checkinteger(L, 2), 2);
-			if (format == 2) {  /* format == bytes */
+			if (format == 1) {  /* format == literal */
+				type = strchr(data, ':') ? LOSKI_ADDRTYPE_IPV6 : LOSKI_ADDRTYPE_IPV4;
+			} else {  /* format == bytes */
 				switch (sz) {
 					case LOSKI_ADDRSIZE_IPV4: type = LOSKI_ADDRTYPE_IPV4; break;
 					case LOSKI_ADDRSIZE_IPV6: type = LOSKI_ADDRTYPE_IPV6; break;
 					default: luaL_argerror(L, 1, "invalid bytes");
-					         type = 0;  /* avoid warning */
 				}
 				bytes = 1;
-			} else {  /* format == literal */
-				type = strchr(data, ':') ? LOSKI_ADDRTYPE_IPV6 : LOSKI_ADDRTYPE_IPV4;
 			}
 		}
-	} else {
-		port = int2port(L, luaL_optinteger(L, 2, 0), 2);
-		type = LOSKI_ADDRTYPE_IPV4;
 	}
 	na = newaddr(L);
 	luaL_argcheck(L, loski_initaddress(na, type), 1, "unsupported address");

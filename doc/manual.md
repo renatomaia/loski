@@ -21,8 +21,8 @@ When `type` is:
 
 `"uri"`
 :	`data` must be a string describing the address as inside a URI, like `"192.168.0.20:80"` (IPv4) or `[::1]:80` (IPv6).
+	`port` shall be `nil` or omitted.
 	This is the default value for `type`.
-	`port` shall be `nil`or omitted.
 
 `"literal"`
 :	`data` must be a literal representation of an IP address, like `"192.168.0.20"` (IPv4) or `::1` (IPv6).
