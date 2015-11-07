@@ -1,7 +1,12 @@
+#ifndef lnetlib_h
+#define lnetlib_h
+
+
 #include "loskiconf.h"
 #include "netlib.h"
 
-#include <lua.h>
+
+#define LOSKI_NETADDRCLS LOSKI_PREFIX"network.Address"
 
 
 #define LOSKI_STRMSOCKET 3
@@ -15,7 +20,10 @@ static const char *const loski_SocketClasses[] = {
 	LOSKI_PREFIX"network.Socket"
 };
 
-LUAMOD_API int luaopen_network (lua_State *L);
+typedef struct LuaSocket {
+	loski_Socket socket;
+	int closed;
+} LuaSocket;
 
-LOSKILIB_API int loski_issocket (lua_State *L, int idx, int cls);
-LOSKILIB_API loski_Socket *loski_tosocket (lua_State *L, int idx, int cls);
+
+#endif

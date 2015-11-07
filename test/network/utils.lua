@@ -1,17 +1,16 @@
 local network = require "network"
-local address = require "network.address"
 
 local tests = require "test.utils"
 
 do
 	tests.IsWindows = os.getenv("PATHEXT")~=nil
 	tests.LocalHost = "127.0.0.1"
-	tests.FreeAddress = address.create(tests.LocalHost, 43210)
-	tests.UsedAddress = address.create(tests.LocalHost, 54321)
-	tests.DeniedAddress = address.create(tests.LocalHost, 1)
-	tests.LocalAddress = address.create(tests.LocalHost, 43212)
-	tests.RemoteTCP = address.create("8.8.8.8", 53)
-	tests.OtherTCP = address.create("8.8.4.4", 53)
+	tests.FreeAddress = network.address(tests.LocalHost, 43210)
+	tests.UsedAddress = network.address(tests.LocalHost, 54321)
+	tests.DeniedAddress = network.address(tests.LocalHost, 1)
+	tests.LocalAddress = network.address(tests.LocalHost, 43212)
+	tests.RemoteTCP = network.address("8.8.8.8", 53)
+	tests.OtherTCP = network.address("8.8.4.4", 53)
 	tests.RemoteUDP = tests.RemoteTCP
 end
 

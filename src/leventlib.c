@@ -2,7 +2,7 @@
 
 #include "eventlib.h"
 #include "loskiaux.h"
-#include "lnetlib.h"
+#include "lnetaux.h"
 
 
 #define WATCHER_CLASS LOSKI_PREFIX"event.EventWatcher"

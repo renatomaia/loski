@@ -11,9 +11,8 @@ local replycount = 3
 local remotecode = [[
 	local time = require "time"
 	local network = require "network"
-	local address = require "network.address"
 
-	local addr = address.create("0.0.0.0", ]]..tests.LocalAddress.port..[[)
+	local addr = network.address("0.0.0.0", ]]..tests.LocalAddress.port..[[)
 	local port = assert(network.socket("listen"))
 	assert(port:setoption("reuseaddr", true) == true)
 	assert(port:bind(addr) == true)

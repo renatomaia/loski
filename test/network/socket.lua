@@ -1,10 +1,9 @@
 local network = require "network"
-local address = require "network.address"
 local tests = require "test.network.utils"
 
 for _, kind in ipairs{"datagram", "connection", "listen"} do
 	local cases = {
-		["address unavailable"] = address.create("255.255.255.255",
+		["address unavailable"] = network.address("255.255.255.255",
 		                                         tests.FreeAddress.port)
 	}
 	if not tests.IsWindows then
@@ -34,9 +33,9 @@ for _, kind in ipairs{"datagram", "connection", "listen"} do
 	tests.testerrmsg("unsupported", socket:bind(tests.LocalAddress))
 
 	-- address [, errmsg] = socket:getaddress(address, [site])
-	local addr = socket:getaddress(address.create())
+	local addr = socket:getaddress(network.address())
 	assert(addr == tests.FreeAddress)
-	local addr = socket:getaddress(address.create(), "local")
+	local addr = socket:getaddress(network.address(), "local")
 	assert(addr == tests.FreeAddress)
 	tests.testerrmsg("disconnected", socket:getaddress(addr, "remote"))
 
