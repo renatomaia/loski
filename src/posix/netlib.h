@@ -4,9 +4,7 @@
 
 #include <sys/socket.h>
 
-#define LOSKI_SOCKETSTRING "%d"
-
-typedef void loski_NetDriver;
+typedef void loski_NetState;
 typedef int loski_Socket;
 typedef struct sockaddr loski_Address;
 

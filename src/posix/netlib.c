@@ -12,14 +12,14 @@
 
 #define LOSKI_EAFNOSUPPORT (-1)
 
-LOSKIDRV_API int loski_opennetwork(loski_NetDriver *drv)
+LOSKIDRV_API int loski_opennetwork(loski_NetState *state)
 {
 	/* instals a handler to ignore sigpipe or it will crash us */
 	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) return errno;
 	return 0;
 }
 
-LOSKIDRV_API int loski_closenetwork(loski_NetDriver *drv)
+LOSKIDRV_API int loski_closenetwork(loski_NetState *state)
 {
 	if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) return errno;
 	return 0;
@@ -38,7 +38,7 @@ LOSKIDRV_API int loski_closenetwork(loski_NetDriver *drv)
 //	return 0;
 //}
 //
-//LOSKIDRV_API int loski_resolveaddress(loski_NetDriver *drv,
+//LOSKIDRV_API int loski_resolveaddress(loski_NetState *state,
 //                                      loski_Address *address,
 //                                      const char *host,
 //                                      unsigned short port)
@@ -117,7 +117,7 @@ LOSKIDRV_API int loski_socketerror(int error, lua_State *L)
 	return 0;
 }
 
-LOSKIDRV_API int loski_createsocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_createsocket(loski_NetState *state,
                                     loski_Socket *sock,
                                     loski_SocketType type)
 {
@@ -133,6 +133,11 @@ LOSKIDRV_API int loski_createsocket(loski_NetDriver *drv,
 	*sock = socket(AF_INET, kind, 0);
 	if (*sock < 0) return errno;
 	return 0;
+}
+
+LOSKIDRV_API int loski_getsocketid(loski_NetState *state, loski_Socket *sock)
+{
+	return *sock;
 }
 
 struct OptionInfo {
@@ -152,7 +157,7 @@ static struct OptionInfo optinfo[] = {
 	{SOL_SOCKET, SO_BROADCAST}
 };
 
-LOSKIDRV_API int loski_setsocketoption(loski_NetDriver *drv,
+LOSKIDRV_API int loski_setsocketoption(loski_NetState *state,
                                        loski_Socket *sock,
                                        loski_SocketOption option,
                                        int value)
@@ -187,7 +192,7 @@ LOSKIDRV_API int loski_setsocketoption(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_getsocketoption(loski_NetDriver *drv,
+LOSKIDRV_API int loski_getsocketoption(loski_NetState *state,
                                        loski_Socket *sock,
                                        loski_SocketOption option,
                                        int *value)
@@ -217,7 +222,7 @@ LOSKIDRV_API int loski_getsocketoption(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_bindsocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_bindsocket(loski_NetState *state,
                                   loski_Socket *sock,
                                   const loski_Address *address)
 {
@@ -225,7 +230,7 @@ LOSKIDRV_API int loski_bindsocket(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_socketaddress(loski_NetDriver *drv,
+LOSKIDRV_API int loski_socketaddress(loski_NetState *state,
                                      loski_Socket *sock,
                                      loski_Address *address,
                                      loski_SocketSite site)
@@ -238,7 +243,7 @@ LOSKIDRV_API int loski_socketaddress(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_connectsocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_connectsocket(loski_NetState *state,
                                      loski_Socket *sock,
                                      const loski_Address *address)
 {
@@ -246,7 +251,7 @@ LOSKIDRV_API int loski_connectsocket(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_sendtosocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_sendtosocket(loski_NetState *state,
                                     loski_Socket *sock,
                                     const char *data,
                                     size_t size,
@@ -264,7 +269,7 @@ LOSKIDRV_API int loski_sendtosocket(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_recvfromsocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_recvfromsocket(loski_NetState *state,
                                       loski_Socket *sock,
                                       char *buffer,
                                       size_t size,
@@ -285,7 +290,7 @@ LOSKIDRV_API int loski_recvfromsocket(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_shutdownsocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_shutdownsocket(loski_NetState *state,
                                       loski_Socket *sock,
                                       loski_SocketSite site)
 {
@@ -307,7 +312,7 @@ LOSKIDRV_API int loski_shutdownsocket(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_acceptsocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_acceptsocket(loski_NetState *state,
                                     loski_Socket *sock,
                                     loski_Socket *accepted,
                                     loski_Address *address)
@@ -322,7 +327,7 @@ LOSKIDRV_API int loski_acceptsocket(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_listensocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_listensocket(loski_NetState *state,
                                     loski_Socket *sock,
                                     int backlog)
 {
@@ -330,7 +335,7 @@ LOSKIDRV_API int loski_listensocket(loski_NetDriver *drv,
 	return 0;
 }
 
-LOSKIDRV_API int loski_closesocket(loski_NetDriver *drv,
+LOSKIDRV_API int loski_closesocket(loski_NetState *state,
                                    loski_Socket *sock)
 {
 	if (close(*sock) != 0) return errno;
