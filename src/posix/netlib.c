@@ -1,14 +1,12 @@
 #include "netlib.h"
 
-#include <lua.h> /* to copy error messages to Lua */
-#include <errno.h>
-
 
 /*****************************************************************************
  * Library *******************************************************************
  *****************************************************************************/
 
 
+#include <errno.h>
 #include <signal.h> /* sigpipe handling */
 
 LOSKIDRV_API int loski_opennetwork(loski_NetState *state)
@@ -31,7 +29,6 @@ LOSKIDRV_API int loski_closenetwork(loski_NetState *state)
 
 
 #include <string.h>
-#include <arpa/inet.h>  /* IP addresses */
 
 /* TODO: ASSERT(LOSKI_ADDRSIZE_IPV4 == sizeof(in_addr_t)) */
 
@@ -109,51 +106,6 @@ LOSKIDRV_API const char *loski_getaddrliteral(loski_NetState *state,
 
 
 /*****************************************************************************
- * Names *********************************************************************
- *****************************************************************************/
-
-
-//#include <netdb.h> /* gethostbyname and gethostbyaddr functions */
-//
-//#define LOSKI_EAFNOSUPPORT (-1)
-//
-//LOSKIDRV_API int loski_addresserror(int error, lua_State *L)
-//{
-//	switch (error) {
-//		case HOST_NOT_FOUND: lua_pushstring(L, "host unknown"); break;
-//		case TRY_AGAIN: lua_pushstring(L, "unfulfilled"); break;
-//		case NO_RECOVERY: lua_pushstring(L, "address failed"); break;
-//		case NO_DATA: lua_pushstring(L, "address unavailable"); break;
-//		case LOSKI_EAFNOSUPPORT: lua_pushstring(L, "unsupported"); break;
-//		default: lua_pushstring(L, "unspecified error"); break;
-//	}
-//	return 0;
-//}
-//
-//LOSKIDRV_API int loski_resolveaddress(loski_NetState *state,
-//                                      loski_Address *address,
-//                                      const char *host,
-//                                      unsigned short port)
-//{
-//	struct sockaddr_in *addr_in = (struct sockaddr_in *)address;
-//	memset(address, 0, sizeof(loski_Address));
-//	/* address is either wildcard or a valid ip address */
-//	addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
-//	addr_in->sin_port = htons(port);
-//	addr_in->sin_family = AF_INET;
-//	if (strcmp(host, "*") && !inet_aton(host, &addr_in->sin_addr)) {
-//		struct hostent *hp = NULL;
-//		struct in_addr **addr;
-//		hp = gethostbyname(host);
-//		if (hp == NULL) return h_errno;
-//		addr = (struct in_addr **) hp->h_addr_list;
-//		memcpy(&addr_in->sin_addr, *addr, sizeof(struct in_addr));
-//	}
-//	return 0;
-//}
-
-
-/*****************************************************************************
  * Sockets *******************************************************************
  *****************************************************************************/
 
@@ -162,79 +114,32 @@ LOSKIDRV_API const char *loski_getaddrliteral(loski_NetState *state,
 #include <netinet/tcp.h> /* TCP options (nagle algorithm disable) */
 #include <fcntl.h> /* fnctnl function and associated constants */
 
-LOSKIDRV_API int loski_socketerror(int error, lua_State *L)
-{
-	if (error == EAGAIN) error = EWOULDBLOCK;
-	switch (error) {
-		/* errors due to internal factors */
-		case EALREADY:
-		case EWOULDBLOCK:
-		case EINPROGRESS: lua_pushliteral(L, "unfulfilled"); break;
-		case ECONNABORTED:
-		case ECONNRESET:
-		case EPIPE: /* not in win32 */
-		case ENOTCONN: lua_pushliteral(L, "disconnected"); break;
-		case EISCONN: lua_pushliteral(L, "connected"); break;
-		/* errors due to external factors */
-		case ECONNREFUSED: lua_pushliteral(L, "refused"); break;
-		case EACCES: lua_pushliteral(L, "access denied"); break;
-		case EADDRINUSE: lua_pushliteral(L, "address used"); break;
-		case EADDRNOTAVAIL: lua_pushliteral(L, "address unavailable"); break;
-		case EHOSTUNREACH: lua_pushliteral(L, "host unreachable"); break;
-		case ENETUNREACH: lua_pushliteral(L, "network unreachable"); break;
-		case ENETRESET: lua_pushliteral(L, "network reset"); break;
-		case ENETDOWN: lua_pushliteral(L, "network down"); break;
-		/* errors due to misuse */
-		case EDESTADDRREQ: lua_pushliteral(L, "address required"); break;
-		case EMSGSIZE: lua_pushliteral(L, "message too long"); break;
-		/* system errors */
-		case ENOBUFS: lua_pushliteral(L, "no buffer"); break;
-		case ETIMEDOUT: lua_pushliteral(L, "timeout"); break;
-		case EINTR: lua_pushliteral(L, "interrupted"); break;
-		case EMFILE:
-		case ENFILE: lua_pushliteral(L, "no resources"); break; /* not in win32 */
-		case ENOMEM: lua_pushliteral(L, "no memory"); break; /* not in win32 */
-		case EIO: lua_pushliteral(L, "system error"); break; /* not in win32 */
-		/* unexpected errors (probably a bug in the library) */
-		case EBADF: /* bad file descriptor */
-		case EFAULT: /* bad address */
-		case EDOM: /* numeric argument out of domain of function */
-		case EISDIR: /* is a directory. */
-		case ENOTDIR: /* is not a directory. */
-		case ELOOP: /* too many levels of symbolic links. */
-		case ENAMETOOLONG: /* filename too long. */
-		case ENOENT: /* no such file or directory. */
-		case EROFS: /* read-only file system. */
-			lua_pushstring(L, "invalid operation"); break;
-		case EINVAL: /* invalid argument */
-		case ENOTSOCK: /* socket operation on nonsocket */
-		case EPROTOTYPE: /* protocol wrong type for socket */
-		case ENOPROTOOPT: /* the option is not supported by the protocol. */
-		case EPROTONOSUPPORT: /* protocol not supported */
-		case EAFNOSUPPORT: /* address family not supported */
-		case EOPNOTSUPP: /* operation not supported on socket */
-			lua_pushstring(L, "unsupported"); break;
-		default: lua_pushstring(L, "unspecified error"); break;
-	}
-	return 0;
-}
-
 LOSKIDRV_API int loski_createsocket(loski_NetState *state,
                                     loski_Socket *sock,
-                                    loski_SocketType type)
+                                    loski_SocketType type,
+                                    loski_AddressType domain)
 {
 	int kind;
 	switch (type) {
-		case LOSKI_DGRMSOCKET:
-			kind = SOCK_DGRAM;
-			break;
-		default:
-			kind = SOCK_STREAM;
-			break;
+		case LOSKI_LSTNSOCKET:
+		case LOSKI_CONNSOCKET: kind = SOCK_STREAM; break;
+		case LOSKI_DGRMSOCKET: kind = SOCK_DGRAM; break;
+		default: return LOSKI_ERRUNSUPPORTED;
 	}
-	*sock = socket(AF_INET, kind, 0);
-	if (*sock < 0) return errno;
-	return 0;
+	if (domain != LOSKI_ADDRTYPE_IPV4) return LOSKI_ERRUNSUPPORTED;
+	*sock = socket(domain, kind, 0);
+	if (*sock >= 0) return 0;
+	switch (errno) {
+		case EACCES: return LOSKI_ERRDENIED;
+		case EMFILE:
+		case ENFILE: return LOSKI_ERRNORESOURCES;
+		case ENOBUFS:
+		case ENOMEM: return LOSKI_ERRNOMEMORY;
+		case EAFNOSUPPORT:
+		case EPROTONOSUPPORT:
+		case EPROTOTYPE: return LOSKI_ERRUNSUPPORTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_getsocketid(loski_NetState *state, loski_Socket *sock)
@@ -264,14 +169,14 @@ LOSKIDRV_API int loski_setsocketoption(loski_NetState *state,
                                        loski_SocketOption option,
                                        int value)
 {
-	int res;
+	int err;
 	switch (option) {
 		case LOSKI_SOCKOPT_BLOCKING: {
-			res = fcntl(*sock, F_GETFL, 0);
-			if (res >= 0) {
-				res = value ? (res & (~(O_NONBLOCK))) : (res | O_NONBLOCK);
-				res = fcntl(*sock, F_SETFL, res);
-				if (res != -1) res = 0;
+			err = fcntl(*sock, F_GETFL, 0);
+			if (err >= 0) {
+				value = value ? (err & (~(O_NONBLOCK))) : (err | O_NONBLOCK);
+				if (value != err) err = fcntl(*sock, F_SETFL, value);
+				if (err != -1) err = 0;
 			}
 		} break;
 		case LOSKI_SOCKOPT_LINGER: {
@@ -283,15 +188,23 @@ LOSKIDRV_API int loski_setsocketoption(loski_NetState *state,
 				li.l_onoff = 0;
 				li.l_linger = 0;
 			}
-			res = setsockopt(*sock, SOL_SOCKET, SO_LINGER, &li, sizeof(li));
+			err = setsockopt(*sock, SOL_SOCKET, SO_LINGER, &li, sizeof(li));
 		} break;
 		default:
-			res = setsockopt(*sock, optinfo[option].level, optinfo[option].name,
+			err = setsockopt(*sock, optinfo[option].level, optinfo[option].name,
 			                 &value, sizeof(value));
 			break;
 	}
-	if (res != 0) return errno;
-	return 0;
+	if (err == 0) return 0;
+	switch (errno) {
+		case EISCONN: return LOSKI_ERRINUSE;
+		case EDOM: return LOSKI_ERRTOOMUCH;
+		case EINVAL: return LOSKI_ERRINVALID;
+		case ENOPROTOOPT: return LOSKI_ERRUNSUPPORTED;
+		case ENOTSOCK:
+		case EBADF: return LOSKI_ERRUNEXPECTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_getsocketoption(loski_NetState *state,
@@ -299,58 +212,127 @@ LOSKIDRV_API int loski_getsocketoption(loski_NetState *state,
                                        loski_SocketOption option,
                                        int *value)
 {
-	int res;
+	int err;
 	switch (option) {
 		case LOSKI_SOCKOPT_BLOCKING: {
-			res = fcntl(*sock, F_GETFL, 0);
-			if (res >= 0) {
-				*value = !(res & O_NONBLOCK);
-				res = 0;
+			err = fcntl(*sock, F_GETFL, 0);
+			if (err >= 0) {
+				*value = !(err & O_NONBLOCK);
+				err = 0;
 			}
 		} break;
 		case LOSKI_SOCKOPT_LINGER: {
 			struct linger li;
 			socklen_t sz = sizeof(li);
-			res = getsockopt(*sock, SOL_SOCKET, SO_LINGER, &li, &sz);
-			if (res == 0) *value = li.l_onoff ? li.l_linger : 0;
+			err = getsockopt(*sock, SOL_SOCKET, SO_LINGER, &li, &sz);
+			if (err == 0) *value = li.l_onoff ? li.l_linger : 0;
 		} break;
 		default: {
 			socklen_t sz = sizeof(*value);
-			res = getsockopt(*sock, optinfo[option].level, optinfo[option].name,
+			err = getsockopt(*sock, optinfo[option].level, optinfo[option].name,
 			                 value, &sz);
 		} break;
 	}
-	if (res != 0) return errno;
-	return 0;
+	if (err == 0) return 0;
+	switch (errno) {
+		case EACCES: return LOSKI_ERRDENIED;
+		case ENOBUFS: return LOSKI_ERRNOMEMORY;
+		case EINVAL: return LOSKI_ERRINVALID;
+		case ENOPROTOOPT: return LOSKI_ERRUNSUPPORTED;
+		case ENOTSOCK:
+		case EBADF: return LOSKI_ERRUNEXPECTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_bindsocket(loski_NetState *state,
                                   loski_Socket *sock,
                                   const loski_Address *address)
 {
-	if (bind(*sock, address, sizeof(loski_Address)) != 0) return errno; 
-	return 0;
+	if (bind(*sock, address, sizeof(loski_Address)) == 0) return 0; 
+	switch (errno) {
+		case EISCONN: return LOSKI_ERRINUSE;
+		case EADDRINUSE: return LOSKI_ERRUNAVAILABLE;
+		case EADDRNOTAVAIL: return LOSKI_ERRUNREACHABLE;
+		case EACCES: return LOSKI_ERRDENIED;
+		case ENOBUFS: return LOSKI_ERRNOMEMORY;
+		case EOPNOTSUPP: return LOSKI_ERRUNSUPPORTED;
+		case EAFNOSUPPORT:
+		case EINVAL: return LOSKI_ERRINVALID;
+		case EBADF:
+		case ENOTSOCK: return LOSKI_ERRUNEXPECTED;
+#if 0
+		/* only for AF_UNIX sockets */
+		case ENOENT: return LOSKI_ERRNOTFOUND;
+		case ENOTDIR: return LOSKI_ERRUNAVAILABLE;
+		case EROFS: return LOSKI_ERRDENIED;
+		case EISDIR:
+		case EIO: return LOSKI_ERRSYSTEMFAIL;
+		case ELOOP:
+		case ENAMETOOLONG: return LOSKI_ERRTOOMUCH;
+		case EDESTADDRREQ: return LOSKI_ERRUNEXPECTED;
+#endif
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_socketaddress(loski_NetState *state,
                                      loski_Socket *sock,
                                      loski_Address *address,
-                                     loski_SocketSite site)
+                                     int peer)
 {
-	int res;
+	int err;
 	socklen_t len = sizeof(loski_Address);
-	if (site == LOSKI_LOCALSITE) res = getsockname(*sock, address, &len);
-	else                         res = getpeername(*sock, address, &len);
-	if (res != 0) return errno;
-	return 0;
+	if (peer) err = getpeername(*sock, address, &len);
+	else      err = getsockname(*sock, address, &len);
+	if (err == 0) return 0;
+	switch (errno) {
+		case ENOBUFS: return LOSKI_ERRNOMEMORY;
+		case EINVAL: return LOSKI_ERRINVALID;
+		case EOPNOTSUPP: return LOSKI_ERRUNSUPPORTED;
+		case EBADF:
+		case ENOTSOCK: return LOSKI_ERRUNEXPECTED;
+		case ENOTCONN: if (peer) return LOSKI_ERRCLOSED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_connectsocket(loski_NetState *state,
                                      loski_Socket *sock,
                                      const loski_Address *address)
 {
-	if (connect(*sock, address, sizeof(loski_Address)) != 0) return errno;
-	return 0;
+	if (connect(*sock, address, sizeof(loski_Address)) == 0) return 0;
+	switch (errno) {
+		case EALREADY:
+		case EINPROGRESS:
+		case EINTR: return LOSKI_ERRUNFULFILLED;
+		case ETIMEDOUT: return LOSKI_ERRTIMEOUT;
+		case EADDRINUSE: return LOSKI_ERRINUSE;
+		case EADDRNOTAVAIL: return LOSKI_ERRUNAVAILABLE;
+		case ECONNRESET: return LOSKI_ERRCLOSED;
+		case EHOSTUNREACH:
+		case ENETUNREACH: return LOSKI_ERRUNREACHABLE;
+		case ECONNREFUSED: return LOSKI_ERRREFUSED;
+		case ENETDOWN: return LOSKI_ERRSYSTEMDOWN;
+		case ENOBUFS: return LOSKI_ERRNOMEMORY;
+		case EISCONN:
+		case EPROTOTYPE:
+		case EAFNOSUPPORT:
+		case EOPNOTSUPP: return LOSKI_ERRINVALID;
+		case EINVAL: return LOSKI_ERRUNSUPPORTED;
+		case EBADF:
+		case ENOTSOCK: return LOSKI_ERRUNEXPECTED;
+#if 0
+		/* only for AF_UNIX sockets */
+		case EACCES: return LOSKI_ERRDENIED;
+		case ENOENT: return LOSKI_ERRNOTFOUND;
+		case ENOTDIR: return LOSKI_ERRUNAVAILABLE;
+		case EIO: return LOSKI_ERRSYSTEMFAIL;
+		case ELOOP:
+		case ENAMETOOLONG: return LOSKI_ERRTOOMUCH;
+#endif
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_sendtosocket(loski_NetState *state,
@@ -360,58 +342,91 @@ LOSKIDRV_API int loski_sendtosocket(loski_NetState *state,
                                     size_t *bytes,
                                     const loski_Address *address)
 {
-	ssize_t res;
-	if (address) {
-		res = sendto(*sock, data, size, 0, address, sizeof(loski_Address));
-	} else {
-		res = send(*sock, data, size, 0);
+	ssize_t err;
+	if (address) err = sendto(*sock, data, size, 0,address,sizeof(loski_Address));
+	else         err = send(*sock, data, size, 0);
+	if (err >= 0) {
+		*bytes = (size_t)err;
+		return 0;
 	}
-	if (res < 0) return errno;
-	*bytes = (size_t)res;
-	return 0;
+	switch (errno) {
+#if EAGAIN != EWOULDBLOCK
+		case EAGAIN:
+#endif
+		case EWOULDBLOCK:
+		case EINTR: return LOSKI_ERRUNFULFILLED;
+		case EMSGSIZE: return LOSKI_ERRTOOMUCH;
+		case ENOTCONN: return LOSKI_ERRCLOSED;
+		case EPIPE:
+		case ECONNRESET: return LOSKI_ERRABORTED;
+		case EACCES: return LOSKI_ERRDENIED;
+		case ENETUNREACH: return LOSKI_ERRUNREACHABLE;
+		case ENOBUFS: return LOSKI_ERRNOMEMORY;
+		case ENETDOWN: return LOSKI_ERRSYSTEMDOWN;
+		case EIO: return LOSKI_ERRSYSTEMFAIL;
+		case EDESTADDRREQ: return LOSKI_ERRINVALID;
+		case EOPNOTSUPP: return LOSKI_ERRUNSUPPORTED;
+		case EBADF:
+		case ENOTSOCK: return LOSKI_ERRUNEXPECTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_recvfromsocket(loski_NetState *state,
                                       loski_Socket *sock,
+                                      loski_SocketRecvFlag flags,
                                       char *buffer,
                                       size_t size,
                                       size_t *bytes,
                                       loski_Address *address)
 {
-	ssize_t res;
+	ssize_t err;
+	if (size == 0) return LOSKI_ERRINVALID;
 	if (address) {
 		socklen_t len = sizeof(loski_Address);
 		memset(address, 0, len);
-		res = recvfrom(*sock, buffer, size, 0, address, &len);
+		err = recvfrom(*sock, buffer, size, flags, address, &len);
 	} else {
-		res = recv(*sock, buffer, size, 0);
+		err = recv(*sock, buffer, size, flags);
 	}
-	if (res == 0) return ECONNABORTED;
-	if (res < 0) return errno;
-	*bytes = (size_t)res;
-	return 0;
+	if (err > 0) {
+		*bytes = (size_t)err;
+		return 0;
+	}
+	if (err == 0) return LOSKI_ERRCLOSED;
+	switch (errno) {
+#if EAGAIN != EWOULDBLOCK
+		case EAGAIN:
+#endif
+		case EWOULDBLOCK:
+		case EINTR: return LOSKI_ERRUNFULFILLED;
+		case ETIMEDOUT: return LOSKI_ERRTIMEOUT;
+		case ENOTCONN: return LOSKI_ERRCLOSED;
+		case ECONNRESET: return LOSKI_ERRABORTED;
+		case ENOMEM: return LOSKI_ERRNOMEMORY;
+		case ENOBUFS: return LOSKI_ERRNORESOURCES;
+		case ENETDOWN: return LOSKI_ERRSYSTEMDOWN;
+		case EIO: return LOSKI_ERRSYSTEMFAIL;
+		case EOPNOTSUPP: return LOSKI_ERRUNSUPPORTED;
+		case EBADF:
+		case ENOTSOCK: return LOSKI_ERRUNEXPECTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_shutdownsocket(loski_NetState *state,
                                       loski_Socket *sock,
-                                      loski_SocketSite site)
+                                      loski_SocketWay ways)
 {
-	int how;
-	switch (site) {
-		case LOSKI_LOCALSITE:
-			how = SHUT_WR;
-			break;
-		case LOSKI_REMOTESITE:
-			how = SHUT_RD;
-			break;
-		case LOSKI_BOTHSITES:
-			how = SHUT_RDWR;
-			break;
-		default:
-			return 0;
+	if (shutdown(*sock, ways) == 0) return 0;
+	switch (errno) {
+		case ENOTCONN: return LOSKI_ERRCLOSED;
+		case ENOBUFS: return LOSKI_ERRNORESOURCES;
+		case EINVAL:
+		case EBADF:
+		case ENOTSOCK: return LOSKI_ERRUNEXPECTED;
 	}
-	if (shutdown(*sock, how) != 0) return errno;
-	return 0;
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_acceptsocket(loski_NetState *state,
@@ -425,21 +440,127 @@ LOSKIDRV_API int loski_acceptsocket(loski_NetState *state,
 		memset(address, 0, len);
 	}
 	*accepted = accept(*sock, address, &len);
-	if (*accepted < 0) return errno;
-	return 0;
+	if (*accepted >= 0) return 0;
+	switch (errno) {
+#if EAGAIN != EWOULDBLOCK
+		case EAGAIN:
+#endif
+		case EWOULDBLOCK:
+		case EINTR: return LOSKI_ERRUNFULFILLED;
+		case EMFILE:
+		case ENFILE: return LOSKI_ERRNORESOURCES;
+		case ECONNABORTED: return LOSKI_ERRABORTED;
+		case ENOBUFS: return LOSKI_ERRNORESOURCES;
+		case ENOMEM: return LOSKI_ERRNOMEMORY;
+		case EINVAL: return LOSKI_ERRINVALID;
+		case EOPNOTSUPP: return LOSKI_ERRUNSUPPORTED;
+		case EBADF:
+		case ENOTSOCK: return LOSKI_ERRUNEXPECTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_listensocket(loski_NetState *state,
                                     loski_Socket *sock,
                                     int backlog)
 {
-	if (listen(*sock, backlog) != 0) return errno;
-	return 0;
+	if (listen(*sock, backlog) == 0) return 0;
+	switch (errno) {
+		case EACCES: return LOSKI_ERRDENIED;
+		case ENOBUFS: return LOSKI_ERRNORESOURCES;
+		case EDESTADDRREQ: return LOSKI_ERRINVALID;
+		case EINVAL:
+		case EOPNOTSUPP:
+		case EBADF:
+		case ENOTSOCK: return LOSKI_ERRUNEXPECTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
 LOSKIDRV_API int loski_closesocket(loski_NetState *state,
                                    loski_Socket *sock)
 {
-	if (close(*sock) != 0) return errno;
+	if (close(*sock) == 0) return 0;
+	switch (errno) {
+		case EINTR: return LOSKI_ERRUNFULFILLED;
+		case EIO: return LOSKI_ERRSYSTEMFAIL;
+		case EBADF: return LOSKI_ERRUNEXPECTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
+}
+
+
+/*****************************************************************************
+ * Names *********************************************************************
+ *****************************************************************************/
+
+
+#include <netdb.h> /* gethostbyname and gethostbyaddr functions */
+
+#define LOSKI_EAFNOSUPPORT (-1)
+
+LOSKIDRV_API void loski_netfreeaddrfound(loski_NetState *state,
+                                         loski_AddressFound *found)
+{
+	if (found->results) {
+		freeaddrinfo(found->results);
+		found->results = NULL;
+		found->next = NULL;
+	}
+}
+
+static int hasnext(loski_AddressFound *found)
+{
+	while (found->next) {
+		switch (found->next->ai_socktype) {
+			case SOCK_DGRAM: found->nexttype = LOSKI_DGRMSOCKET; return 1;
+			case SOCK_STREAM: found->nexttype = LOSKI_CONNSOCKET; return 1;
+		}
+		found->next = found->next->ai_next;
+	}
+	loski_netfreeaddrfound(NULL, found);
 	return 0;
 }
+
+LOSKIDRV_API int loski_netresolveaddr(loski_NetState *state,
+                                      loski_AddressFound *found,
+                                      loski_AddressFindFlag flags,
+                                      const char *nodename,
+                                      const char *servname)
+{
+	int error;
+	struct addrinfo hints;
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_flags = 0;
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = 0;
+	hints.ai_protocol = 0;
+	error = getaddrinfo(nodename, servname, &hints, &found->results);
+	if (!error) {
+		found->next = found->results;
+		if (hasnext(found)) return 0;
+		error = EAI_AGAIN;
+	}
+	switch (error) {
+		case EAI_AGAIN:
+		case EAI_SERVICE: return LOSKI_ERRNOTFOUND;
+		case EAI_MEMORY: return LOSKI_ERRNOMEMORY;
+		case EAI_FAIL:
+		case EAI_SYSTEM: return LOSKI_ERRSYSTEMFAIL;
+		case EAI_FAMILY:
+		case EAI_SOCKTYPE:
+		case EAI_BADFLAGS: return LOSKI_ERRUNSUPPORTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
+}
+
+LOSKIDRV_API int loski_netgetaddrfound(loski_NetState *state,
+                                       loski_AddressFound *found,
+                                       loski_Address *address,
+                                       loski_SocketType *type)
+{
+	memcpy(address, found->next->ai_addr, found->next->ai_addrlen);
+	*type = found->nexttype;
+	return hasnext(found);
+}
+

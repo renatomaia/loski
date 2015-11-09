@@ -2,13 +2,52 @@
 #define netlib_h
 
 
+#include "loskierr.h"
+
+
 #include <sys/socket.h>
-#include <netinet/in.h>
+#include <netinet/in.h>  /* network addresses */
+#include <arpa/inet.h>  /* IP addresses */
+
+
+/* Addresses */
 
 typedef void loski_NetState;
+
 typedef struct sockaddr loski_Address;
+
 typedef in_port_t loski_AddressPort;
+
+typedef int loski_AddressType;
+#define LOSKI_ADDRTYPE_IPV4	AF_INET
+#define LOSKI_ADDRTYPE_IPV6	AF_INET6
+#define LOSKI_ADDRTYPE_CUSTOM
+
+
+/* Sockets */
+
 typedef int loski_Socket;
+
+typedef int loski_SocketRecvFlag;
+#define LOSKI_SOCKRCV_PEEKONLY	MSG_PEEK
+#define LOSKI_SOCKRCV_WAITALL	MSG_WAITALL
+#define LOSKI_SOCKRCV_CUSTOM
+
+typedef int loski_SocketWay;
+#define LOSKI_SOCKWAY_IN	SHUT_RD;
+#define LOSKI_SOCKWAY_OUT	SHUT_WR;
+#define LOSKI_SOCKWAY_BOTH	SHUT_RDWR;
+#define LOSKI_SOCKWAY_CUSTOM
+
+
+/* Names */
+
+typedef struct loski_AddressFound {
+	struct addrinfo *results;
+	struct addrinfo *next;
+	int nexttype;
+} loski_AddressFound;
+
 
 #include "netlibapi.h"
 

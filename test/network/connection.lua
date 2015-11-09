@@ -64,8 +64,8 @@ do
 	local socket = tests.testcreatesocket("connection")
 	assert(socket:setoption("blocking", false) == true)
 
-	tests.testerrmsg("connected",
-		tests.tcall(true, socket.connect, socket, tests.LocalAddress))
+	tests.testerror("invalid operation",
+		tests.tcall, true, socket.connect, socket, tests.LocalAddress)
 
 	local sent = 0
 	while true do
@@ -88,7 +88,7 @@ do
 		assert(string.find(received, "[^\255]") == nil)
 		count = count + #received
 	end
-	tests.testerrmsg("disconnected", tests.tcall(true, socket.receive, socket, 1))
+	tests.testerrmsg("closed", tests.tcall(true, socket.receive, socket, 1))
 
 	tests.testclose(socket)
 end

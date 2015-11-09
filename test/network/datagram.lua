@@ -18,7 +18,7 @@ local remotecode = [[
 	local i = 0
 	repeat
 		i = i+1
-		all[i] = assert(socket:receive(packsize, addr))
+		all[i] = assert(socket:receive(packsize, nil, addr))
 		assert(addr.literal == "]]..tests.FreeAddress.literal..[[")
 		assert(addr.port == ]]..tests.FreeAddress.port..[[)
 	until string.find(all[i], "0", nil, "noregex")
@@ -65,13 +65,13 @@ do
 	local remaining = 3*packsize
 	while remaining > 0 do
 		local addr = network.address()
-		local received = socket:receive(remaining, addr)
+		local received = socket:receive(remaining, nil, addr)
 		assert(received == data)
 		assert(addr == tests.LocalAddress)
 		remaining = remaining - #data
 	end
 	local addr = network.address()
-	local received = socket:receive(packsize, addr)
+	local received = socket:receive(packsize, nil, addr)
 	assert(received == final)
 	assert(addr == tests.LocalAddress)
 
@@ -95,7 +95,7 @@ do
 	local addr = network.address()
 	local remaining = 3*packsize
 	while remaining > 0 do
-		local received = tests.tcall(true, socket.receive, socket, remaining, addr)
+		local received = tests.tcall(true, socket.receive, socket, remaining, nil, addr)
 		assert(received == data)
 		assert(addr == tests.LocalAddress)
 		remaining = remaining - #data

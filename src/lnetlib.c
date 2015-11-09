@@ -5,13 +5,12 @@
 #include <ctype.h>
 
 
-#define pushsockres(L,n,e) luaL_pushresults(L,n,e,loski_socketerror)
-
-
 #ifdef LOSKI_DISABLE_NETSTATE
+#define NETUPV	0
 #define tonet(L)	NULL
 #else
-#define tonet(L)	((loski_NetState *)lua_touserdata(L, lua_upvalueindex(1)))
+#define NETUPV	1
+#define tonet(L)	((loski_NetState *)lua_touserdata(L, lua_upvalueindex(NETUPV)))
 #endif
 
 
@@ -174,6 +173,16 @@ static int addr_index (lua_State *L) {
 }
 
 
+static const char *const AddrTypeName[] = {
+	"ipv4",
+	"ipv6",
+	NULL
+};
+static const loski_AddressType AddrTypeId[] = {
+	LOSKI_ADDRTYPE_IPV4,
+	LOSKI_ADDRTYPE_IPV6
+};
+
 /*
  * address.type = type
  * address.literal = literal
@@ -208,14 +217,9 @@ static int addr_newindex (lua_State *L) {
 			                                      "invalid value");
 		} break;
 		case 3: {  /* type */
-			static const char *const types[] = {"ipv4","ipv6",NULL};
-			int typeid = luaL_checkoption(L, 3, NULL, types);
+			int i = luaL_checkoption(L, 3, NULL, AddrTypeName);
 			loski_AddressType type = loski_getaddrtype(net, na);
-			loski_AddressType new = type;
-			switch (typeid) {
-				case 0: new = LOSKI_ADDRTYPE_IPV4; break;
-				case 1: new = LOSKI_ADDRTYPE_IPV6; break;
-			}
+			loski_AddressType new = AddrTypeId[i];
 			if (new != type)
 				luaL_argcheck(L, loski_initaddress(net, na, new), 3,
 				              "unsupported address");
@@ -230,6 +234,18 @@ static int addr_newindex (lua_State *L) {
  *****************************************************************************/
 
 
+static const char *const SockTypeName[] = {
+	"listen",
+	"connection",
+	"datagram",
+	NULL
+};
+static const loski_SocketType SockTypeId[] = {
+	LOSKI_LSTNSOCKET,
+	LOSKI_CONNSOCKET,
+	LOSKI_DGRMSOCKET
+};
+
 static LuaSocket *newsock (lua_State *L, int type)
 {
 	LuaSocket *ls = (LuaSocket *)lua_newuserdata(L, sizeof(LuaSocket));
@@ -238,16 +254,18 @@ static LuaSocket *newsock (lua_State *L, int type)
 	return ls;
 }
 
-/* socket = network.socket(type) */
+/* socket = network.socket(type [, domain]) */
 static int net_socket (lua_State *L)
 {
-	static const char *const types[] = {"listen", "connection", "datagram", NULL};
 	loski_NetState *net = tonet(L);
-	int type = luaL_checkoption(L, 1, NULL, types);
+	int optsck = luaL_checkoption(L, 1, NULL, SockTypeName);
+	int optadr = luaL_checkoption(L, 2, "ipv4", AddrTypeName);
+	loski_SocketType type = SockTypeId[optsck];
+	loski_AddressType domain = AddrTypeId[optadr];
 	LuaSocket *ls = newsock(L, type);
-	int res = loski_createsocket(net, &ls->socket, type);
-	if (res == 0) ls->closed = 0;
-	return pushsockres(L, 1, res);
+	int err = loski_createsocket(net, &ls->socket, type, domain);
+	if (err == 0) ls->closed = 0;
+	return luaL_doresults(L, 1, err);
 }
 
 
@@ -269,9 +287,9 @@ static int sck_tostring (lua_State *L)
 
 static int endsock (loski_NetState *net, lua_State *L, LuaSocket *ls)
 {
-	int res = loski_closesocket(net, &ls->socket);
-	if (res == 0) ls->closed = 1;  /* mark socket as closed */
-	return pushsockres(L, 0, res);
+	int err = loski_closesocket(net, &ls->socket);
+	if (err == 0) ls->closed = 1;  /* mark socket as closed */
+	return luaL_doresults(L, 0, err);
 }
 
 /* getmetatable(socket).__gc */
@@ -315,22 +333,22 @@ static int sck_bind (lua_State *L)
 	loski_NetState *net = tonet(L);
 	loski_Socket *socket = tosock(L, LOSKI_BASESOCKET);
 	const loski_Address *addr = checkaddress(L, 2);
-	int res = loski_bindsocket(net, socket, addr);
-	return pushsockres(L, 0, res);
+	int err = loski_bindsocket(net, socket, addr);
+	return luaL_doresults(L, 0, err);
 }
 
 
 /* address [, errmsg] = socket:getaddress(address [, site]) */
 static int sck_getaddress (lua_State *L)
 {
-	static const char *const sites[] = {"local", "remote", NULL};
+	static const char *const sites[] = {"local", "peer", NULL};
 	loski_NetState *net = tonet(L);
 	loski_Socket *socket = tosock(L, LOSKI_BASESOCKET);
 	loski_Address *addr = checkaddress(L, 2);
-	int site = luaL_checkoption(L, 3, "local", sites);
-	int res = loski_socketaddress(net, socket, addr, site);
-	if (res == 0) lua_pushvalue(L, 2);
-	return pushsockres(L, 1, res);
+	int peer = luaL_checkoption(L, 3, "local", sites);
+	int err = loski_socketaddress(net, socket, addr, peer);
+	if (err == 0) lua_pushvalue(L, 2);
+	return luaL_doresults(L, 1, err);
 }
 
 
@@ -385,9 +403,9 @@ static int lst_getoption (lua_State *L)
 	loski_Socket *socket = tosock(L, LOSKI_LSTNSOCKET);
 	loski_SocketOption opt = checksockopt(L, 2, lst_opts);
 	int val;
-	int res = loski_getsocketoption(net, socket, opt, &val);
-	if (res == 0) lua_pushboolean(L, val);
-	return pushsockres(L, 1, res);
+	int err = loski_getsocketoption(net, socket, opt, &val);
+	if (err == 0) lua_pushboolean(L, val);
+	return luaL_doresults(L, 1, err);
 }
 
 static int cnt_getoption (lua_State *L)
@@ -396,12 +414,12 @@ static int cnt_getoption (lua_State *L)
 	loski_Socket *socket = tosock(L, LOSKI_CONNSOCKET);
 	loski_SocketOption opt = checksockopt(L, 2, cnt_opts);
 	int val;
-	int res = loski_getsocketoption(net, socket, opt, &val);
-	if (res == 0) {
+	int err = loski_getsocketoption(net, socket, opt, &val);
+	if (err == 0) {
 		if (opt == LOSKI_SOCKOPT_LINGER) lua_pushinteger(L, val);
 		else                             lua_pushboolean(L, val);
 	}
-	return pushsockres(L, 1, res);
+	return luaL_doresults(L, 1, err);
 }
 
 static int dgm_getoption (lua_State *L)
@@ -410,9 +428,9 @@ static int dgm_getoption (lua_State *L)
 	loski_Socket *socket = tosock(L, LOSKI_DGRMSOCKET);
 	loski_SocketOption opt = checksockopt(L, 2, dgm_opts);
 	int val;
-	int res = loski_getsocketoption(net, socket, opt, &val);
-	if (res == 0) lua_pushboolean(L, val);
-	return pushsockres(L, 1, res);
+	int err = loski_getsocketoption(net, socket, opt, &val);
+	if (err == 0) lua_pushboolean(L, val);
+	return luaL_doresults(L, 1, err);
 }
 
 
@@ -423,8 +441,8 @@ static int lst_setoption (lua_State *L)
 	loski_Socket *socket = tosock(L, LOSKI_LSTNSOCKET);
 	loski_SocketOption opt = checksockopt(L, 2, lst_opts);
 	int val = lua_toboolean(L, 3);
-	int res = loski_setsocketoption(net, socket, opt, val);
-	return pushsockres(L, 0, res);
+	int err = loski_setsocketoption(net, socket, opt, val);
+	return luaL_doresults(L, 0, err);
 }
 
 static int cnt_setoption (lua_State *L)
@@ -434,8 +452,8 @@ static int cnt_setoption (lua_State *L)
 	loski_SocketOption opt = checksockopt(L, 2, cnt_opts);
 	int val = (opt == LOSKI_SOCKOPT_LINGER) ? luaL_checkint(L, 3)
 	                                        : lua_toboolean(L, 3);
-	int res = loski_setsocketoption(net, socket, opt, val);
-	return pushsockres(L, 0, res);
+	int err = loski_setsocketoption(net, socket, opt, val);
+	return luaL_doresults(L, 0, err);
 }
 
 static int dgm_setoption (lua_State *L)
@@ -444,8 +462,8 @@ static int dgm_setoption (lua_State *L)
 	loski_Socket *socket = tosock(L, LOSKI_DGRMSOCKET);
 	loski_SocketOption opt = checksockopt(L, 2, dgm_opts);
 	int val = lua_toboolean(L, 3);
-	int res = loski_setsocketoption(net, socket, opt, val);
-	return pushsockres(L, 0, res);
+	int err = loski_setsocketoption(net, socket, opt, val);
+	return luaL_doresults(L, 0, err);
 }
 
 
@@ -455,8 +473,8 @@ static int str_connect (lua_State *L)
 	loski_NetState *net = tonet(L);
 	loski_Socket *socket = tosock(L, LOSKI_STRMSOCKET);
 	const loski_Address *addr = checkaddress(L, 2);
-	int res = loski_connectsocket(net, socket, addr);
-	return pushsockres(L, 0, res);
+	int err = loski_connectsocket(net, socket, addr);
+	return luaL_doresults(L, 0, err);
 }
 
 
@@ -475,14 +493,14 @@ static int senddata(lua_State *L, int cls, const loski_Address *addr)
 	const char *data = luaL_checklstring(L, 2, &sz);
 	size_t start = posrelat(luaL_optinteger(L, 3, 1), sz);
 	size_t end = posrelat(luaL_optinteger(L, 4, -1), sz);
-	int res;
+	int err;
 	if (start < 1) start = 1;
 	if (end > sz) end = sz;
 	sz = end - start + 1;
 	data += start - 1;
-	res = loski_sendtosocket(net, socket, data, sz, &sent, addr);
+	err = loski_sendtosocket(net, socket, data, sz, &sent, addr);
 	lua_pushinteger(L, sent);
-	return pushsockres(L, 1, res);
+	return luaL_doresults(L, 1, err);
 }
 
 /* sent [, errmsg] = socket:send(data [, i [, j]]) */
@@ -503,29 +521,36 @@ static int recvdata(lua_State *L, int cls, loski_Address *addr)
 	loski_NetState *net = tonet(L);
 	loski_Socket *socket = tosock(L, cls);
 	size_t len, sz = (size_t)luaL_checkinteger(L, 2);
+	const char *mode = luaL_optstring(L, 3, "");
+	loski_SocketRecvFlag flags = 0;
 	luaL_Buffer lbuf;
 	char *buf;
-	int res;
+	int err;
+	while (*mode) switch (*(mode++)) {
+		case 'p': flags |= LOSKI_SOCKRCV_PEEKONLY; break;
+		case 'a': flags |= LOSKI_SOCKRCV_WAITALL; break;
+		default: luaL_error(L, "unknown mode char (got '%c')", *mode);
+	}
 	luaL_buffinit(L, &lbuf);
 	buf = luaL_prepbuffsize(&lbuf, sz);  /* prepare buffer to read whole block */
-	res = loski_recvfromsocket(net, socket, buf, sz, &len, addr);
-	if (res == 0) {
+	err = loski_recvfromsocket(net, socket, flags, buf, sz, &len, addr);
+	if (err == 0) {
 		luaL_addsize(&lbuf, len);
 		luaL_pushresult(&lbuf);  /* close buffer */
 	}
-	return pushsockres(L, 1, res);
+	return luaL_doresults(L, 1, err);
 }
 
-/* data [, errmsg] = socket:receive(size) */
+/* data [, errmsg] = socket:receive(size [, mode]) */
 static int cnt_receive (lua_State *L)
 {
 	return recvdata(L, LOSKI_CONNSOCKET, NULL);
 }
 
-/* data [, errmsg] = socket:receive(size [, address]) */
+/* data [, errmsg] = socket:receive(size [, mode [, address]]) */
 static int dgm_receive (lua_State *L)
 {
-	return recvdata(L, LOSKI_DGRMSOCKET, optaddr(L, 3));
+	return recvdata(L, LOSKI_DGRMSOCKET, optaddr(L, 4));
 }
 
 
@@ -536,8 +561,8 @@ static int cnt_shutdown (lua_State *L)
 	loski_NetState *net = tonet(L);
 	loski_Socket *socket = tosock(L, LOSKI_CONNSOCKET);
 	int way = luaL_checkoption(L, 2, "both", waynames);
-	int res = loski_shutdownsocket(net, socket, way);
-	return pushsockres(L, 0, res);
+	int err = loski_shutdownsocket(net, socket, way);
+	return luaL_doresults(L, 0, err);
 }
 
 
@@ -548,9 +573,9 @@ static int lst_accept (lua_State *L)
 	loski_Socket *socket = tosock(L, LOSKI_LSTNSOCKET);
 	loski_Address *addr = optaddr(L, 2);
 	LuaSocket *ls = newsock(L, LOSKI_CONNSOCKET);
-	int res = loski_acceptsocket(net, socket, &ls->socket, addr);
-	if (res == 0) ls->closed = 0;
-	return pushsockres(L, 1, res);
+	int err = loski_acceptsocket(net, socket, &ls->socket, addr);
+	if (err == 0) ls->closed = 0;
+	return luaL_doresults(L, 1, err);
 }
 
 
@@ -560,8 +585,80 @@ static int lst_listen (lua_State *L)
 	loski_NetState *net = tonet(L);
 	loski_Socket *socket = tosock(L, LOSKI_LSTNSOCKET);
 	int backlog = luaL_optint(L, 2, 32);
-	int res = loski_listensocket(net, socket, backlog);
-	return pushsockres(L, 0, res);
+	int err = loski_listensocket(net, socket, backlog);
+	return luaL_doresults(L, 0, err);
+}
+
+
+/*****************************************************************************
+ * Names *********************************************************************
+ *****************************************************************************/
+
+#define FOUNDUPV	NETUPV+1
+#define tofound(L) \
+	((loski_AddressFound *)lua_touserdata(L, lua_upvalueindex(FOUNDUPV)))
+
+/* [address, socktype, more =] next([address]) */
+static int net_nextfound (lua_State *L) {
+	loski_NetState *net = tonet(L);
+	loski_AddressFound *found = tofound(L);
+	if (found) {
+		int more, i;
+		loski_SocketType type;
+		loski_Address *addr = optaddr(L, 1);
+		if (!addr) {
+			lua_settop(L, 0);
+			addr = newaddr(L);
+		} else {
+			lua_settop(L, 1);
+		}
+		more = loski_netgetaddrfound(net, found, addr, &type);
+		for (i = 0; SockTypeName[i] && SockTypeId[i] != type; ++i);
+		lua_pushstring(L, SockTypeName[i]);
+		lua_pushboolean(L, more);
+		if (!more) {  /* avoid further attempts to get more results */
+			lua_pushnil(L);
+			lua_replace(L, FOUNDUPV);
+		}
+		return 3;
+	}
+	return 0;
+}
+
+static int net_freefound (lua_State *L) {
+	loski_NetState *net = tonet(L);
+	loski_AddressFound *found = tofound(L);
+	loski_netfreeaddrfound(net, found);
+	return 0;
+}
+
+/* next [, errmsg] = dns.resolve (host [, service [, mode]]) */
+static int net_resolve (lua_State *L) {
+	loski_NetState *net = tonet(L);
+	const char *nodename = luaL_checkstring(L, 1);
+	const char *servname = luaL_optstring(L, 2, NULL);
+	const char *mode = luaL_optstring(L, 2, "");
+	loski_AddressFindFlag flags = 0;
+	loski_AddressFound *found;
+	int err;
+	while (*mode) switch (*(mode++)) {
+		case 'l': flags |= LOSKI_ADDRFIND_LOCAL; break;
+		case '4': flags |= LOSKI_ADDRFIND_IPV4; break;
+		case '6': flags |= LOSKI_ADDRFIND_IPV6; break;
+		case 'm': flags |= LOSKI_ADDRFIND_MAPPED; break;
+		case 'd': flags |= LOSKI_ADDRFIND_DGRM; break;
+		case 's': flags |= LOSKI_ADDRFIND_STRM; break;
+		default: luaL_error(L, "unknown mode char (got '%c')", *mode);
+	}
+#ifndef LOSKI_DISABLE_NETSTATE
+	lua_pushvalue(L, lua_upvalueindex(NETUPV)); /* push library state */
+#endif
+	found = (loski_AddressFound *)luaL_newsentinel(L, sizeof(loski_AddressFound),
+	                                                  net_freefound);
+	err = loski_netresolveaddr(net, found, flags, nodename, servname);
+	if (err) luaL_cancelsentinel(L);
+	else lua_pushcclosure(L, net_nextfound, FOUNDUPV);
+	return luaL_doresults(L, 1, err);
 }
 
 
@@ -619,6 +716,7 @@ static const luaL_Reg dgm[] = {
 
 static const luaL_Reg lib[] = {
 	{"address", net_address},
+	{"resolve", net_resolve},
 	{"socket", net_socket},
 	{NULL, NULL}
 };
@@ -646,42 +744,46 @@ LUAMOD_API int luaopen_network (lua_State *L)
 		return luaL_error(L, "unable to initialize library");
 	}
 #define pushsentinel(L)	lua_pushvalue(L, 1)
-#define UPS	1
 #else
 #define pushsentinel(L)	((void)L)
-#define UPS	0
 #endif
 	/* create address class */
 	pushsentinel(L);
-	luaL_newclass(L, LOSKI_NETADDRCLS, NULL, addr, UPS);
+	luaL_newclass(L, LOSKI_NETADDRCLS, NULL, addr, NETUPV);
 	lua_pop(L, 1);  /* remove new class */
 	/* create abstract base socket class */
 	pushsentinel(L);
-	luaL_newclass(L, loski_SocketClasses[LOSKI_BASESOCKET], NULL, sck, UPS);
+	luaL_newclass(L, loski_SocketClasses[LOSKI_BASESOCKET], NULL, sck, NETUPV);
 	lua_pop(L, 1);  /* remove new class */
 	/* create TCP listening socket class */
 	pushsentinel(L);
 	luaL_newclass(L, loski_SocketClasses[LOSKI_LSTNSOCKET],
-	                 loski_SocketClasses[LOSKI_BASESOCKET], lst, UPS);
+	                 loski_SocketClasses[LOSKI_BASESOCKET], lst, NETUPV);
+	lua_pushliteral(L, "listen");
+	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
 	/* create streaming socket class */
 	pushsentinel(L);
 	luaL_newclass(L, loski_SocketClasses[LOSKI_STRMSOCKET],
-	                 loski_SocketClasses[LOSKI_BASESOCKET], str, UPS);
+	                 loski_SocketClasses[LOSKI_BASESOCKET], str, NETUPV);
 	lua_pop(L, 1);  /* remove new class */
 	/* create TCP connection socket class */
 	pushsentinel(L);
 	luaL_newclass(L, loski_SocketClasses[LOSKI_CONNSOCKET],
-	                 loski_SocketClasses[LOSKI_STRMSOCKET], cnt, UPS);
+	                 loski_SocketClasses[LOSKI_STRMSOCKET], cnt, NETUPV);
+	lua_pushliteral(L, "connection");
+	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
 	/* create UDP socket class */
 	pushsentinel(L);
 	luaL_newclass(L, loski_SocketClasses[LOSKI_DGRMSOCKET],
-	                 loski_SocketClasses[LOSKI_STRMSOCKET], dgm, UPS);
+	                 loski_SocketClasses[LOSKI_STRMSOCKET], dgm, NETUPV);
+	lua_pushliteral(L, "datagram");
+	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
 	/* create library table */
 	luaL_newlibtable(L, lib);
 	pushsentinel(L);
-	luaL_setfuncs(L, lib, UPS);
+	luaL_setfuncs(L, lib, NETUPV);
 	return 1;
 }

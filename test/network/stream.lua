@@ -7,7 +7,7 @@ for _, kind in ipairs{"datagram", "connection"} do
 	local socket = tests.testcreatesocket(kind)
 
 	if tests.IsWindows then
-		tests.testerrmsg("address unavailable", socket:connect(addr))
+		tests.testerrmsg("unavailable", socket:connect(addr))
 	elseif kind == "connection" then
 		tests.testerrmsg("refused", socket:connect(addr))
 	else
@@ -25,7 +25,7 @@ for _, kind in ipairs{"datagram", "connection"} do
 	if kind == "datagram" then
 		assert(socket:connect(tests.OtherTCP) == true)
 	else
-		tests.testerrmsg("connected", socket:connect(tests.OtherTCP))
+		tests.testerror("invalid operation", socket.connect, socket, tests.OtherTCP)
 	end
 
 	tests.testoptions(socket, kind)
@@ -39,8 +39,8 @@ for _, kind in ipairs{"datagram", "connection"} do
 	if kind == "datagram" then
 		assert(socket:connect(tests.RemoteTCP) == true)
 	else
-		tests.testerrmsg("connected",
-			tests.tcall(true, socket.connect, socket, tests.RemoteTCP))
+		tests.testerror("invalid operation",
+			tests.tcall, true, socket.connect, socket, tests.RemoteTCP)
 	end
 
 	tests.testclose(socket)

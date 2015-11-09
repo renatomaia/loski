@@ -19,15 +19,28 @@ LOSKIDRV_API int loski_closenetwork(loski_NetState *state);
  * Addresses
  */
 
-enum loski_AddressType { LOSKI_ADDRTYPE_IPV4, LOSKI_ADDRTYPE_IPV6 };
+#ifndef LOSKI_ADDRTYPE_CUSTOM
+typedef enum loski_AddressType {
+	LOSKI_ADDRTYPE_IPV4,
+	LOSKI_ADDRTYPE_IPV6
+} loski_AddressType;
+#endif
 
-typedef enum loski_AddressType loski_AddressType;
-
+#ifndef LOSKI_ADDRSIZE_IPV4
 #define LOSKI_ADDRSIZE_IPV4 (4*sizeof(char))
-#define LOSKI_ADDRSIZE_IPV6 (16*sizeof(char))
+#endif
 
+#ifndef LOSKI_ADDRSIZE_IPV6
+#define LOSKI_ADDRSIZE_IPV6 (16*sizeof(char))
+#endif
+
+#ifndef LOSKI_ADDRMAXPORT
 #define LOSKI_ADDRMAXPORT 65535
+#endif
+
+#ifndef LOSKI_ADDRMAXLITERAL
 #define LOSKI_ADDRMAXLITERAL  40  /* 8 groups of 4 digits + 7 ':' + '\0' */
+#endif
 
 
 LOSKIDRV_API int loski_initaddress(loski_NetState *state,
@@ -67,9 +80,24 @@ LOSKIDRV_API const char *loski_getaddrliteral(loski_NetState *state,
  * Sockets
  */
 
-enum loski_SocketSite { LOSKI_LOCALSITE, LOSKI_REMOTESITE, LOSKI_BOTHSITES };
-enum loski_SocketType { LOSKI_LSTNSOCKET, LOSKI_CONNSOCKET, LOSKI_DGRMSOCKET };
-enum loski_SocketOption {
+#ifndef LOSKI_SOCKTYPE_CUSTOM
+typedef enum loski_SocketType {
+	LOSKI_LSTNSOCKET,
+	LOSKI_CONNSOCKET,
+	LOSKI_DGRMSOCKET
+} loski_SocketType;
+#endif
+
+#ifndef LOSKI_SOCKWAY_CUSTOM
+typedef enum loski_SocketWay {
+	LOSKI_SOCKWAY_IN,
+	LOSKI_SOCKWAY_OUT,
+	LOSKI_SOCKWAY_BOTH
+} loski_SocketWay;
+#endif
+
+#ifndef LOSKI_SOCKOPT_CUSTOM
+typedef enum loski_SocketOption {
 	/* BASESOCKET */
 	LOSKI_SOCKOPT_BLOCKING,
 	LOSKI_SOCKOPT_REUSEADDR,
@@ -80,18 +108,21 @@ enum loski_SocketOption {
 	LOSKI_SOCKOPT_TCPNDELAY,
 	/* DRGMSOCKET */
 	LOSKI_SOCKOPT_BROADCAST
-};
+} loski_SocketOption;
+#endif
 
-typedef enum loski_SocketSite loski_SocketSite;
-typedef enum loski_SocketType loski_SocketType;
-typedef enum loski_SocketOption loski_SocketOption;
+#ifndef LOSKI_SOCKRCV_CUSTOM
+typedef enum loski_SocketRecvFlag {
+	LOSKI_SOCKRCV_PEEKONLY = 1,
+	LOSKI_SOCKRCV_WAITALL = 2
+} loski_SocketRecvFlag;
+#endif
 
-
-LOSKIDRV_API int loski_socketerror(int error, lua_State *L);
 
 LOSKIDRV_API int loski_createsocket(loski_NetState *state,
                                     loski_Socket *socket,
-                                    loski_SocketType type);
+                                    loski_SocketType type,
+                                    loski_AddressType domain);
 
 LOSKIDRV_API int loski_getsocketid(loski_NetState *state, loski_Socket *socket);
 
@@ -112,7 +143,7 @@ LOSKIDRV_API int loski_bindsocket(loski_NetState *state,
 LOSKIDRV_API int loski_socketaddress(loski_NetState *state,
                                      loski_Socket *socket,
                                      loski_Address *address,
-                                     loski_SocketSite site);
+                                     int peer);
 
 LOSKIDRV_API int loski_connectsocket(loski_NetState *state,
                                      loski_Socket *socket,
@@ -127,6 +158,7 @@ LOSKIDRV_API int loski_sendtosocket(loski_NetState *state,
 
 LOSKIDRV_API int loski_recvfromsocket(loski_NetState *state,
                                       loski_Socket *socket,
+                                      loski_SocketRecvFlag flags,
                                       char *buffer,
                                       size_t size,
                                       size_t *bytes,
@@ -134,7 +166,7 @@ LOSKIDRV_API int loski_recvfromsocket(loski_NetState *state,
 
 LOSKIDRV_API int loski_shutdownsocket(loski_NetState *state,
                                       loski_Socket *socket,
-                                      loski_SocketSite site);
+                                      loski_SocketWay way);
 
 LOSKIDRV_API int loski_acceptsocket(loski_NetState *state,
                                     loski_Socket *socket,
@@ -147,5 +179,35 @@ LOSKIDRV_API int loski_listensocket(loski_NetState *state,
 
 LOSKIDRV_API int loski_closesocket(loski_NetState *state,
                                    loski_Socket *socket);
+
+/*
+ * Names
+ */
+
+#ifndef LOKSI_ADDRFIND_CUSTOM
+typedef enum loski_AddressFindFlag {
+	LOSKI_ADDRFIND_LOCAL = 1,
+	LOSKI_ADDRFIND_IPV4 = 2,
+	LOSKI_ADDRFIND_IPV6 = 4,
+	LOSKI_ADDRFIND_MAPPED = 8,
+	LOSKI_ADDRFIND_DGRM = 16,
+	LOSKI_ADDRFIND_STRM = 32
+} loski_AddressFindFlag;
+#endif
+
+
+LOSKIDRV_API int loski_netresolveaddr(loski_NetState *state,
+                                      loski_AddressFound *found,
+                                      loski_AddressFindFlag flags,
+                                      const char *nodename,
+                                      const char *servname);
+
+LOSKIDRV_API int loski_netgetaddrfound(loski_NetState *state,
+                                       loski_AddressFound *found,
+                                       loski_Address *address,
+                                       loski_SocketType *type);
+
+LOSKIDRV_API void loski_netfreeaddrfound(loski_NetState *state,
+                                         loski_AddressFound *found);
 
 #endif

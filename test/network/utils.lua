@@ -59,7 +59,7 @@ do
 	function tests.testerror(expected, func, ...)
 		local ok, errmsg = pcall(func, ...)
 		assert(not ok)
-		assert(errmsg == expected, errmsg)
+		assert(string.find(errmsg, expected, 1, true))
 	end
 end
 
@@ -134,7 +134,8 @@ do
 			else
 				assert(socket:getoption(name) == default)
 				if refused and unsupported[kind][name] then
-					tests.testerrmsg("unsupported", socket:setoption(name, changed[default]))
+					tests.testerror("invalid operation",
+						socket.setoption, socket, name, changed[default])
 				else
 					assert(socket:setoption(name, changed[default]) == true)
 					assert(socket:getoption(name) == changed[default])

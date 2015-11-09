@@ -2,9 +2,14 @@
 #define loskiaux_h
 
 
+#include "loskierr.h"
+
+
 #include <lua.h>
 #include <lauxlib.h>
 
+
+LUALIB_API int luaL_doresults(lua_State *L, int nres, int err);
 
 LUALIB_API void *luaL_alloctemporary(lua_State *L, size_t size);
 LUALIB_API void luaL_freetemporary(lua_State *L, void *memo, size_t size);

@@ -1,5 +1,6 @@
 #include "lnetaux.h"
 #include "lnetlib.h"
+#include "loskiaux.h"
 
 #include <lauxlib.h>
 
