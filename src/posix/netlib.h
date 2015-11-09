@@ -12,7 +12,7 @@
 
 /* Addresses */
 
-typedef void loski_NetState;
+typedef void loski_NetDriver;
 
 typedef struct sockaddr loski_Address;
 

@@ -3,7 +3,8 @@
 
 
 #include "loskiconf.h"
-#include "netlib.h"
+
+#include <netlib.h>
 
 
 #define LOSKI_NETADDRCLS LOSKI_PREFIX"network.Address"

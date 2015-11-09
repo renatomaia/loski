@@ -249,7 +249,7 @@ static int ew_wait (lua_State *L) {
 
 
 static int evt_sentinel(lua_State *L) {
-	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, 1);
 	loski_closeevents(drv);
 	return 0;
 }
@@ -273,7 +273,9 @@ static const luaL_Reg lib[] = {
 LUAMOD_API int luaopen_event(lua_State *L)
 {
 	/* create sentinel */
-	loski_EventDriver *drv = (loski_EventDriver *)luaL_newsentinel(L, sizeof(loski_EventDriver), evt_sentinel);
+	loski_EventDriver *drv = (loski_EventDriver *)luaL_newsentinel(L,
+	                                              sizeof(loski_EventDriver),
+	                                              evt_sentinel);
 	/* initialize library */
 	if (loski_openevents(drv) != 0) {
 		luaL_cancelsentinel(L);

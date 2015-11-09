@@ -208,7 +208,7 @@ static int lp_tostring (lua_State *L)
 
 static int lp_sentinel(lua_State *L)
 {
-	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, 1);
 	loski_closeprocesses(drv);
 	return 0;
 }
@@ -230,7 +230,9 @@ static const luaL_Reg cls[] = {
 LUAMOD_API int luaopen_process(lua_State *L)
 {
 	/* create sentinel */
-	loski_ProcDriver *drv = (loski_ProcDriver *)luaL_newsentinel(L, sizeof(loski_ProcDriver), lp_sentinel);
+	loski_ProcDriver *drv = (loski_ProcDriver *)luaL_newsentinel(L,
+	                                            sizeof(loski_ProcDriver),
+	                                            lp_sentinel);
 	/* initialize library */
 	if (loski_openprocesses(drv) != 0) {
 		luaL_cancelsentinel(L);

@@ -3,16 +3,14 @@
 
 #include "loskiconf.h"
 
-#include <lua.h> /* to copy error messages to Lua */
-
 /*
  * Library
  */
 
-#ifndef LOSKI_DISABLE_NETSTATE
-LOSKIDRV_API int loski_opennetwork(loski_NetState *state);
+#ifndef LOSKI_DISABLE_NETDRV
+LOSKIDRV_API int loski_opennetwork(loski_NetDriver *state);
 
-LOSKIDRV_API int loski_closenetwork(loski_NetState *state);
+LOSKIDRV_API int loski_closenetwork(loski_NetDriver *state);
 #endif
 
 /*
@@ -43,38 +41,38 @@ typedef enum loski_AddressType {
 #endif
 
 
-LOSKIDRV_API int loski_initaddress(loski_NetState *state,
-                                   loski_Address *address,
-                                   loski_AddressType type);
+LOSKIDRV_API int loskiN_initaddr(loski_NetDriver *state,
+                                 loski_Address *address,
+                                 loski_AddressType type);
 
 
-LOSKIDRV_API void loski_setaddrport(loski_NetState *state,
-                                    loski_Address *address,
-                                    loski_AddressPort port);
-
-LOSKIDRV_API void loski_setaddrbytes(loski_NetState *state,
+LOSKIDRV_API void loskiN_setaddrport(loski_NetDriver *state,
                                      loski_Address *address,
-                                     const char *data);
+                                     loski_AddressPort port);
 
-LOSKIDRV_API int loski_setaddrliteral(loski_NetState *state,
+LOSKIDRV_API void loskiN_setaddrbytes(loski_NetDriver *state,
                                       loski_Address *address,
-                                      const char *data,
-                                      size_t sz);
+                                      const char *data);
+
+LOSKIDRV_API int loskiN_setaddrliteral(loski_NetDriver *state,
+                                       loski_Address *address,
+                                       const char *data,
+                                       size_t sz);
 
 
-LOSKIDRV_API loski_AddressType loski_getaddrtype(loski_NetState *state,
-                                                 loski_Address *address);
+LOSKIDRV_API loski_AddressType loskiN_getaddrtype(loski_NetDriver *state,
+                                                  loski_Address *address);
 
-LOSKIDRV_API loski_AddressPort loski_getaddrport(loski_NetState *state,
-                                                 loski_Address *address);
+LOSKIDRV_API loski_AddressPort loskiN_getaddrport(loski_NetDriver *state,
+                                                  loski_Address *address);
 
-LOSKIDRV_API const char *loski_getaddrbytes(loski_NetState *state,
-                                            loski_Address *address,
-                                            size_t *sz);
+LOSKIDRV_API const char *loskiN_getaddrbytes(loski_NetDriver *state,
+                                             loski_Address *address,
+                                             size_t *sz);
 
-LOSKIDRV_API const char *loski_getaddrliteral(loski_NetState *state,
-                                              loski_Address *address,
-                                              char *data);
+LOSKIDRV_API const char *loskiN_getaddrliteral(loski_NetDriver *state,
+                                               loski_Address *address,
+                                               char *data);
 
 /*
  * Sockets
@@ -119,66 +117,66 @@ typedef enum loski_SocketRecvFlag {
 #endif
 
 
-LOSKIDRV_API int loski_createsocket(loski_NetState *state,
+LOSKIDRV_API int loskiN_initsock(loski_NetDriver *state,
+                                   loski_Socket *socket,
+                                   loski_SocketType type,
+                                   loski_AddressType domain);
+
+LOSKIDRV_API int loskiN_getsockid(loski_NetDriver *state, loski_Socket *socket);
+
+LOSKIDRV_API int loskiN_setsockopt(loski_NetDriver *state,
+                                   loski_Socket *socket,
+                                   loski_SocketOption option,
+                                   int value);
+
+LOSKIDRV_API int loskiN_getsockopt(loski_NetDriver *state,
+                                   loski_Socket *socket,
+                                   loski_SocketOption option,
+                                   int *value);
+
+LOSKIDRV_API int loskiN_bindsock(loski_NetDriver *state,
+                                 loski_Socket *socket,
+                                 const loski_Address *address);
+
+LOSKIDRV_API int loskiN_getsockaddr(loski_NetDriver *state,
+                                   loski_Socket *socket,
+                                   loski_Address *address,
+                                   int peer);
+
+LOSKIDRV_API int loskiN_connectsock(loski_NetDriver *state,
                                     loski_Socket *socket,
-                                    loski_SocketType type,
-                                    loski_AddressType domain);
-
-LOSKIDRV_API int loski_getsocketid(loski_NetState *state, loski_Socket *socket);
-
-LOSKIDRV_API int loski_setsocketoption(loski_NetState *state,
-                                       loski_Socket *socket,
-                                       loski_SocketOption option,
-                                       int value);
-
-LOSKIDRV_API int loski_getsocketoption(loski_NetState *state,
-                                       loski_Socket *socket,
-                                       loski_SocketOption option,
-                                       int *value);
-
-LOSKIDRV_API int loski_bindsocket(loski_NetState *state,
-                                  loski_Socket *socket,
-                                  const loski_Address *address);
-
-LOSKIDRV_API int loski_socketaddress(loski_NetState *state,
-                                     loski_Socket *socket,
-                                     loski_Address *address,
-                                     int peer);
-
-LOSKIDRV_API int loski_connectsocket(loski_NetState *state,
-                                     loski_Socket *socket,
-                                     const loski_Address *address);
-
-LOSKIDRV_API int loski_sendtosocket(loski_NetState *state,
-                                    loski_Socket *socket,
-                                    const char *data,
-                                    size_t size,
-                                    size_t *bytes,
                                     const loski_Address *address);
 
-LOSKIDRV_API int loski_recvfromsocket(loski_NetState *state,
-                                      loski_Socket *socket,
-                                      loski_SocketRecvFlag flags,
-                                      char *buffer,
-                                      size_t size,
-                                      size_t *bytes,
-                                      loski_Address *address);
+LOSKIDRV_API int loskiN_sendtosock(loski_NetDriver *state,
+                                   loski_Socket *socket,
+                                   const char *data,
+                                   size_t size,
+                                   size_t *bytes,
+                                   const loski_Address *address);
 
-LOSKIDRV_API int loski_shutdownsocket(loski_NetState *state,
-                                      loski_Socket *socket,
-                                      loski_SocketWay way);
+LOSKIDRV_API int loskiN_recvfromsock(loski_NetDriver *state,
+                                     loski_Socket *socket,
+                                     loski_SocketRecvFlag flags,
+                                     char *buffer,
+                                     size_t size,
+                                     size_t *bytes,
+                                     loski_Address *address);
 
-LOSKIDRV_API int loski_acceptsocket(loski_NetState *state,
-                                    loski_Socket *socket,
-                                    loski_Socket *accepted,
-                                    loski_Address *address);
+LOSKIDRV_API int loskiN_shutdownsock(loski_NetDriver *state,
+                                     loski_Socket *socket,
+                                     loski_SocketWay way);
 
-LOSKIDRV_API int loski_listensocket(loski_NetState *state,
-                                    loski_Socket *socket,
-                                    int backlog);
+LOSKIDRV_API int loskiN_acceptsock(loski_NetDriver *state,
+                                   loski_Socket *socket,
+                                   loski_Socket *accepted,
+                                   loski_Address *address);
 
-LOSKIDRV_API int loski_closesocket(loski_NetState *state,
-                                   loski_Socket *socket);
+LOSKIDRV_API int loskiN_listensock(loski_NetDriver *state,
+                                   loski_Socket *socket,
+                                   int backlog);
+
+LOSKIDRV_API int loskiN_closesock(loski_NetDriver *state,
+                                  loski_Socket *socket);
 
 /*
  * Names
@@ -196,18 +194,18 @@ typedef enum loski_AddressFindFlag {
 #endif
 
 
-LOSKIDRV_API int loski_netresolveaddr(loski_NetState *state,
-                                      loski_AddressFound *found,
-                                      loski_AddressFindFlag flags,
-                                      const char *nodename,
-                                      const char *servname);
+LOSKIDRV_API int loskiN_resolveaddr(loski_NetDriver *state,
+                                    loski_AddressFound *found,
+                                    loski_AddressFindFlag flags,
+                                    const char *nodename,
+                                    const char *servname);
 
-LOSKIDRV_API int loski_netgetaddrfound(loski_NetState *state,
-                                       loski_AddressFound *found,
-                                       loski_Address *address,
-                                       loski_SocketType *type);
+LOSKIDRV_API int loskiN_getaddrfound(loski_NetDriver *state,
+                                     loski_AddressFound *found,
+                                     loski_Address *address,
+                                     loski_SocketType *type);
 
-LOSKIDRV_API void loski_netfreeaddrfound(loski_NetState *state,
-                                         loski_AddressFound *found);
+LOSKIDRV_API void loskiN_freeaddrfound(loski_NetDriver *state,
+                                       loski_AddressFound *found);
 
 #endif

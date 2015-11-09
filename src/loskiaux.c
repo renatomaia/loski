@@ -95,8 +95,7 @@ LUALIB_API void *luaL_newsentinel(lua_State *L, size_t size, lua_CFunction f)
 {
 	void *state = lua_newuserdata(L, size);  /* create sentinel */
 	lua_createtable(L, 0, 1);  /* create sentinel's metatable */
-	lua_pushvalue(L, -2);  /* push a copy of sentinel to be used as upvalue */
-	lua_pushcclosure(L, f, 1);  /* push sentinel's GC function */
+	lua_pushcfunction(L, f);  /* push sentinel's GC function */
 	lua_setfield(L, -2, "__gc");  /* put GC function in the metatable */
 	lua_setmetatable(L, -2);  /* set sentinel's metatable */
 	return state;

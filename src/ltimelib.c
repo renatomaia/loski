@@ -1,26 +1,32 @@
-#include "timelib.h"
 #include "loskiaux.h"
 
-static int lua_now(lua_State *L)
+#include <timelib.h>
+
+
+#ifndef LOSKI_DISABLE_TIMEDRV
+#define DRVUPV	0
+#define todrv(L)	NULL
+#else
+#define DRVUPV	1
+#define todrv(L)  ((loski_TimeDriver *)lua_touserdata(L, \
+                                       lua_upvalueindex(DRVUPV)))
+#endif
+
+
+static int lua_now (lua_State *L)
 {
-	loski_TimeDriver *drv = (loski_TimeDriver *)lua_touserdata(L, lua_upvalueindex(1));
-	lua_pushnumber(L, loski_now(drv));
+	loski_TimeDriver *drv = todrv(L);
+	lua_pushnumber(L, loskiT_now(drv));
 	return 1;
 }
 
-static int lua_sleep(lua_State *L)
+static int lua_sleep (lua_State *L)
 {
-	loski_TimeDriver *drv = (loski_TimeDriver *)lua_touserdata(L, lua_upvalueindex(1));
-	loski_sleep(drv, luaL_checknumber(L, 1));
+	loski_TimeDriver *drv = todrv(L);
+	loskiT_wait(drv, luaL_checknumber(L, 1));
 	return 0;
 }
 
-static int lua_sentinel(lua_State *L)
-{
-	loski_TimeDriver *drv = (loski_TimeDriver *)lua_touserdata(L, lua_upvalueindex(1));
-	loski_closetime(drv);
-	return 0;
-}
 
 static const luaL_Reg lib[] = {
 	{"now", lua_now},
@@ -28,18 +34,35 @@ static const luaL_Reg lib[] = {
 	{NULL, NULL}
 };
 
-LUAMOD_API int luaopen_time(lua_State *L)
+#ifndef LOSKI_DISABLE_TIMEDRV
+static int lfreedrv (lua_State *L)
 {
+	loskiT_freedrv((loski_TimeDriver *)lua_touserdata(L, 1));
+	return 0;
+}
+#endif
+
+LUAMOD_API int luaopen_time (lua_State *L)
+{
+#ifndef LOSKI_DISABLE_TIMEDRV
 	/* create sentinel */
-	loski_TimeDriver *drv = (loski_TimeDriver *)luaL_newsentinel(L, sizeof(loski_TimeDriver), lua_sentinel);
+	lua_settop(L, 0);  /* dicard any arguments */
+	loski_TimeDriver *drv = (loski_TimeDriver *)luaL_newsentinel(L,
+	                                            sizeof(loski_TimeDriver),
+	                                            lfreedrv);
 	/* initialize library */
-	if (loski_opentime(drv) != 0) {
+	if (loskiT_initdrv(drv) != 0) {
 		luaL_cancelsentinel(L);
 		return luaL_error(L, "unable to initialize library");
 	}
+#define pushsentinel(L)	lua_pushvalue(L, 1)
+#else
+#define pushsentinel(L)	((void)L)
+#endif
 	/* create library table */
 	luaL_newlibtable(L, lib);
-	lua_pushvalue(L, -2);  /* push sentinel */
-	luaL_setfuncs(L, lib, 1);
+	pushsentinel(L);
+	luaL_setfuncs(L, lib, DRVUPV);
 	return 1;
 }
+
