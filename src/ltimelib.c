@@ -3,7 +3,7 @@
 #include <timelib.h>
 
 
-#ifndef LOSKI_DISABLE_TIMEDRV
+#ifdef LOSKI_DISABLE_TIMEDRV
 #define DRVUPV	0
 #define todrv(L)	NULL
 #else
@@ -47,13 +47,13 @@ LUAMOD_API int luaopen_time (lua_State *L)
 #ifndef LOSKI_DISABLE_TIMEDRV
 	/* create sentinel */
 	lua_settop(L, 0);  /* dicard any arguments */
-	loski_TimeDriver *drv = (loski_TimeDriver *)luaL_newsentinel(L,
-	                                            sizeof(loski_TimeDriver),
-	                                            lfreedrv);
+	drv = (loski_TimeDriver *)luaL_newsentinel(L, sizeof(loski_TimeDriver),
+	                                              lfreedrv);
 	/* initialize library */
-	if (loskiT_initdrv(drv) != 0) {
+	err = loskiT_initdrv(drv)
+	if (err) {
 		luaL_cancelsentinel(L);
-		return luaL_error(L, "unable to initialize library");
+		return luaL_doresults(L, 0, err);
 	}
 #define pushsentinel(L)	lua_pushvalue(L, 1)
 #else

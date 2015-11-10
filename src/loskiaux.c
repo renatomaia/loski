@@ -18,34 +18,39 @@ LUALIB_API void luaL_freetemporary(lua_State *L, void *memo, size_t size)
 	assert(memo == NULL);
 }
 
+LUALIB_API void luaL_pusherrmsg(lua_State *L, int err)
+{
+	switch (err) {
+		case LOSKI_ERRCLOSED: lua_pushliteral(L, "closed"); break;
+		case LOSKI_ERRINUSE: lua_pushliteral(L, "in use"); break;
+		case LOSKI_ERRNOTFOUND: lua_pushliteral(L, "not found"); break;
+		case LOSKI_ERRUNAVAILABLE: lua_pushliteral(L, "unavailable"); break;
+		case LOSKI_ERRUNREACHABLE: lua_pushliteral(L, "unreachable"); break;
+		case LOSKI_ERRNORESOURCES: lua_pushliteral(L, "no resources"); break;
+		case LOSKI_ERRNOMEMORY: lua_pushliteral(L, "no system memory"); break;
+		case LOSKI_ERRUNFULFILLED: lua_pushliteral(L, "unfulfilled"); break;
+		case LOSKI_ERRTOOMUCH: lua_pushliteral(L, "too much"); break;
+		case LOSKI_ERRABORTED: lua_pushliteral(L, "aborted"); break;
+		case LOSKI_ERRREFUSED: lua_pushliteral(L, "refused"); break;
+		case LOSKI_ERRDENIED: lua_pushliteral(L, "access denied"); break;
+		case LOSKI_ERRTIMEOUT: lua_pushliteral(L, "timeout"); break;
+		case LOSKI_ERRSYSTEMRESET: lua_pushliteral(L, "system reset"); break;
+		case LOSKI_ERRSYSTEMDOWN: lua_pushliteral(L, "system down"); break;
+		case LOSKI_ERRSYSTEMFAIL: lua_pushliteral(L, "system error"); break;
+		/* unrecoverable */
+		case LOSKI_ERRINVALID: luaL_error(L, "invalid operation");
+		case LOSKI_ERRUNSUPPORTED: luaL_error(L, "unsupported");
+		case LOSKI_ERRUNEXPECTED: luaL_error(L, "unexpected error");
+		case LOSKI_ERRUNSPECIFIED: luaL_error(L, "unspecified error");
+		default: luaL_error(L, "unknown error (%d)", err);
+	}
+}
+
 LUALIB_API int luaL_doresults(lua_State *L, int nres, int err)
 {
 	if (err) {
 		lua_pushnil(L);
-		switch (err) {
-			case LOSKI_ERRCLOSED: lua_pushliteral(L, "closed"); break;
-			case LOSKI_ERRINUSE: lua_pushliteral(L, "in use"); break;
-			case LOSKI_ERRNOTFOUND: lua_pushliteral(L, "not found"); break;
-			case LOSKI_ERRUNAVAILABLE: lua_pushliteral(L, "unavailable"); break;
-			case LOSKI_ERRUNREACHABLE: lua_pushliteral(L, "unreachable"); break;
-			case LOSKI_ERRNORESOURCES: lua_pushliteral(L, "no resources"); break;
-			case LOSKI_ERRNOMEMORY: lua_pushliteral(L, "no system memory"); break;
-			case LOSKI_ERRUNFULFILLED: lua_pushliteral(L, "unfulfilled"); break;
-			case LOSKI_ERRTOOMUCH: lua_pushliteral(L, "too much"); break;
-			case LOSKI_ERRABORTED: lua_pushliteral(L, "aborted"); break;
-			case LOSKI_ERRREFUSED: lua_pushliteral(L, "refused"); break;
-			case LOSKI_ERRDENIED: lua_pushliteral(L, "access denied"); break;
-			case LOSKI_ERRTIMEOUT: lua_pushliteral(L, "timeout"); break;
-			case LOSKI_ERRSYSTEMRESET: lua_pushliteral(L, "system reset"); break;
-			case LOSKI_ERRSYSTEMDOWN: lua_pushliteral(L, "system down"); break;
-			case LOSKI_ERRSYSTEMFAIL: lua_pushliteral(L, "system error"); break;
-			/* unrecoverable */
-			case LOSKI_ERRINVALID: luaL_error(L, "invalid operation");
-			case LOSKI_ERRUNSUPPORTED: luaL_error(L, "unsupported");
-			case LOSKI_ERRUNEXPECTED: luaL_error(L, "unexpected error");
-			case LOSKI_ERRUNSPECIFIED: luaL_error(L, "unspecified error");
-			default: luaL_error(L, "unknown error (%d)", err);
-		}
+		luaL_pusherrmsg(L, err);
 		nres = 2;
 	} else if (nres == 0) {
 		lua_pushboolean(L, 1);

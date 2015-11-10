@@ -14,7 +14,7 @@
 
 typedef void loski_NetDriver;
 
-typedef struct sockaddr loski_Address;
+typedef struct sockaddr_storage loski_Address;
 
 typedef in_port_t loski_AddressPort;
 
@@ -22,6 +22,8 @@ typedef int loski_AddressType;
 #define LOSKI_ADDRTYPE_IPV4	AF_INET
 #define LOSKI_ADDRTYPE_IPV6	AF_INET6
 #define LOSKI_ADDRTYPE_CUSTOM
+
+#define LOSKI_ADDRMAXLITERAL  (INET6_ADDRSTRLEN+1)
 
 
 /* Sockets */

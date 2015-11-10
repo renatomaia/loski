@@ -9,16 +9,16 @@
 #include <errno.h>
 #include <signal.h> /* sigpipe handling */
 
-LOSKIDRV_API int loski_opennetwork(loski_NetDriver *state)
+LOSKIDRV_API int loskiN_initdrv (loski_NetDriver *drv)
 {
 	/* instals a handler to ignore sigpipe or it will crash us */
-	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) return errno;
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) return LOSKI_ERRUNEXPECTED;
 	return 0;
 }
 
-LOSKIDRV_API int loski_closenetwork(loski_NetDriver *state)
+LOSKIDRV_API int loskiN_freedrv (loski_NetDriver *drv)
 {
-	if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) return errno;
+	if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) return LOSKI_ERRUNEXPECTED;
 	return 0;
 }
 
@@ -34,75 +34,131 @@ LOSKIDRV_API int loski_closenetwork(loski_NetDriver *state)
 
 #define MAXLITERAL	16
 
-LOSKIDRV_API int loskiN_initaddr(loski_NetDriver *state,
-                                 loski_Address *address,
-                                 loski_AddressType type)
+LOSKIDRV_API int loskiN_initaddr (loski_NetDriver *drv,
+                                  loski_Address *address,
+                                  loski_AddressType type)
 {
-	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	if (type != LOSKI_ADDRTYPE_IPV4) return 0;
 	memset(address, 0, sizeof(loski_Address));
-	addr->sin_family = AF_INET;
-	return 1;
+	address->ss_family = type;
+	return 0;
 }
 
-LOSKIDRV_API void loskiN_setaddrport(loski_NetDriver *state,
-                                     loski_Address *address,
-                                     loski_AddressPort port)
+LOSKIDRV_API int loskiN_setaddrport (loski_NetDriver *drv,
+                                    loski_Address *address,
+                                    loski_AddressPort port)
 {
-	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	addr->sin_port = htons(port);
+	switch (address->ss_family) {
+		case AF_INET: {
+			struct sockaddr_in *addr = (struct sockaddr_in *)address;
+			addr->sin_port = htons(port);
+		} break;
+		case AF_INET6: {
+			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
+			addr->sin6_port = htons(port);
+		} break;
+	}
+	return LOSKI_ERRUNSUPPORTED;
 }
 
-LOSKIDRV_API void loskiN_setaddrbytes(loski_NetDriver *state,
+LOSKIDRV_API int loskiN_setaddrbytes (loski_NetDriver *drv,
                                       loski_Address *address,
                                       const char *data)
 {
-	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	memcpy(&(addr->sin_addr.s_addr), data, LOSKI_ADDRSIZE_IPV4);
+	switch (address->ss_family) {
+		case AF_INET: {
+			struct sockaddr_in *addr = (struct sockaddr_in *)address;
+			memcpy(&(addr->sin_addr.s_addr), data, LOSKI_ADDRSIZE_IPV4);
+		} break;
+		case AF_INET6: {
+			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
+			memcpy(&addr->sin6_addr, data, LOSKI_ADDRSIZE_IPV6);
+		} break;
+	}
+	return LOSKI_ERRUNSUPPORTED;
 }
 
-LOSKIDRV_API int loskiN_setaddrliteral(loski_NetDriver *state,
-                                       loski_Address *address,
-                                       const char *data,
-                                       size_t sz)
+LOSKIDRV_API int loskiN_setaddrliteral (loski_NetDriver *drv,
+                                        loski_Address *address,
+                                        const char *data)
 {
-	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	char b[MAXLITERAL];
-	if (sz >= MAXLITERAL) return 0;  /* too long! */
-	memcpy(b, data, sz);
-	b[sz] = '\0';
-	return inet_aton(b, &addr->sin_addr);
+	void *bytes;
+	switch (address->ss_family) {
+		case AF_INET: {
+			struct sockaddr_in *addr = (struct sockaddr_in *)address;
+			bytes = (void *)&(addr->sin_addr.s_addr);
+		} break;
+		case AF_INET6: {
+			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
+			bytes = (void *)&addr->sin6_addr;
+		} break;
+		default: return LOSKI_ERRUNSUPPORTED;
+	}
+	if (inet_pton(address->ss_family, data, bytes) == 1) return 0;
+	return LOSKI_ERRUNEXPECTED;
 }
 
-LOSKIDRV_API loski_AddressType loskiN_getaddrtype(loski_NetDriver *state,
-                                                  loski_Address *address)
+LOSKIDRV_API loski_AddressType loskiN_getaddrtype (loski_NetDriver *drv,
+                                                   loski_Address *address)
 {
-	return LOSKI_ADDRTYPE_IPV4;
+	return address->ss_family;
 }
 
-LOSKIDRV_API loski_AddressPort loskiN_getaddrport(loski_NetDriver *state,
-                                                  loski_Address *address)
+LOSKIDRV_API loski_AddressPort loskiN_getaddrport (loski_NetDriver *drv,
+                                                   loski_Address *address)
 {
-	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	return ntohs(addr->sin_port);
+	switch (address->ss_family) {
+		case AF_INET: {
+			struct sockaddr_in *addr = (struct sockaddr_in *)address;
+			return ntohs(addr->sin_port);
+		} break;
+		case AF_INET6: {
+			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
+			return ntohs(addr->sin6_port);
+		} break;
+	}
+	return 0;
 }
 
-LOSKIDRV_API const char *loskiN_getaddrbytes(loski_NetDriver *state,
-                                             loski_Address *address,
-                                             size_t *sz)
+LOSKIDRV_API const char *loskiN_getaddrbytes (loski_NetDriver *drv,
+                                              loski_Address *address,
+                                              size_t *sz)
 {
-	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	if (sz) *sz = LOSKI_ADDRSIZE_IPV4;
-	return (const char *)(&(addr->sin_addr.s_addr));
+	switch (address->ss_family) {
+		case AF_INET: {
+			struct sockaddr_in *addr = (struct sockaddr_in *)address;
+			if (sz) *sz = LOSKI_ADDRSIZE_IPV4;
+			return (const void *)&(addr->sin_addr.s_addr);
+		} break;
+		case AF_INET6: {
+			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
+			if (sz) *sz = LOSKI_ADDRSIZE_IPV6;
+			return (const void *)&addr->sin6_addr;
+		} break;
+	}
+	if (sz) *sz = 0;
+	return NULL;
 }
 
-LOSKIDRV_API const char *loskiN_getaddrliteral(loski_NetDriver *state,
-                                               loski_Address *address,
-                                               char *data)
+LOSKIDRV_API const char *loskiN_getaddrliteral (loski_NetDriver *drv,
+                                                loski_Address *address,
+                                                char *data)
 {
-	struct sockaddr_in *addr = (struct sockaddr_in *)address;
-	return inet_ntoa(addr->sin_addr);
+	const void *bytes;
+	switch (address->ss_family) {
+		case AF_INET: {
+			struct sockaddr_in *addr = (struct sockaddr_in *)address;
+			bytes = (const void *)&(addr->sin_addr.s_addr);
+		} break;
+		case AF_INET6: {
+			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
+			bytes = (const void *)&addr->sin6_addr;
+		} break;
+		default: return NULL;
+	}
+	return inet_ntop(address->ss_family, bytes, data, LOSKI_ADDRMAXLITERAL);
 }
+
+#define toaddr(A)	((struct sockaddr*)A)
 
 
 /*****************************************************************************
@@ -114,10 +170,10 @@ LOSKIDRV_API const char *loskiN_getaddrliteral(loski_NetDriver *state,
 #include <netinet/tcp.h> /* TCP options (nagle algorithm disable) */
 #include <fcntl.h> /* fnctnl function and associated constants */
 
-LOSKIDRV_API int loskiN_initsock(loski_NetDriver *state,
-                                 loski_Socket *sock,
-                                 loski_SocketType type,
-                                 loski_AddressType domain)
+LOSKIDRV_API int loskiN_initsock (loski_NetDriver *drv,
+                                  loski_Socket *sock,
+                                  loski_SocketType type,
+                                  loski_AddressType domain)
 {
 	int kind;
 	switch (type) {
@@ -142,7 +198,7 @@ LOSKIDRV_API int loskiN_initsock(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_getsockid(loski_NetDriver *state, loski_Socket *sock)
+LOSKIDRV_API int loskiN_getsockid (loski_NetDriver *drv, loski_Socket *sock)
 {
 	return *sock;
 }
@@ -164,10 +220,10 @@ static struct OptionInfo optinfo[] = {
 	{SOL_SOCKET, SO_BROADCAST}
 };
 
-LOSKIDRV_API int loskiN_setsockopt(loski_NetDriver *state,
-                                   loski_Socket *sock,
-                                   loski_SocketOption option,
-                                   int value)
+LOSKIDRV_API int loskiN_setsockopt (loski_NetDriver *drv,
+                                    loski_Socket *sock,
+                                    loski_SocketOption option,
+                                    int value)
 {
 	int err;
 	switch (option) {
@@ -207,10 +263,10 @@ LOSKIDRV_API int loskiN_setsockopt(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_getsockopt(loski_NetDriver *state,
-                                   loski_Socket *sock,
-                                   loski_SocketOption option,
-                                   int *value)
+LOSKIDRV_API int loskiN_getsockopt (loski_NetDriver *drv,
+                                    loski_Socket *sock,
+                                    loski_SocketOption option,
+                                    int *value)
 {
 	int err;
 	switch (option) {
@@ -245,11 +301,11 @@ LOSKIDRV_API int loskiN_getsockopt(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_bindsock(loski_NetDriver *state,
-                                 loski_Socket *sock,
-                                 const loski_Address *address)
+LOSKIDRV_API int loskiN_bindsock (loski_NetDriver *drv,
+                                  loski_Socket *sock,
+                                  const loski_Address *address)
 {
-	if (bind(*sock, address, sizeof(loski_Address)) == 0) return 0; 
+	if (bind(*sock, toaddr(address), sizeof(loski_Address)) == 0) return 0; 
 	switch (errno) {
 		case EISCONN: return LOSKI_ERRINUSE;
 		case EADDRINUSE: return LOSKI_ERRUNAVAILABLE;
@@ -276,15 +332,15 @@ LOSKIDRV_API int loskiN_bindsock(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_getsockaddr(loski_NetDriver *state,
-                                    loski_Socket *sock,
-                                    loski_Address *address,
-                                    int peer)
+LOSKIDRV_API int loskiN_getsockaddr (loski_NetDriver *drv,
+                                     loski_Socket *sock,
+                                     loski_Address *address,
+                                     int peer)
 {
 	int err;
 	socklen_t len = sizeof(loski_Address);
-	if (peer) err = getpeername(*sock, address, &len);
-	else      err = getsockname(*sock, address, &len);
+	if (peer) err = getpeername(*sock, toaddr(address), &len);
+	else      err = getsockname(*sock, toaddr(address), &len);
 	if (err == 0) return 0;
 	switch (errno) {
 		case ENOBUFS: return LOSKI_ERRNOMEMORY;
@@ -297,11 +353,11 @@ LOSKIDRV_API int loskiN_getsockaddr(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_connectsock(loski_NetDriver *state,
-                                    loski_Socket *sock,
-                                    const loski_Address *address)
+LOSKIDRV_API int loskiN_connectsock (loski_NetDriver *drv,
+                                     loski_Socket *sock,
+                                     const loski_Address *address)
 {
-	if (connect(*sock, address, sizeof(loski_Address)) == 0) return 0;
+	if (connect(*sock, toaddr(address), sizeof(loski_Address)) == 0) return 0;
 	switch (errno) {
 		case EALREADY:
 		case EINPROGRESS:
@@ -335,16 +391,18 @@ LOSKIDRV_API int loskiN_connectsock(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_sendtosock(loski_NetDriver *state,
-                                   loski_Socket *sock,
-                                   const char *data,
-                                   size_t size,
-                                   size_t *bytes,
-                                   const loski_Address *address)
+LOSKIDRV_API int loskiN_sendtosock (loski_NetDriver *drv,
+                                    loski_Socket *sock,
+                                    const char *data,
+                                    size_t size,
+                                    size_t *bytes,
+                                    const loski_Address *address)
 {
 	ssize_t err;
-	if (address) err = sendto(*sock, data, size, 0,address,sizeof(loski_Address));
-	else         err = send(*sock, data, size, 0);
+	if (!address) err = send(*sock, data, size, 0);
+	else          err = sendto(*sock, data, size, 0,
+	                           toaddr(address),
+	                           sizeof(loski_Address));
 	if (err >= 0) {
 		*bytes = (size_t)err;
 		return 0;
@@ -372,20 +430,20 @@ LOSKIDRV_API int loskiN_sendtosock(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_recvfromsock(loski_NetDriver *state,
-                                     loski_Socket *sock,
-                                     loski_SocketRecvFlag flags,
-                                     char *buffer,
-                                     size_t size,
-                                     size_t *bytes,
-                                     loski_Address *address)
+LOSKIDRV_API int loskiN_recvfromsock (loski_NetDriver *drv,
+                                      loski_Socket *sock,
+                                      loski_SocketRecvFlag flags,
+                                      char *buffer,
+                                      size_t size,
+                                      size_t *bytes,
+                                      loski_Address *address)
 {
 	ssize_t err;
 	if (size == 0) return LOSKI_ERRINVALID;
 	if (address) {
 		socklen_t len = sizeof(loski_Address);
 		memset(address, 0, len);
-		err = recvfrom(*sock, buffer, size, flags, address, &len);
+		err = recvfrom(*sock, buffer, size, flags, toaddr(address), &len);
 	} else {
 		err = recv(*sock, buffer, size, flags);
 	}
@@ -414,9 +472,9 @@ LOSKIDRV_API int loskiN_recvfromsock(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_shutdownsock(loski_NetDriver *state,
-                                     loski_Socket *sock,
-                                     loski_SocketWay ways)
+LOSKIDRV_API int loskiN_shutdownsock (loski_NetDriver *drv,
+                                      loski_Socket *sock,
+                                      loski_SocketWay ways)
 {
 	if (shutdown(*sock, ways) == 0) return 0;
 	switch (errno) {
@@ -429,17 +487,17 @@ LOSKIDRV_API int loskiN_shutdownsock(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_acceptsock(loski_NetDriver *state,
-                                   loski_Socket *sock,
-                                   loski_Socket *accepted,
-                                   loski_Address *address)
+LOSKIDRV_API int loskiN_acceptsock (loski_NetDriver *drv,
+                                    loski_Socket *sock,
+                                    loski_Socket *accepted,
+                                    loski_Address *address)
 {
 	socklen_t len = 0;
 	if (address) {
 		len = sizeof(loski_Address);
 		memset(address, 0, len);
 	}
-	*accepted = accept(*sock, address, &len);
+	*accepted = accept(*sock, toaddr(address), &len);
 	if (*accepted >= 0) return 0;
 	switch (errno) {
 #if EAGAIN != EWOULDBLOCK
@@ -460,9 +518,9 @@ LOSKIDRV_API int loskiN_acceptsock(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_listensock(loski_NetDriver *state,
-                                   loski_Socket *sock,
-                                   int backlog)
+LOSKIDRV_API int loskiN_listensock (loski_NetDriver *drv,
+                                    loski_Socket *sock,
+                                    int backlog)
 {
 	if (listen(*sock, backlog) == 0) return 0;
 	switch (errno) {
@@ -477,8 +535,8 @@ LOSKIDRV_API int loskiN_listensock(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_closesock(loski_NetDriver *state,
-                                  loski_Socket *sock)
+LOSKIDRV_API int loskiN_closesock (loski_NetDriver *drv,
+                                   loski_Socket *sock)
 {
 	if (close(*sock) == 0) return 0;
 	switch (errno) {
@@ -497,10 +555,11 @@ LOSKIDRV_API int loskiN_closesock(loski_NetDriver *state,
 
 #include <netdb.h> /* gethostbyname and gethostbyaddr functions */
 
-#define LOSKI_EAFNOSUPPORT (-1)
+#define DGRMFLAG	1
+#define LSTNFLAG	2
 
-LOSKIDRV_API void loskiN_freeaddrfound(loski_NetDriver *state,
-                                       loski_AddressFound *found)
+LOSKIDRV_API void loskiN_freeaddrfound (loski_NetDriver *drv,
+                                        loski_AddressFound *found)
 {
 	if (found->results) {
 		freeaddrinfo(found->results);
@@ -509,12 +568,12 @@ LOSKIDRV_API void loskiN_freeaddrfound(loski_NetDriver *state,
 	}
 }
 
-static int hasnext(loski_AddressFound *found)
+static int hasnext (loski_AddressFound *found)
 {
 	while (found->next) {
 		switch (found->next->ai_socktype) {
-			case SOCK_DGRAM: found->nexttype = LOSKI_DGRMSOCKET; return 1;
-			case SOCK_STREAM: found->nexttype = LOSKI_CONNSOCKET; return 1;
+			case SOCK_DGRAM: found->nexttype |= DGRMFLAG; return 1;
+			case SOCK_STREAM: found->nexttype &= ~DGRMFLAG; return 1;
 		}
 		found->next = found->next->ai_next;
 	}
@@ -522,19 +581,41 @@ static int hasnext(loski_AddressFound *found)
 	return 0;
 }
 
-LOSKIDRV_API int loskiN_resolveaddr(loski_NetDriver *state,
-                                    loski_AddressFound *found,
-                                    loski_AddressFindFlag flags,
-                                    const char *nodename,
-                                    const char *servname)
+LOSKIDRV_API int loskiN_resolveaddr (loski_NetDriver *drv,
+                                     loski_AddressFound *found,
+                                     loski_AddressFindFlag flags,
+                                     const char *nodename,
+                                     const char *servname)
 {
 	int err;
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = 0;
-	hints.ai_family = AF_INET;
+	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = 0;
 	hints.ai_protocol = 0;
+	found->nexttype = 0;
+	if (flags & (LOSKI_ADDRFIND_IPV4|LOSKI_ADDRFIND_IPV6)) {
+		if (flags & LOSKI_ADDRFIND_IPV4) hints.ai_family = AF_INET;
+		if (flags & LOSKI_ADDRFIND_IPV6)
+			hints.ai_family = (hints.ai_family==AF_INET) ? AF_UNSPEC : AF_INET6;
+	} else {
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_flags |= AI_ADDRCONFIG;
+	}
+	if (flags & LOSKI_ADDRFIND_DGRM) hints.ai_socktype = SOCK_DGRAM;
+	if (flags & LOSKI_ADDRFIND_STRM)
+		hints.ai_socktype = (hints.ai_socktype==SOCK_DGRAM) ? 0 : SOCK_STREAM;
+	if (flags & LOSKI_ADDRFIND_LSTN) {
+		found->nexttype |= LSTNFLAG;
+		hints.ai_flags |= AI_PASSIVE;
+	}
+	if (flags & LOSKI_ADDRFIND_MAP4) {
+		hints.ai_flags |= AI_V4MAPPED;
+		if (hints.ai_family == AF_INET) return LOSKI_ERRINVALID;
+		if (hints.ai_family == AF_UNSPEC) hints.ai_flags |= AI_ALL;
+		hints.ai_family = AF_INET6;
+	}
 	err = getaddrinfo(nodename, servname, &hints, &found->results);
 	if (!err) {
 		found->next = found->results;
@@ -555,13 +636,14 @@ LOSKIDRV_API int loskiN_resolveaddr(loski_NetDriver *state,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_getaddrfound(loski_NetDriver *state,
-                                     loski_AddressFound *found,
-                                     loski_Address *address,
-                                     loski_SocketType *type)
+LOSKIDRV_API int loskiN_getaddrfound (loski_NetDriver *drv,
+                                      loski_AddressFound *found,
+                                      loski_Address *address,
+                                      loski_SocketType *type)
 {
 	memcpy(address, found->next->ai_addr, found->next->ai_addrlen);
-	*type = found->nexttype;
+	*type = (found->nexttype & DGRMFLAG ? LOSKI_DGRMSOCKET :
+	        (found->nexttype & LSTNFLAG ? LOSKI_LSTNSOCKET : LOSKI_CONNSOCKET));
 	found->next = found->next->ai_next;
 	return hasnext(found);
 }

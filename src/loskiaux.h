@@ -9,6 +9,7 @@
 #include <lauxlib.h>
 
 
+LUALIB_API void luaL_pusherrmsg(lua_State *L, int err);
 LUALIB_API int luaL_doresults(lua_State *L, int nres, int err);
 
 LUALIB_API void *luaL_alloctemporary(lua_State *L, size_t size);

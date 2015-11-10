@@ -50,11 +50,10 @@ static int net_address (lua_State *L) {
 	loski_Address *na;
 	loski_AddressType type = LOSKI_ADDRTYPE_IPV4;
 	loski_AddressPort port = 0;
-	size_t sz = 0;
 	const char *data = NULL;
-	int binary = 0;
-	int n = lua_gettop(L);
+	int err, bin = 0, n = lua_gettop(L);
 	if (n > 0) {
+		size_t sz;
 		data = luaL_checklstring(L, 1, &sz);
 		if (n == 1) {  /* URI format */
 			const char *c, *e = data + sz;
@@ -78,25 +77,24 @@ static int net_address (lua_State *L) {
 				switch (sz) {
 					case LOSKI_ADDRSIZE_IPV4: type = LOSKI_ADDRTYPE_IPV4; break;
 					case LOSKI_ADDRSIZE_IPV6: type = LOSKI_ADDRTYPE_IPV6; break;
-					default: luaL_argerror(L, 1, "invalid binary address");
+					default: return luaL_argerror(L, 1, "invalid binary address");
 				}
-				binary = 1;
+				bin = 1;
 			} else if (mode[0] == 't' && mode[1] == '\0') {  /* literal format */
 				type = strchr(data, ':') ? LOSKI_ADDRTYPE_IPV6 : LOSKI_ADDRTYPE_IPV4;
 			} else {
-				luaL_argerror(L, 3, "invalid mode");
+				return luaL_argerror(L, 3, "invalid mode");
 			}
 		}
 	}
 	na = newaddr(L);
-	luaL_argcheck(L, loskiN_initaddr(drv, na, type), 1, "unsupported address");
-	if (data) {
-		if (binary) loskiN_setaddrbytes(drv, na, data);
-		else luaL_argcheck(L, loskiN_setaddrliteral(drv, na, data, sz), 1,
-		                      "invalid literal address");
-		if (port) loskiN_setaddrport(drv, na, port);
+	err = loskiN_initaddr(drv, na, type);
+	if (!err && data) {
+		if (bin) err = loskiN_setaddrbytes(drv, na, data);
+		else err = loskiN_setaddrliteral(drv, na, data);
+		if (!err && port) err = loskiN_setaddrport(drv, na, port);
 	}
-	return 1;
+	return luaL_doresults(L, 1, err);
 }
 
 
@@ -113,7 +111,7 @@ static int addr_tostring (lua_State *L)
 	char b[LOSKI_ADDRMAXLITERAL];
 	const char *s = loskiN_getaddrliteral(drv, na, b);
 	if (s) lua_pushfstring(L, type==LOSKI_ADDRTYPE_IPV6?"[%s]:%d":"%s:%d",s,port);
-	else lua_pushliteral(L, "<corrupted data>");
+	else lua_pushfstring(L, "invalid address type (%d)", type);
 	return 1;
 }
 
@@ -160,15 +158,14 @@ static int addr_index (lua_State *L) {
 		case 2: {  /* literal */
 			char b[LOSKI_ADDRMAXLITERAL];
 			const char *s = loskiN_getaddrliteral(drv, na, b);
-			if (s) lua_pushstring(L, s);
-			else lua_pushnil(L);
+			lua_pushstring(L, s);
 		} break;
 		case 3: {  /* type */
 			loski_AddressType type = loskiN_getaddrtype(drv, na);
 			switch (type) {
 				case LOSKI_ADDRTYPE_IPV4: lua_pushliteral(L, "ipv4"); break;
 				case LOSKI_ADDRTYPE_IPV6: lua_pushliteral(L, "ipv6"); break;
-				default: luaL_argerror(L, 1, "corrupted data");
+				default: return luaL_argerror(L, 1, "corrupted data");
 			}
 		} break;
 	}
@@ -197,9 +194,10 @@ static int addr_newindex (lua_State *L) {
 	loski_NetDriver *drv = todrv(L);
 	loski_Address *na = toaddr(L, 1);
 	int field = luaL_checkoption(L, 2, NULL, fields);
+	int err = 0;
 	switch (field) {
 		case 0: {  /* port */
-			loskiN_setaddrport(drv, na, int2port(L, luaL_checkinteger(L, 3), 3));
+			err = loskiN_setaddrport(drv, na, int2port(L, luaL_checkinteger(L,3), 3));
 		} break;
 		case 1: {  /* binary */
 			size_t sz, esz = 0;
@@ -208,27 +206,26 @@ static int addr_newindex (lua_State *L) {
 			switch (type) {
 				case LOSKI_ADDRTYPE_IPV4: esz = LOSKI_ADDRSIZE_IPV4; break;
 				case LOSKI_ADDRTYPE_IPV6: esz = LOSKI_ADDRSIZE_IPV6; break;
-				default: luaL_argerror(L, 1, "corrupted data");
+				default: return luaL_argerror(L, 1, "corrupted data");
 			}
 			luaL_argcheck(L, sz == esz, 3, "wrong byte size");
-			loskiN_setaddrbytes(drv, na, data);
+			err = loskiN_setaddrbytes(drv, na, data);
 		} break;
 		case 2: {  /* literal */
 			size_t sz;
 			const char *data = luaL_checklstring(L, 3, &sz);
-			luaL_argcheck(L, loskiN_setaddrliteral(drv, na, data, sz), 3,
-			                                         "invalid value");
+			err = loskiN_setaddrliteral(drv, na, data);
 		} break;
 		case 3: {  /* type */
 			int i = luaL_checkoption(L, 3, NULL, AddrTypeName);
 			loski_AddressType type = loskiN_getaddrtype(drv, na);
 			loski_AddressType new = AddrTypeId[i];
-			if (new != type)
-				luaL_argcheck(L, loskiN_initaddr(drv, na, new), 3,
-				              "unsupported address");
+			if (new != type) err = loskiN_initaddr(drv, na, new);
 		} break;
 	}
-	return 0;
+	if (err == 0) return 0;
+	luaL_pusherrmsg(L, err);
+	return lua_error(L);
 }
 
 
@@ -308,8 +305,7 @@ static int sck_gc (lua_State *L)
 static loski_Socket *tosock (lua_State *L, int cls)
 {
 	LuaSocket *ls = tolsock(L, cls);
-	if (ls->closed)
-		luaL_error(L, "attempt to use a closed socket");
+	if (ls->closed) luaL_error(L, "attempt to use a closed socket");
 	return &ls->socket;
 }
 
@@ -532,7 +528,7 @@ static int recvdata(lua_State *L, int cls, loski_Address *addr)
 	while (*mode) switch (*(mode++)) {
 		case 'p': flags |= LOSKI_SOCKRCV_PEEKONLY; break;
 		case 'a': flags |= LOSKI_SOCKRCV_WAITALL; break;
-		default: luaL_error(L, "unknown mode char (got '%c')", *mode);
+		default: return luaL_error(L, "unknown mode char (got '%c')", *mode);
 	}
 	luaL_buffinit(L, &lbuf);
 	buf = luaL_prepbuffsize(&lbuf, sz);  /* prepare buffer to read whole block */
@@ -635,23 +631,30 @@ static int net_freefound (lua_State *L) {
 	return 0;
 }
 
-/* next [, errmsg] = dns.resolve (host [, service [, mode]]) */
+/* next [, errmsg] = dns.resolve (name [, service [, mode]]) */
 static int net_resolve (lua_State *L) {
 	loski_NetDriver *drv = todrv(L);
-	const char *nodename = luaL_checkstring(L, 1);
+	const char *nodename = luaL_optstring(L, 1, NULL);
 	const char *servname = luaL_optstring(L, 2, NULL);
 	const char *mode = luaL_optstring(L, 3, "");
 	loski_AddressFindFlag flags = 0;
 	loski_AddressFound *found;
 	int err;
-	while (*mode) switch (*(mode++)) {
-		case 'l': flags |= LOSKI_ADDRFIND_LOCAL; break;
+	if (nodename) {
+		if (nodename[0] == '*' && nodename[1] == '\0') {
+			luaL_argcheck(L, servname, 2, "service must be provided for '*'");
+			flags |= LOSKI_ADDRFIND_LSTN;
+			nodename = NULL;
+		}
+	}
+	else luaL_argcheck(L, servname, 1, "name or service must be provided");
+	for (; *mode; ++mode) switch (*mode) {
 		case '4': flags |= LOSKI_ADDRFIND_IPV4; break;
 		case '6': flags |= LOSKI_ADDRFIND_IPV6; break;
-		case 'm': flags |= LOSKI_ADDRFIND_MAPPED; break;
+		case 'm': flags |= LOSKI_ADDRFIND_MAP4; break;
 		case 'd': flags |= LOSKI_ADDRFIND_DGRM; break;
 		case 's': flags |= LOSKI_ADDRFIND_STRM; break;
-		default: luaL_error(L, "unknown mode char (got '%c')", *mode);
+		default: return luaL_error(L, "unknown mode char (got '%c')", *mode);
 	}
 #ifndef LOSKI_DISABLE_NETDRV
 	lua_pushvalue(L, lua_upvalueindex(DRVUPV)); /* push library state */
@@ -728,7 +731,7 @@ static const luaL_Reg lib[] = {
 static int lfreedrv (lua_State *L)
 {
 	loski_NetDriver *drv = (loski_NetDriver *)lua_touserdata(L, 1);
-	loski_closenetwork(drv);
+	loskiN_freedrv(drv);
 	return 0;
 }
 #endif
@@ -737,14 +740,16 @@ LUAMOD_API int luaopen_network (lua_State *L)
 {
 #ifndef LOSKI_DISABLE_NETDRV
 	/* create sentinel */
+	loski_NetDriver *drv;
+	int err;
 	lua_settop(L, 0);  /* dicard any arguments */
-	loski_NetDriver *drv = (loski_NetDriver *)luaL_newsentinel(L,
-	                                          sizeof(loski_NetDriver),
-	                                          lfreedrv);
+	drv = (loski_NetDriver *)luaL_newsentinel(L, sizeof(loski_NetDriver),
+	                                             lfreedrv);
 	/* initialize library */
-	if (loski_opennetwork(drv) != 0) {
+	err = loskiN_initdrv(drv);
+	if (err) {
 		luaL_cancelsentinel(L);
-		return luaL_error(L, "unable to initialize library");
+		return luaL_doresults(L, 0, err);
 	}
 #define pushsentinel(L)	lua_pushvalue(L, 1)
 #else

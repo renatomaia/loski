@@ -1,8 +1,10 @@
 Contents
 ========
 
-1. [Network Facilities](#network)
-2. [Error Messages](#errmsg)
+1. [Time Facilities](#time)
+2. [Network Facilities](#network)
+3. [Error Messages](#errmsg)
+
 
 Index
 =====
@@ -12,7 +14,6 @@ Index
 - [`network.getname`](#network.getname)
 - [`network.resolve`](#network.resolve)
 - [`network.socket`](#network.socket)
-- [`socket.type`](#socket.type)
 - [`socket:accept`](#socket:accept)
 - [`socket:bind`](#socket:bind)
 - [`socket:close`](#socket:close)
@@ -24,9 +25,27 @@ Index
 - [`socket:send`](#socket:send)
 - [`socket:setoption`](#socket:setoption)
 - [`socket:shutdown`](#socket:shutdown)
+- [`socket.type`](#socket.type)
+
+- [`time`](#time)
+- [`time.now`](#time.now)
+- [`time.sleep`](#time.sleep)
+
 
 Manual
 ======
+
+Time Facilities {#time}
+---------------
+
+### `seconds = time.now ()` {#time.now}
+
+Returns the number of seconds since some given start time (the "epoch"), just like `os.time()`, but with sub-second precision.
+
+### `time.sleep (delay)` {#time.sleep}
+
+Suspends the execution for `delay` seconds.
+
 
 Network Facilities {#network}
 ------------------
@@ -63,36 +82,62 @@ Returns a structure that provides the following fields:
 
 Moreover, you can pass the object to the standard function `tostring` to obtain the address as a string inside a URI, like `"192.0.2.128:80"` (IPv4) or `[::ffff:c000:0280]:80` (IPv6).
 
-### `next [, errmsg] = network.resolve (name [, servname [, what]])` {#network.resolve}
+### `next [, errmsg] = network.resolve (name [, service [, mode]])` {#network.resolve}
 
-`what`:
+Searches for the addresses for a network node with name `name`.
+If `name` is `nil`, the loopback address is searched.
+If `name` is `"*"`, the wildcard address is searched.
+If some address is found, returns an iterator function with the following usage pattern:
 
-- `l` local only (passive)
-- `4` ipv4
-- `6` ipv6
-- `m` mapped ipv4
-- `d` datagram
-- `s` stream
+	[address, socktype, more =] next ([address])
 
-	-- [address, socktype, more =] next([address])
+Otherwise, it returns `nil` plus a string describing the error.
 
-	-- get first result only
-	addr, scktype = dns.resolve("www.google.com", "http")()
+Each time the iterator function is called, returns one address found for node with `name`, followed by the type of the socket to be used to connect to the address, and a boolean indicating if there is more results to be returned in future calls.
+If an address structure is provided as `address`, it is used to store the result; otherwise a new address structure is created.
 
-	-- collect all results
-	list = {}
-	for addr, scktype in dns.resolve("www.google.com", "http") do
-		list[#list+1] = { addr, scktype }
-	end
+`service` indicates the port number or service name to be used to resolve the port number of the resulting addresses.
+When `servname` is absent, the port zero is used in the results.
+The string `mode` defines the search domain. 
+It can be contain any of the following characters:
 
-	-- iterating over the result data (using a single address object)
-	next = dns.resolve("www.google.com", "http")
+- `4`: for IPv4 addresses.
+- `6`: for IPv6 addresses.
+- `m`: for IPv4-mapped addresses.
+- `d`: for addresses for `datagram` sockets.
+- `s`: for addresses for `connection` or `listen` sockets (stream).
+
+When neither `4` nor `6` are provided, the search only includes addresses of the same type configured in the local machine.
+When neither `d` nor `s` are provided, the search behaves as if both `d` and `s` were provided.
+By default, `mode` is the empty string.
+
+The current standard implementation of this operation may return the following [error messages](#errmsg).
+
+- `"not found"`
+- `"no system memory"`
+- `"system error"`
+
+As an example, the following loop will iterate over all the addresses found for service named 'ssh' on node named `www.lua.org`, using the same address object:
+
+	next = assert(network.resolve("www.lua.org", "ssh"))
 	for addr, scktype in next, address.create() do
 		print(addr, scktype)
 	end
 
-	-- filling existing addreses object with the results
-	next = dns.resolve("www.google.com", "http")
+The next example gets only the first address found.
+
+	addr, scktype = network.resolve("www.lua.org", "http", "s")()
+
+Yet another example that collects all address found in new address objects.
+
+	list = {}
+	for addr, scktype in network.resolve("www.lua.org", "http", "s") do
+		list[#list+1] = addr
+	end
+
+Finally, an example that fills existing addreses objects with the results
+
+	next = network.resolve("www.lua.org", "http", "s")
 	repeat until not select(3, next(getSomeAddressObject()))
 
 ### `name [, errmsg] = network.getname (spec)` {#network.getname}
@@ -345,32 +390,46 @@ The following messages can be returned by the I/O operations (after a `nil`) to 
 
 `"unfulfilled"`
 :	operation not completely fulfilled yet, try again.
+
 `"closed"`
 :	resource is closed.
+
 `"in use"`
 :	resource is already in use.
+
 `"not found"`
 :	resource was not found.
+
 `"unavailable"`
 :	resource is unavailable.
+
 `"unreachable"`
 :	resource is unreachable.
+
 `"aborted"`
 :	resource reclaimed abruptly.
+
 `"refused"`
 :	resource refused.
+
 `"no resources"`
 :	resources are exhausted.
+
 `"too much"`
 :	resource limits were extrapolated.
+
 `"timeout"`
 :	insufficient time to complete.
+
 `"access denied"`
 :	insufficient permission.
+
 `"no system memory"`
 :	insufficient memory in the underlying system.
+
 `"system down"`
 :	underlying system is down.
+
 `"system error"`
 :	underlying system error.
 
@@ -378,11 +437,15 @@ Moreover, any operation shall raise the followin unexpected errors:
 
 `"invalid operation"`
 :	operation is not valid for these object or parameters.
+
 `"unsupported"`
 :	operation is not supported in the current system.
+
 `"unexpected error"`
 :	underlying system raised an unexpected error, usually due to poor LOSKI support for the particular platform.
+
 `"unspecified error"`
 :	underlying system raised a non-conforming error, usually due to poor platform adherence to standards.
+
 `"unknown error (<number>)"`
 :	underlying system raised an illegal error value (indicated in the message) due to wrong LOSKI implementation or build.
