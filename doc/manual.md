@@ -14,6 +14,7 @@ Index
 - [`network.getname`](#network.getname)
 - [`network.resolve`](#network.resolve)
 - [`network.socket`](#network.socket)
+- [`network.type`](#network.type)
 - [`socket:accept`](#socket:accept)
 - [`socket:bind`](#socket:bind)
 - [`socket:close`](#socket:close)
@@ -173,6 +174,10 @@ The current standard implementation of this operation may return the following [
 - `"no resources"` (no descriptors available)
 - `"access denied"`
 - `"no system memory"`
+
+### `type = network.type (value)` {#network.type}
+
+Returns the string `"address"` if `value` is an address structure, or `"socket"` if `value`is a socket handle; otherwise it returns `nil`.
 
 ### `type = socket.type` {#socket.type}
 

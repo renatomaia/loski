@@ -60,18 +60,3 @@ utils.testerror("service must be provided for '*'",
 	network.resolve, "*")
 utils.testerror("service must be provided for '*'",
 	network.resolve, "*", nil)
-
-do return  end
-
-	-- get first result only
-	addr, scktype = network.resolve("www.google.com", "http")()
-
-	-- collect all results
-	list = {}
-	for addr, scktype in network.resolve("www.google.com", "http") do
-		list[#list+1] = { addr, scktype }
-	end
-
-	-- filling existing addreses object with the results
-	next = network.resolve("www.google.com", "http")
-	repeat until not select(3, next(getSomeAddressObject()))

@@ -79,9 +79,9 @@ LOSKIDRV_API const char *loskiN_getaddrliteral (loski_NetDriver *drv,
 
 #ifndef LOSKI_SOCKTYPE_CUSTOM
 typedef enum loski_SocketType {
-	LOSKI_LSTNSOCKET,
-	LOSKI_CONNSOCKET,
-	LOSKI_DGRMSOCKET
+	LOSKI_SOCKTYPE_LSTN,
+	LOSKI_SOCKTYPE_CONN,
+	LOSKI_SOCKTYPE_DGRM
 } loski_SocketType;
 #endif
 

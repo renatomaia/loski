@@ -145,7 +145,7 @@ LOSKIDRV_API int loski_createsocket(loski_NetDriver *drv,
                                     loski_SocketType type) {
 	int kind;
 	switch (type) {
-		case LOSKI_DGRMSOCKET:
+		case LOSKI_SOCKTYPE_DGRM:
 			kind = SOCK_DGRAM;
 			break;
 		default:

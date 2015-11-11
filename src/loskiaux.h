@@ -24,6 +24,7 @@ LUALIB_API void luaL_newclass(lua_State *L,
                               const char *super,
                               const luaL_Reg *mth,
                               int nup);
+LUALIB_API int luaL_issubclass(lua_State *L, const char *cls);
 LUALIB_API void *luaL_testinstance(lua_State *L, int idx, const char *cls);
 LUALIB_API void *luaL_checkinstance(lua_State *L, int idx, const char *cls);
 LUALIB_API void luaL_printstack(lua_State *L);

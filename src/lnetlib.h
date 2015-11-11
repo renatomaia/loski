@@ -10,8 +10,8 @@
 #define LOSKI_NETADDRCLS LOSKI_PREFIX"network.Address"
 
 
-#define LOSKI_STRMSOCKET 3
-#define LOSKI_BASESOCKET 4
+#define LOSKI_SOCKTYPE_STRM 3
+#define LOSKI_SOCKTYPE_SOCK 4
 
 static const char *const loski_SocketClasses[] = {
 	LOSKI_PREFIX"network.ListenSocket",

@@ -21,7 +21,8 @@
  *****************************************************************************/
 
 
-static const char *str2port (const char *s, loski_AddressPort *pn) {
+static const char *str2port (const char *s, loski_AddressPort *pn)
+{
 	lua_Unsigned n = 0;
 	if (!isdigit((unsigned char)*s)) return NULL;  /* no digit? */
 	do {
@@ -33,29 +34,47 @@ static const char *str2port (const char *s, loski_AddressPort *pn) {
 	return s;
 }
 
-static loski_AddressPort int2port (lua_State *L, lua_Integer n, int idx){
+static loski_AddressPort int2port (lua_State *L, lua_Integer n, int idx)
+{
 	luaL_argcheck(L, 0 <= n && n <= LOSKI_ADDRMAXPORT, idx, "invalid port");
 	return (loski_AddressPort)n;
 }
 
-static loski_Address *newaddr (lua_State *L) {
+static loski_Address *newaddr (lua_State *L)
+{
 	loski_Address *na = (loski_Address *)lua_newuserdata(L,sizeof(loski_Address));
 	luaL_setmetatable(L, LOSKI_NETADDRCLS);
 	return na;
 }
 
-/* address = network.address([data [, port [, format]]]) */
-static int net_address (lua_State *L) {
+static int pushnewaddr (lua_State *L,
+                        loski_AddressType type,
+                        loski_AddressPort port,
+                        const char *data, int bin)
+{
 	loski_NetDriver *drv = todrv(L);
-	loski_Address *na;
+	loski_Address *na = newaddr(L);
+	int err = loskiN_initaddr(drv, na, type);
+	if (!err && data) {
+		if (bin) err = loskiN_setaddrbytes(drv, na, data);
+		else err = loskiN_setaddrliteral(drv, na, data);
+		if (!err && port) err = loskiN_setaddrport(drv, na, port);
+	}
+	return luaL_doresults(L, 1, err);
+}
+
+/* address = network.address([data [, port [, format]]]) */
+static int net_address (lua_State *L)
+{
 	loski_AddressType type = LOSKI_ADDRTYPE_IPV4;
 	loski_AddressPort port = 0;
 	const char *data = NULL;
-	int err, bin = 0, n = lua_gettop(L);
+	int bin = 0, n = lua_gettop(L);
 	if (n > 0) {
 		size_t sz;
 		data = luaL_checklstring(L, 1, &sz);
 		if (n == 1) {  /* URI format */
+			char literal[LOSKI_ADDRMAXLITERAL];
 			const char *c, *e = data + sz;
 			if (data[0] == '[') {
 				c = strchr(++data, ']');
@@ -69,7 +88,11 @@ static int net_address (lua_State *L) {
 				sz = c - data;
 				type = LOSKI_ADDRTYPE_IPV4;
 			}
+			luaL_argcheck(L, sz < LOSKI_ADDRMAXLITERAL, 1, "invalid URI format");
 			luaL_argcheck(L, str2port(c+1, &port) == e, 1, "invalid port");
+			memcpy(literal, data, sz);
+			literal[sz] = '\0';
+			return pushnewaddr(L, type, port, literal, 0);
 		} else {
 			const char *mode = luaL_optstring(L, 3, "t");
 			port = int2port(L, luaL_checkinteger(L, 2), 2);
@@ -87,14 +110,7 @@ static int net_address (lua_State *L) {
 			}
 		}
 	}
-	na = newaddr(L);
-	err = loskiN_initaddr(drv, na, type);
-	if (!err && data) {
-		if (bin) err = loskiN_setaddrbytes(drv, na, data);
-		else err = loskiN_setaddrliteral(drv, na, data);
-		if (!err && port) err = loskiN_setaddrport(drv, na, port);
-	}
-	return luaL_doresults(L, 1, err);
+	return pushnewaddr(L, type, port, data, bin);
 }
 
 
@@ -140,7 +156,8 @@ static int addr_eq (lua_State *L)
  * binary = address.binary
  * port = address.port
  */
-static int addr_index (lua_State *L) {
+static int addr_index (lua_State *L)
+{
 	static const char *const fields[] = {"port","binary","literal","type",NULL};
 	loski_NetDriver *drv = todrv(L);
 	loski_Address *na = toaddr(L, 1);
@@ -189,7 +206,8 @@ static const loski_AddressType AddrTypeId[] = {
  * address.binary = binary
  * address.port = port
  */
-static int addr_newindex (lua_State *L) {
+static int addr_newindex (lua_State *L)
+{
 	static const char *const fields[] = {"port","binary","literal","type",NULL};
 	loski_NetDriver *drv = todrv(L);
 	loski_Address *na = toaddr(L, 1);
@@ -241,9 +259,9 @@ static const char *const SockTypeName[] = {
 	NULL
 };
 static const loski_SocketType SockTypeId[] = {
-	LOSKI_LSTNSOCKET,
-	LOSKI_CONNSOCKET,
-	LOSKI_DGRMSOCKET
+	LOSKI_SOCKTYPE_LSTN,
+	LOSKI_SOCKTYPE_CONN,
+	LOSKI_SOCKTYPE_DGRM
 };
 
 static LuaSocket *newsock (lua_State *L, int type)
@@ -276,7 +294,7 @@ static int net_socket (lua_State *L)
 static int sck_tostring (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	LuaSocket *ls = tolsock(L, LOSKI_BASESOCKET);
+	LuaSocket *ls = tolsock(L, LOSKI_SOCKTYPE_SOCK);
 	if (ls->closed)
 		lua_pushliteral(L, "socket (closed)");
 	else
@@ -296,7 +314,7 @@ static int endsock (loski_NetDriver *drv, lua_State *L, LuaSocket *ls)
 static int sck_gc (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	LuaSocket *ls = tolsock(L, LOSKI_BASESOCKET);
+	LuaSocket *ls = tolsock(L, LOSKI_SOCKTYPE_SOCK);
 	if (!ls->closed) endsock(drv, L, ls);
 	return 0;
 }
@@ -313,8 +331,8 @@ static loski_Socket *tosock (lua_State *L, int cls)
 static int sck_close (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	LuaSocket *ls = tolsock(L, LOSKI_BASESOCKET);
-	tosock(L, LOSKI_BASESOCKET);  /* make sure argument is an open socket */
+	LuaSocket *ls = tolsock(L, LOSKI_SOCKTYPE_SOCK);
+	tosock(L, LOSKI_SOCKTYPE_SOCK);  /* make sure argument is an open socket */
 	return endsock(drv, L, ls);
 }
 
@@ -330,7 +348,7 @@ static loski_Address *checkaddress (lua_State *L, int idx)
 static int sck_bind (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_BASESOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_SOCK);
 	const loski_Address *addr = checkaddress(L, 2);
 	int err = loskiN_bindsock(drv, socket, addr);
 	return luaL_doresults(L, 0, err);
@@ -342,7 +360,7 @@ static int sck_getaddress (lua_State *L)
 {
 	static const char *const sites[] = {"local", "peer", NULL};
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_BASESOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_SOCK);
 	loski_Address *addr = checkaddress(L, 2);
 	int peer = luaL_checkoption(L, 3, "local", sites);
 	int err = loskiN_getsockaddr(drv, socket, addr, peer);
@@ -399,7 +417,7 @@ static int checksockopt (lua_State *L,
 static int lst_getoption (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_LSTNSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_LSTN);
 	loski_SocketOption opt = checksockopt(L, 2, lst_opts);
 	int val;
 	int err = loskiN_getsockopt(drv, socket, opt, &val);
@@ -410,7 +428,7 @@ static int lst_getoption (lua_State *L)
 static int cnt_getoption (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_CONNSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_CONN);
 	loski_SocketOption opt = checksockopt(L, 2, cnt_opts);
 	int val;
 	int err = loskiN_getsockopt(drv, socket, opt, &val);
@@ -424,7 +442,7 @@ static int cnt_getoption (lua_State *L)
 static int dgm_getoption (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_DGRMSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_DGRM);
 	loski_SocketOption opt = checksockopt(L, 2, dgm_opts);
 	int val;
 	int err = loskiN_getsockopt(drv, socket, opt, &val);
@@ -437,7 +455,7 @@ static int dgm_getoption (lua_State *L)
 static int lst_setoption (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_LSTNSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_LSTN);
 	loski_SocketOption opt = checksockopt(L, 2, lst_opts);
 	int val = lua_toboolean(L, 3);
 	int err = loskiN_setsockopt(drv, socket, opt, val);
@@ -447,7 +465,7 @@ static int lst_setoption (lua_State *L)
 static int cnt_setoption (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_CONNSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_CONN);
 	loski_SocketOption opt = checksockopt(L, 2, cnt_opts);
 	int val = (opt == LOSKI_SOCKOPT_LINGER) ? luaL_checkint(L, 3)
 	                                        : lua_toboolean(L, 3);
@@ -458,7 +476,7 @@ static int cnt_setoption (lua_State *L)
 static int dgm_setoption (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_DGRMSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_DGRM);
 	loski_SocketOption opt = checksockopt(L, 2, dgm_opts);
 	int val = lua_toboolean(L, 3);
 	int err = loskiN_setsockopt(drv, socket, opt, val);
@@ -470,7 +488,7 @@ static int dgm_setoption (lua_State *L)
 static int str_connect (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_STRMSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_STRM);
 	const loski_Address *addr = checkaddress(L, 2);
 	int err = loskiN_connectsock(drv, socket, addr);
 	return luaL_doresults(L, 0, err);
@@ -505,13 +523,13 @@ static int senddata(lua_State *L, int cls, const loski_Address *addr)
 /* sent [, errmsg] = socket:send(data [, i [, j]]) */
 static int cnt_send (lua_State *L)
 {
-	return senddata(L, LOSKI_CONNSOCKET, NULL);
+	return senddata(L, LOSKI_SOCKTYPE_CONN, NULL);
 }
 
 /* sent [, errmsg] = socket:send(data [, i [, j [, address]]]) */
 static int dgm_send (lua_State *L)
 {
-	return senddata(L, LOSKI_DGRMSOCKET, optaddr(L, 5));
+	return senddata(L, LOSKI_SOCKTYPE_DGRM, optaddr(L, 5));
 }
 
 
@@ -543,13 +561,13 @@ static int recvdata(lua_State *L, int cls, loski_Address *addr)
 /* data [, errmsg] = socket:receive(size [, mode]) */
 static int cnt_receive (lua_State *L)
 {
-	return recvdata(L, LOSKI_CONNSOCKET, NULL);
+	return recvdata(L, LOSKI_SOCKTYPE_CONN, NULL);
 }
 
 /* data [, errmsg] = socket:receive(size [, mode [, address]]) */
 static int dgm_receive (lua_State *L)
 {
-	return recvdata(L, LOSKI_DGRMSOCKET, optaddr(L, 4));
+	return recvdata(L, LOSKI_SOCKTYPE_DGRM, optaddr(L, 4));
 }
 
 
@@ -558,7 +576,7 @@ static int cnt_shutdown (lua_State *L)
 {
 	static const char *const waynames[] = {"send", "receive", "both", NULL};
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_CONNSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_CONN);
 	int way = luaL_checkoption(L, 2, "both", waynames);
 	int err = loskiN_shutdownsock(drv, socket, way);
 	return luaL_doresults(L, 0, err);
@@ -569,9 +587,9 @@ static int cnt_shutdown (lua_State *L)
 static int lst_accept (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_LSTNSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_LSTN);
 	loski_Address *addr = optaddr(L, 2);
-	LuaSocket *ls = newsock(L, LOSKI_CONNSOCKET);
+	LuaSocket *ls = newsock(L, LOSKI_SOCKTYPE_CONN);
 	int err = loskiN_acceptsock(drv, socket, &ls->socket, addr);
 	if (err == 0) ls->closed = 0;
 	return luaL_doresults(L, 1, err);
@@ -582,7 +600,7 @@ static int lst_accept (lua_State *L)
 static int lst_listen (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
-	loski_Socket *socket = tosock(L, LOSKI_LSTNSOCKET);
+	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_LSTN);
 	int backlog = luaL_optint(L, 2, 32);
 	int err = loskiN_listensock(drv, socket, backlog);
 	return luaL_doresults(L, 0, err);
@@ -592,6 +610,7 @@ static int lst_listen (lua_State *L)
 /*****************************************************************************
  * Names *********************************************************************
  *****************************************************************************/
+
 
 #define FOUNDUPV	DRVUPV+1
 #define tofound(L) \
@@ -673,6 +692,23 @@ static int net_resolve (lua_State *L) {
  *****************************************************************************/
 
 
+static int net_type (lua_State *L) {
+	if (lua_isuserdata(L, 1) && lua_getmetatable(L, 1)) {
+		luaL_getmetatable(L, LOSKI_NETADDRCLS);
+		if (lua_rawequal(L, 2, 3)) {
+			lua_pushliteral(L, "address");
+			return 1;
+		}
+		lua_pop(L, 1);  /* remove address metatable */
+		if (luaL_issubclass(L, loski_SocketClasses[LOSKI_SOCKTYPE_SOCK])) {
+			lua_pushliteral(L, "socket");
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
 static const luaL_Reg addr[] = {
 	{"__tostring", addr_tostring},
 	{"__eq", addr_eq},
@@ -724,6 +760,7 @@ static const luaL_Reg lib[] = {
 	{"address", net_address},
 	{"resolve", net_resolve},
 	{"socket", net_socket},
+	{"type", net_type},
 	{NULL, NULL}
 };
 
@@ -761,31 +798,31 @@ LUAMOD_API int luaopen_network (lua_State *L)
 	lua_pop(L, 1);  /* remove new class */
 	/* create abstract base socket class */
 	pushsentinel(L);
-	luaL_newclass(L, loski_SocketClasses[LOSKI_BASESOCKET], NULL, sck, DRVUPV);
+	luaL_newclass(L, loski_SocketClasses[LOSKI_SOCKTYPE_SOCK], NULL, sck, DRVUPV);
 	lua_pop(L, 1);  /* remove new class */
 	/* create TCP listening socket class */
 	pushsentinel(L);
-	luaL_newclass(L, loski_SocketClasses[LOSKI_LSTNSOCKET],
-	                 loski_SocketClasses[LOSKI_BASESOCKET], lst, DRVUPV);
+	luaL_newclass(L, loski_SocketClasses[LOSKI_SOCKTYPE_LSTN],
+	                 loski_SocketClasses[LOSKI_SOCKTYPE_SOCK], lst, DRVUPV);
 	lua_pushliteral(L, "listen");
 	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
 	/* create streaming socket class */
 	pushsentinel(L);
-	luaL_newclass(L, loski_SocketClasses[LOSKI_STRMSOCKET],
-	                 loski_SocketClasses[LOSKI_BASESOCKET], str, DRVUPV);
+	luaL_newclass(L, loski_SocketClasses[LOSKI_SOCKTYPE_STRM],
+	                 loski_SocketClasses[LOSKI_SOCKTYPE_SOCK], str, DRVUPV);
 	lua_pop(L, 1);  /* remove new class */
 	/* create TCP connection socket class */
 	pushsentinel(L);
-	luaL_newclass(L, loski_SocketClasses[LOSKI_CONNSOCKET],
-	                 loski_SocketClasses[LOSKI_STRMSOCKET], cnt, DRVUPV);
+	luaL_newclass(L, loski_SocketClasses[LOSKI_SOCKTYPE_CONN],
+	                 loski_SocketClasses[LOSKI_SOCKTYPE_STRM], cnt, DRVUPV);
 	lua_pushliteral(L, "connection");
 	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
 	/* create UDP socket class */
 	pushsentinel(L);
-	luaL_newclass(L, loski_SocketClasses[LOSKI_DGRMSOCKET],
-	                 loski_SocketClasses[LOSKI_STRMSOCKET], dgm, DRVUPV);
+	luaL_newclass(L, loski_SocketClasses[LOSKI_SOCKTYPE_DGRM],
+	                 loski_SocketClasses[LOSKI_SOCKTYPE_STRM], dgm, DRVUPV);
 	lua_pushliteral(L, "datagram");
 	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */

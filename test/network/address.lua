@@ -1,22 +1,25 @@
 local network = require "network"
 local utils = require "test.utils"
 
---do
---	assert(address.type(nil) == nil)
---	assert(address.type(false) == nil)
---	assert(address.type(true) == nil)
---	assert(address.type(3232235776) == nil)
---	assert(address.type("192.168.0.1:8080") == nil)
---	assert(address.type(table) == nil)
---	assert(address.type(print) == nil)
---	assert(address.type(coroutine.running()) == nil)
---	assert(address.type(io.stdout) == nil)
---end
+do
+	assert(network.type(nil) == nil)
+	assert(network.type(false) == nil)
+	assert(network.type(true) == nil)
+	assert(network.type(3232235776) == nil)
+	assert(network.type("192.168.0.1:8080") == nil)
+	assert(network.type(table) == nil)
+	assert(network.type(print) == nil)
+	assert(network.type(coroutine.running()) == nil)
+	assert(network.type(io.stdout) == nil)
+	assert(network.type(network.address()) == "address")
+	assert(network.type(network.socket("listen")) == "socket")
+	assert(network.type(network.socket("connection")) == "socket")
+	assert(network.type(network.socket("datagram")) == "socket")
+end
 
 do
 	local a = network.address()
 
-	--assert(address.type(a) == "ipv4")
 	assert(tostring(a) == "0.0.0.0:0")
 	assert(a.type == "ipv4")
 	assert(a.port == 0)
@@ -25,44 +28,78 @@ do
 	assert(a == network.address())
 end
 
-do
-	local addr = network.address("192.168.0.1:8080")
+local cases = {
+	ipv4 = {
+		port = 8080,
+		literal = "192.168.0.1",
+		binary = "\192\168\000\001",
+		uri = "192.168.0.1:8080",
+		changes = {
+			type = "ipv4",
+			port = 54321,
+			literal = "127.0.0.1",
+			binary = "byte",
+		},
+		equivalents = {
+			["10.20.30.40"] = "\10\20\30\40",
+			["40.30.20.10"] = "\40\30\20\10",
+		},
+	},
+	ipv6 = {
+		port = 8888,
+		literal = "::ffff:192.168.0.1",
+		binary = "\0\0\0\0\0\0\0\0\0\0\255\255\192\168\000\001",
+		uri = "[::ffff:192.168.0.1]:8888",
+		changes = {
+			type = "ipv6",
+			port = 12345,
+			literal = "::1",
+			binary = "bytebytebytebyte",
+		},
+		equivalents = {
+			["1::f"] =
+				"\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0\15",
+			["1:203:405:607:809:a0b:c0d:e0f"] =
+				"\0\1\2\3\4\5\6\7\8\9\10\11\12\13\14\15",
+		},
+	},
+}
+for type, case in pairs(cases) do
+	local addr = network.address(case.uri)
 
 	local function checkaddr(a)
-		--assert(address.type(a) == "ipv4")
-		assert(tostring(a) == "192.168.0.1:8080")
-		assert(a.type == "ipv4")
-		assert(a.port == 8080)
-		assert(a.literal == "192.168.0.1")
-		assert(a.binary == "\192\168\000\001")
+		assert(network.type(a) == "address")
+		assert(tostring(a) == case.uri)
+		assert(a.type == type)
+		assert(a.port == case.port)
+		assert(a.literal == case.literal)
+		assert(a.binary == case.binary)
 		assert(a == addr)
 	end
 
 	checkaddr(addr)
-	checkaddr(network.address("192.168.0.1", 8080))
-	checkaddr(network.address("192.168.0.1", 8080, "t"))
-	checkaddr(network.address("\192\168\000\001", 8080, "b"))
+	checkaddr(network.address(case.literal, case.port))
+	checkaddr(network.address(case.literal, case.port, "t"))
+	checkaddr(network.address(case.binary, case.port, "b"))
 
-	local othervals = {
-		type = "ipv4",
-		port = 54321,
-		literal = "127.0.0.1",
-		binary = "byte",
-	}
-	for field, newval in pairs(othervals) do
+	for field, newval in pairs(case.changes) do
 		local oldval = addr[field]
 		addr[field] = newval
 		assert(addr[field] == newval)
 		addr[field] = oldval
 		checkaddr(addr)
-		othervals[field] = nil
+		case.changes[field] = nil
 	end
-	assert(next(othervals) == nil)
+	assert(next(case.changes) == nil)
 
-	addr.literal = "10.20.30.40"
-	assert(addr.binary == "\10\20\30\40")
-	addr.binary = "\40\30\20\10"
-	assert(addr.literal == "40.30.20.10")
+	for literal, binary in pairs(case.equivalents) do
+		addr.literal = literal
+		assert(addr.binary == binary)
+	end
+	for literal, binary in pairs(case.equivalents) do
+		addr.binary = binary
+		assert(addr.literal == literal)
+	end
 end
 
 do
@@ -73,8 +110,6 @@ do
 		function () a.wrongfield = true end)
 	utils.testerror("bad argument #3 to '__newindex' (invalid option 'unix')",
 		function () a.type = "unix" end)
-	utils.testerror("bad argument #3 to '__newindex' (unsupported address)",
-		function () a.type = "ipv6" end)
 end
 
 do
@@ -121,9 +156,9 @@ do
 
 	utils.testerror("bad argument #1 to '?' (invalid URI format)",
 		network.address, "192.168.0.1")
-	utils.testerror("bad argument #1 to '?' (invalid literal address)",
+	utils.testerror("invalid operation",
 		network.address, "localhost:8080")
-	utils.testerror("bad argument #1 to '?' (invalid literal address)",
+	utils.testerror("invalid operation",
 		network.address, "291.168.0.1:8080")
 	utils.testerror("bad argument #1 to '?' (invalid port)",
 		network.address, "192.168.0.1:65536")
@@ -132,9 +167,9 @@ do
 	utils.testerror("bad argument #1 to '?' (invalid port)",
 		network.address, "192.168.0.1:0x1f90")
 
-	utils.testerror("bad argument #1 to '?' (invalid literal address)",
+	utils.testerror("invalid operation",
 		network.address, "localhost", 8080, "t")
-	utils.testerror("bad argument #1 to '?' (invalid literal address)",
+	utils.testerror("invalid operation",
 		network.address, "291.168.0.1", 8080, "t")
 
 	utils.testerror("bad argument #2 to '?' (invalid port)",
@@ -145,12 +180,4 @@ do
 		network.address, "\192\168\000\001", 65536, "b")
 	utils.testerror("bad argument #2 to '?' (invalid port)",
 		network.address, "\192\168\000\001", -1, "b")
-
-	-- no IPv6 support
-	utils.testerror("bad argument #1 to '?' (unsupported address)",
-		network.address, "[::1]:8080")
-	utils.testerror("bad argument #1 to '?' (unsupported address)",
-		network.address, "::1", 8080, "t")
-	utils.testerror("bad argument #1 to '?' (unsupported address)",
-		network.address, string.rep("\0", 15).."\1", 8080, "b")
 end

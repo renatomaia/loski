@@ -43,7 +43,7 @@ for _, kind in ipairs{"datagram", "connection", "listen"} do
 	tests.testclose(socket)
 end
 
--- TODO: Find out the correct way to test is 'reuseaddr' works.
+-- TODO: Find out the correct way to test if 'reuseaddr' works.
 --       The following only works is UsedAddress.port is binded using different
 --       hosts.
 --for _, kind in ipairs{"datagram", "connection", "listen"} do

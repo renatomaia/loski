@@ -139,20 +139,26 @@ LUALIB_API void luaL_newclass(lua_State *L,
 	}
 }
 
+LUALIB_API int luaL_issubclass(lua_State *L, const char *cls)
+{
+	int found = 0;
+	luaL_getmetatable(L, cls);  /* get expected metatable */
+	lua_pushvalue(L, -2);  /* get the value */
+	while (!(found = lua_rawequal(L, -1, -2)) && lua_getmetatable(L, -1))
+		lua_remove(L, -2);  /* remove previous metatable */
+	lua_pop(L, 2);  /* remove both metatables */
+	return found;
+}
+
 LUALIB_API void *luaL_testinstance(lua_State *L, int idx, const char *cls)
 {
 	void *p = lua_touserdata(L, idx);
 	if (p != NULL) {  /* value is a userdata? */
-		luaL_getmetatable(L, cls);  /* get correct metatable */
 		if (lua_getmetatable(L, idx)) {  /* does it have a metatable? */
-			int found = 0;
-			while (!(found = lua_rawequal(L, -1, -2)) && lua_getmetatable(L, -1))
-				lua_remove(L, -2);  /* remove previous metatable */
-			lua_pop(L, 2);  /* remove both metatables */
-			if (found)  /* some metatable was the same? */
-				return p;
+			if (!luaL_issubclass(L, cls)) p = NULL;
+			lua_pop(L, 1);  /* remove the metatable */
+			return p;
 		}
-		else lua_pop(L, 1);  /* remove correct metatable */
 	}
 	return NULL;  /* value is not a userdata with a metatable */
 }

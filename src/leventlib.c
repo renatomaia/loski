@@ -22,9 +22,9 @@ static void checkWatch(lua_State *L,
                        loski_EventWatch *watch,
                        loski_WatchableReference *ref) {
 	lua_settop(L, 3);
-	if (loski_issocket(L, 2, LOSKI_BASESOCKET)) {
+	if (loski_issocket(L, 2, LOSKI_SOCKTYPE_SOCK)) {
 		watch->kind = LOSKI_WATCHSOCKET;
-		ref->socket = loski_tosocket(L, 2, LOSKI_BASESOCKET);
+		ref->socket = loski_tosocket(L, 2, LOSKI_SOCKTYPE_SOCK);
 	}
 	else luaL_argerror(L, 2, "invalid watchable object");
 	watch->event = luaL_checkoption(L, 3, NULL, WatchableEvents[watch->kind]);
