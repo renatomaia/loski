@@ -186,12 +186,22 @@ typedef enum loski_AddressFindFlag {
 	LOSKI_ADDRFIND_IPV4 = 1,
 	LOSKI_ADDRFIND_IPV6 = 2,
 	LOSKI_ADDRFIND_MAP4 = 4,
-  LOSKI_ADDRFIND_LSTN = 8,
+	LOSKI_ADDRFIND_LSTN = 8,
 	LOSKI_ADDRFIND_DGRM = 16,
 	LOSKI_ADDRFIND_STRM = 32
 } loski_AddressFindFlag;
 #endif
 
+#ifndef LOKSI_ADDRNAME_CUSTOM
+typedef enum loski_AddressNameFlag {
+	LOSKI_ADDRNAME_LOCAL = 1,
+	LOSKI_ADDRNAME_DGRM = 2,
+} loski_AddressNameFlag;
+#endif
+
+#ifndef LOSKI_NETNAMEBUFSZ
+#define LOSKI_NETNAMEBUFSZ	128
+#endif
 
 LOSKIDRV_API int loskiN_resolveaddr (loski_NetDriver *drv,
                                      loski_AddressFound *found,
@@ -206,5 +216,15 @@ LOSKIDRV_API int loskiN_getaddrfound (loski_NetDriver *drv,
 
 LOSKIDRV_API void loskiN_freeaddrfound (loski_NetDriver *drv,
                                         loski_AddressFound *found);
+
+LOSKIDRV_API int loskiN_getcanonical(loski_NetDriver *drv,
+                                     const char *name,
+                                     char *buf, size_t sz);
+
+LOSKIDRV_API int loskiN_getaddrnames(loski_NetDriver *drv,
+                                     loski_Address *addr,
+                                     loski_AddressNameFlag flags,
+                                     char *nodebuf, size_t nodesz,
+                                     char *servbuf, size_t servsz);
 
 #endif

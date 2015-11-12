@@ -5,12 +5,10 @@
 #include "loskierr.h"
 
 
-#include <sys/socket.h>
+/* Addresses */
+
 #include <netinet/in.h>  /* network addresses */
 #include <arpa/inet.h>  /* IP addresses */
-
-
-/* Addresses */
 
 typedef void loski_NetDriver;
 
@@ -28,6 +26,8 @@ typedef int loski_AddressType;
 
 /* Sockets */
 
+#include <sys/socket.h>
+
 typedef int loski_Socket;
 
 typedef int loski_SocketRecvFlag;
@@ -44,11 +44,18 @@ typedef int loski_SocketWay;
 
 /* Names */
 
+#include <netdb.h>
+
 typedef struct loski_AddressFound {
 	struct addrinfo *results;
 	struct addrinfo *next;
 	int nexttype;
 } loski_AddressFound;
+
+typedef int loski_AddressNameFlag;
+#define LOSKI_ADDRNAME_LOCAL	NI_NOFQDN
+#define LOSKI_ADDRNAME_DGRM	NI_DGRAM
+#define LOKSI_ADDRNAME_CUSTOM
 
 
 #include "netlibapi.h"

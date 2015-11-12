@@ -141,11 +141,20 @@ Finally, an example that fills existing addreses objects with the results
 	next = network.resolve("www.lua.org", "http", "s")
 	repeat until not select(3, next(getSomeAddressObject()))
 
-### `name [, errmsg] = network.getname (spec)` {#network.getname}
+### `name [, service] = network.getname (address [, mode])` {#network.getname}
 
-address == address -> nodename, servicename
-address == string -> canonicalname
-address == number -> servicename
+Searches for a network name for `address`.
+If `address` is an address structure, it returns a host name and a port service name for the address.
+If `address` is a number, it returns the service name for that port number.
+If `address` is a string, it returns a canonical name for that network name.
+
+In case of errors, it returns `nil` plus an error message.
+
+The current standard implementation of this operation may return the following [error messages](#errmsg).
+
+- `"not found"`
+- `"no system memory"`
+- `"system error"`
 
 ### `socket [, errmsg] = network.socket (type [, domain])` {#network.socket}
 

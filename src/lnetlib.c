@@ -615,7 +615,8 @@ static int lst_listen (lua_State *L)
 	((loski_AddressFound *)lua_touserdata(L, lua_upvalueindex(FOUNDUPV)))
 
 /* [address, socktype, more =] next([address]) */
-static int net_nextfound (lua_State *L) {
+static int net_nextfound (lua_State *L)
+{
 	loski_NetDriver *drv = todrv(L);
 	loski_AddressFound *found = tofound(L);
 	if (found) {
@@ -640,15 +641,17 @@ static int net_nextfound (lua_State *L) {
 	return 0;
 }
 
-static int net_freefound (lua_State *L) {
+static int net_freefound (lua_State *L)
+{
 	loski_NetDriver *drv = todrv(L);
 	loski_AddressFound *found = (loski_AddressFound *)lua_touserdata(L, 1);
 	loskiN_freeaddrfound(drv, found);
 	return 0;
 }
 
-/* next [, errmsg] = dns.resolve (name [, service [, mode]]) */
-static int net_resolve (lua_State *L) {
+/* next [, errmsg] = network.resolve (name [, service [, mode]]) */
+static int net_resolve (lua_State *L)
+{
 	loski_NetDriver *drv = todrv(L);
 	const char *nodename = luaL_optstring(L, 1, NULL);
 	const char *servname = luaL_optstring(L, 2, NULL);
@@ -681,6 +684,78 @@ static int net_resolve (lua_State *L) {
 	if (err) luaL_cancelsentinel(L);
 	else lua_pushcclosure(L, net_nextfound, FOUNDUPV);
 	return luaL_doresults(L, 1, err);
+}
+
+static char *incbuf (lua_State *L, size_t *sz)
+{
+	lua_pop(L, 1);  /* remove old buffer */
+	*sz += LOSKI_NETNAMEBUFSZ;
+	return (char *)lua_newuserdata(L, *sz);
+}
+
+/* name [, service] = network.getname (data [, mode]) */
+static int net_getname (lua_State *L)
+{
+	loski_NetDriver *drv = todrv(L);
+	char buffer[LOSKI_NETNAMEBUFSZ];
+	size_t sz = LOSKI_NETNAMEBUFSZ;
+	char *buf = buffer;
+	int err;
+	int ltype = lua_type(L, 1);
+	lua_settop(L, 2);  /* discard any extra parameters */
+	lua_pushnil(L);  /* simulate the initial buffer on the stack */
+	if (ltype == LUA_TSTRING) {
+		do {
+			err = loskiN_getcanonical(drv, lua_tostring(L, 1), buf, sz);
+			if (!err) {
+				lua_pushstring(L, buf);
+				return 1;
+			} else if ((err == LOSKI_ERRTOOMUCH) && (buf = incbuf(L, &sz))) {
+				err = 0;
+			}
+		} while (!err);
+	} else {
+		loski_Address *na;
+		loski_AddressNameFlag flags = 0;
+		const char *mode = luaL_optstring(L, 2, "");
+		for (; *mode; ++mode) switch (*mode) {
+			case 'l': flags |= LOSKI_ADDRNAME_LOCAL; break;
+			case 'd': flags |= LOSKI_ADDRNAME_DGRM; break;
+			default: return luaL_error(L, "unknown mode char (got '%c')", *mode);
+		}
+		if (ltype == LUA_TNUMBER) {
+			loski_AddressPort port = int2port(L, luaL_checkinteger(L, 1), 1);
+			na = newaddr(L);
+			if ( !(err = loskiN_initaddr(drv, na, LOSKI_ADDRTYPE_IPV4)) &&
+			     !(err = loskiN_setaddrport(drv, na, port)) ) {
+				do {
+					err = loskiN_getaddrnames(drv, na, flags, NULL, 0, buf, sz);
+					if (!err) {
+						lua_pushstring(L, buf);
+						return 1;
+					} else if ((err == LOSKI_ERRTOOMUCH) && (buf = incbuf(L, &sz))) {
+						err = 0;
+					}
+				} while (!err);
+			}
+		} else {
+			na = toaddr(L, 1);
+			do {
+				size_t ssz = sz/4;
+				size_t nsz = sz-ssz;
+				char *sbuf = buf+nsz;
+				err = loskiN_getaddrnames(drv, na, flags, buf, nsz, sbuf, ssz);
+				if (!err) {
+					lua_pushstring(L, buf);
+					lua_pushstring(L, sbuf);
+					return 2;
+				} else if ((err == LOSKI_ERRTOOMUCH) && (buf = incbuf(L, &sz))) {
+					err = 0;
+				}
+			} while (!err);
+		}
+	}
+	return luaL_doresults(L, 0, err);
 }
 
 
@@ -755,6 +830,7 @@ static const luaL_Reg dgm[] = {
 
 static const luaL_Reg lib[] = {
 	{"address", net_address},
+	{"getname", net_getname},
 	{"resolve", net_resolve},
 	{"socket", net_socket},
 	{"type", net_type},

@@ -21,10 +21,13 @@ for _, kind in ipairs{"datagram", "connection"} do
 	local socket = tests.testcreatesocket(kind)
 
 	assert(socket:connect(tests.RemoteTCP) == true)
+	assert(socket:getaddress("peer") == tests.RemoteTCP)
 	if kind == "datagram" then
 		assert(socket:connect(tests.OtherTCP) == true)
+		assert(socket:getaddress("peer") == tests.OtherTCP)
 	else
 		tests.testerror("invalid operation", socket.connect, socket, tests.OtherTCP)
+		assert(socket:getaddress("peer") == tests.RemoteTCP)
 	end
 
 	tests.testoptions(socket, kind)

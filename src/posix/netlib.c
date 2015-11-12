@@ -366,7 +366,6 @@ LOSKIDRV_API int loskiN_connectsock (loski_NetDriver *drv,
 {
 	if (connect(*sock, toaddr(address), addrsz(address)) == 0) return 0;
 	switch (errno) {
-		case EISCONN: return 0;
 		case EALREADY:
 		case EINPROGRESS:
 		case EINTR: return LOSKI_ERRUNFULFILLED;
@@ -379,6 +378,7 @@ LOSKIDRV_API int loskiN_connectsock (loski_NetDriver *drv,
 		case ECONNREFUSED: return LOSKI_ERRREFUSED;
 		case ENETDOWN: return LOSKI_ERRSYSTEMDOWN;
 		case ENOBUFS: return LOSKI_ERRNOMEMORY;
+		case EISCONN:
 		case EPROTOTYPE:
 		case EAFNOSUPPORT:
 		case EOPNOTSUPP: return LOSKI_ERRINVALID;
@@ -586,6 +586,22 @@ static int hasnext (loski_AddressFound *found)
 	return 0;
 }
 
+static int getaddrerr (int err)
+{
+	switch (err) {
+		case EAI_AGAIN:
+		case EAI_SERVICE:
+		case EAI_NONAME: return LOSKI_ERRNOTFOUND;
+		case EAI_MEMORY: return LOSKI_ERRNOMEMORY;
+		case EAI_FAIL:
+		case EAI_SYSTEM: return LOSKI_ERRSYSTEMFAIL;
+		case EAI_FAMILY:
+		case EAI_SOCKTYPE:
+		case EAI_BADFLAGS: return LOSKI_ERRUNSUPPORTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
+}
+
 LOSKIDRV_API int loskiN_resolveaddr (loski_NetDriver *drv,
                                      loski_AddressFound *found,
                                      loski_AddressFindFlag flags,
@@ -595,10 +611,7 @@ LOSKIDRV_API int loskiN_resolveaddr (loski_NetDriver *drv,
 	int err;
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_flags = 0;
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = 0;
-	hints.ai_protocol = 0;
 	found->nexttype = 0;
 	if (flags & (LOSKI_ADDRFIND_IPV4|LOSKI_ADDRFIND_IPV6)) {
 		if (flags & LOSKI_ADDRFIND_IPV4) hints.ai_family = AF_INET;
@@ -627,18 +640,7 @@ LOSKIDRV_API int loskiN_resolveaddr (loski_NetDriver *drv,
 		if (hasnext(found)) return 0;
 		err = EAI_AGAIN;
 	}
-	switch (err) {
-		case EAI_AGAIN:
-		case EAI_SERVICE:
-		case EAI_NONAME: return LOSKI_ERRNOTFOUND;
-		case EAI_MEMORY: return LOSKI_ERRNOMEMORY;
-		case EAI_FAIL:
-		case EAI_SYSTEM: return LOSKI_ERRSYSTEMFAIL;
-		case EAI_FAMILY:
-		case EAI_SOCKTYPE:
-		case EAI_BADFLAGS: return LOSKI_ERRUNSUPPORTED;
-	}
-	return LOSKI_ERRUNSPECIFIED;
+	return getaddrerr(err);
 }
 
 LOSKIDRV_API int loskiN_getaddrfound (loski_NetDriver *drv,
@@ -651,5 +653,54 @@ LOSKIDRV_API int loskiN_getaddrfound (loski_NetDriver *drv,
 	        (found->nexttype & LSTNFLAG ? LOSKI_SOCKTYPE_LSTN : LOSKI_SOCKTYPE_CONN));
 	found->next = found->next->ai_next;
 	return hasnext(found);
+}
+
+LOSKIDRV_API int loskiN_getcanonical(loski_NetDriver *drv,
+                                     const char *name,
+                                     char *buf, size_t sz)
+{
+	int err;
+	struct addrinfo hints, *results;
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_flags = AI_CANONNAME;
+	err = getaddrinfo(name, NULL, &hints, &results);
+	if (!err) {
+		const char *name = results->ai_canonname;
+		if (name) {
+			if (strlen(name) < sz) {
+				strcpy(buf, name);
+				err = 0;
+			}
+			else err = LOSKI_ERRTOOMUCH;
+		}
+		else err = LOSKI_ERRNOTFOUND;
+		freeaddrinfo(results);
+	}
+	else err = getaddrerr(err);
+	return err;
+}
+
+LOSKIDRV_API int loskiN_getaddrnames(loski_NetDriver *drv,
+                                     loski_Address *addr,
+                                     loski_AddressNameFlag flags,
+                                     char *nodebuf, size_t nodesz,
+                                     char *servbuf, size_t servsz)
+{
+	int err = getnameinfo((struct sockaddr*)addr, addrsz(addr),
+	                      nodebuf, nodesz,
+	                      servbuf, servsz,
+	                      flags);
+	if (!err) return 0;
+	switch (err) {
+		case EAI_AGAIN:
+		case EAI_NONAME: return LOSKI_ERRNOTFOUND;
+		case EAI_OVERFLOW: return LOSKI_ERRTOOMUCH;
+		case EAI_MEMORY: return LOSKI_ERRNOMEMORY;
+		case EAI_FAIL:
+		case EAI_SYSTEM: return LOSKI_ERRSYSTEMFAIL;
+		case EAI_BADFLAGS:
+		case EAI_FAMILY: return LOSKI_ERRUNEXPECTED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
 }
 
