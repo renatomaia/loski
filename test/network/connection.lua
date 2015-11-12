@@ -5,7 +5,7 @@ local tests = require "test.network.utils"
 local packsize = 64
 local packdata = string.rep(" ", packsize)
 local packhuge = string.rep(packdata, 2^15)
-local packfrmt = "%"..packsize.."s"
+local packfrmt = "%"..(packsize-1).."s\0"
 local packback = string.rep("\255", packsize)
 local replycount = 3
 local remotecode = [[
@@ -22,16 +22,17 @@ local remotecode = [[
 	local packsize = ]]..packsize..[[
 	local packdata = string.rep("\255", packsize)
 	local count = 0
-	local message
-	while message == nil do
-		message = conn:receive(packsize)
+	local data = ""
+	while true do
+		local message = conn:receive(packsize)
 		assert(#message <= packsize)
 		count = count + #message
-		message = string.match(message, "[%S]+")
+		data = data..(string.match(message, "[%S]+") or "")
+		if string.find(message, "\0", 1, true) ~= nil then break end
 	end
-	assert(tonumber(message) == count-packsize)
+	assert(tonumber(data:sub(1, -2)) == count-packsize)
 	for i=1, ]]..replycount..[[ do
-		time.sleep(.9)
+		time.sleep(.5)
 		assert(conn:send(packdata) == packsize)
 	end
 	assert(conn:close())
@@ -64,8 +65,7 @@ do
 	local socket = tests.testcreatesocket("connection")
 	assert(socket:setoption("blocking", false) == true)
 
-	tests.testerror("invalid operation",
-		tests.tcall, true, socket.connect, socket, tests.LocalAddress)
+	tests.tcall(true, socket.connect, socket, tests.LocalAddress)
 
 	local sent = 0
 	while true do
@@ -84,7 +84,8 @@ do
 	local remaining = replycount*packsize
 	local count = 0
 	while count < remaining do
-		local received = tests.tcall(count==0, socket.receive, socket, remaining-count)
+		local received = assert(tests.tcall(count==0, socket.receive, socket,
+		                                    remaining-count))
 		assert(string.find(received, "[^\255]") == nil)
 		count = count + #received
 	end

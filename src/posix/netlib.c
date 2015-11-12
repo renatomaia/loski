@@ -366,6 +366,7 @@ LOSKIDRV_API int loskiN_connectsock (loski_NetDriver *drv,
 {
 	if (connect(*sock, toaddr(address), addrsz(address)) == 0) return 0;
 	switch (errno) {
+		case EISCONN: return 0;
 		case EALREADY:
 		case EINPROGRESS:
 		case EINTR: return LOSKI_ERRUNFULFILLED;
@@ -378,7 +379,6 @@ LOSKIDRV_API int loskiN_connectsock (loski_NetDriver *drv,
 		case ECONNREFUSED: return LOSKI_ERRREFUSED;
 		case ENETDOWN: return LOSKI_ERRSYSTEMDOWN;
 		case ENOBUFS: return LOSKI_ERRNOMEMORY;
-		case EISCONN:
 		case EPROTOTYPE:
 		case EAFNOSUPPORT:
 		case EOPNOTSUPP: return LOSKI_ERRINVALID;

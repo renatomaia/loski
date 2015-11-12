@@ -3,8 +3,7 @@ local tests = require "test.network.utils"
 
 for _, kind in ipairs{"datagram", "connection", "listen"} do
 	local cases = {
-		["unreachable"] = network.address("255.255.255.255",
-		                                  tests.FreeAddress.port)
+		["unreachable"] = tests.RemoteTCP
 	}
 	if not tests.IsWindows then
 		cases["access denied"] = tests.DeniedAddress

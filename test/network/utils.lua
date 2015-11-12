@@ -110,20 +110,7 @@ do
 			linger = true,
 		},
 	}
-	local unsupported = {
-		listen = {},
-		connection = {
-			reuseaddr = not tests.IsWindows,
-			dontroute = not tests.IsWindows,
-			nodelay = not tests.IsWindows,
-			keepalive = not tests.IsWindows,
-			linger = not tests.IsWindows,
-		},
-		datagram = {},
-	}
---print(kind..":getoption("..name..") == ",socket:getoption(name))
---print(refused, kind..":setoption("..name..", "..tostring(changed[default])..") == ",socket:setoption(name, changed[default]))
-	function tests.testoptions(socket, kind, refused)
+	function tests.testoptions(socket, kind)
 		local disallowed = disallowed[kind]
 		for name, default in pairs(options) do
 			if disallowed[name] then
@@ -133,14 +120,9 @@ do
 				tests.testerror(errmsg, socket.setoption, socket, name, changed[default])
 			else
 				assert(socket:getoption(name) == default)
-				if refused and unsupported[kind][name] then
-					tests.testerror("invalid operation",
-						socket.setoption, socket, name, changed[default])
-				else
-					assert(socket:setoption(name, changed[default]) == true)
-					assert(socket:getoption(name) == changed[default])
-					assert(socket:setoption(name, default) == true)
-				end
+				assert(socket:setoption(name, changed[default]) == true)
+				assert(socket:getoption(name) == changed[default])
+				assert(socket:setoption(name, default) == true)
 			end
 		end
 	end

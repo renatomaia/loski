@@ -14,7 +14,6 @@ for _, kind in ipairs{"datagram", "connection"} do
 		assert(socket:connect(addr) == true)
 	end
 
-	tests.testoptions(socket, kind, "refused")
 	tests.testclose(socket)
 end
 
@@ -39,8 +38,7 @@ for _, kind in ipairs{"datagram", "connection"} do
 	if kind == "datagram" then
 		assert(socket:connect(tests.RemoteTCP) == true)
 	else
-		tests.testerror("invalid operation",
-			tests.tcall, true, socket.connect, socket, tests.RemoteTCP)
+		tests.tcall(true, socket.connect, socket, tests.RemoteTCP)
 	end
 
 	tests.testclose(socket)
