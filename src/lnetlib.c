@@ -337,34 +337,32 @@ static int sck_close (lua_State *L)
 }
 
 
-static loski_Address *checkaddress (lua_State *L, int idx)
-{
-	loski_Address *na = toaddr(L, idx);
-	luaL_argcheck(L, na, idx, "address expected");
-	return na;
-}
-
 /* succ [, errmsg] = socket:bind(address) */
 static int sck_bind (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
 	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_SOCK);
-	const loski_Address *addr = checkaddress(L, 2);
+	const loski_Address *addr = toaddr(L, 2);
 	int err = loskiN_bindsock(drv, socket, addr);
 	return luaL_doresults(L, 0, err);
 }
 
 
-/* address [, errmsg] = socket:getaddress(address [, site]) */
+/* address [, errmsg] = socket:getaddress([site [, address]]) */
 static int sck_getaddress (lua_State *L)
 {
-	static const char *const sites[] = {"local", "peer", NULL};
+	static const char *const sites[] = {"this", "peer", NULL};
 	loski_NetDriver *drv = todrv(L);
 	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_SOCK);
-	loski_Address *addr = checkaddress(L, 2);
-	int peer = luaL_checkoption(L, 3, "local", sites);
-	int err = loskiN_getsockaddr(drv, socket, addr, peer);
-	if (err == 0) lua_pushvalue(L, 2);
+	int peer = luaL_checkoption(L, 2, "this", sites);
+	loski_Address *addr = optaddr(L, 3);
+	int err;
+	if (!addr) {
+		lua_settop(L, 2);
+		addr = newaddr(L);
+	}
+	else lua_settop(L, 3);
+	err = loskiN_getsockaddr(drv, socket, addr, peer);
 	return luaL_doresults(L, 1, err);
 }
 
@@ -489,7 +487,7 @@ static int str_connect (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
 	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_STRM);
-	const loski_Address *addr = checkaddress(L, 2);
+	const loski_Address *addr = toaddr(L, 2);
 	int err = loskiN_connectsock(drv, socket, addr);
 	return luaL_doresults(L, 0, err);
 }
@@ -627,9 +625,8 @@ static int net_nextfound (lua_State *L) {
 		if (!addr) {
 			lua_settop(L, 0);
 			addr = newaddr(L);
-		} else {
-			lua_settop(L, 1);
 		}
+		else lua_settop(L, 1);
 		more = loskiN_getaddrfound(drv, found, addr, &type);
 		for (i = 0; SockTypeName[i] && SockTypeId[i] != type; ++i);
 		lua_pushstring(L, SockTypeName[i]);

@@ -32,11 +32,19 @@ for _, kind in ipairs{"datagram", "connection", "listen"} do
 	tests.testerror("invalid operation", socket.bind, socket, tests.LocalAddress)
 
 	-- address [, errmsg] = socket:getaddress(address, [site])
-	local addr = socket:getaddress(network.address())
+	local addr = socket:getaddress()
 	assert(addr == tests.FreeAddress)
-	local addr = socket:getaddress(network.address(), "local")
+	local addr = socket:getaddress("this")
 	assert(addr == tests.FreeAddress)
-	tests.testerrmsg("closed", socket:getaddress(addr, "peer"))
+	tests.testerrmsg("closed", socket:getaddress("peer"))
+
+	local a = socket:getaddress(nil, addr)
+	assert(a == addr)
+	assert(a == tests.FreeAddress)
+	local a = socket:getaddress("this", addr)
+	assert(a == addr)
+	assert(a == tests.FreeAddress)
+	tests.testerrmsg("closed", socket:getaddress("peer", addr))
 
 	tests.testoptions(socket, kind)
 	tests.testclose(socket)

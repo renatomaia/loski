@@ -211,15 +211,17 @@ The current standard implementation of this operation may return the following [
 - `"unreachable"` (address is not local)
 - `"no system memory"`
 
-### `address [, errmsg] = socket:getaddress (address [, site])` {#socket:getaddress}
+### `address [, errmsg] = socket:getaddress ([site [, address]])` {#socket:getaddress}
 
 Returns the address associated with `socket`, as indicated by `site`, which can be:
 
-`"local"`
-:	Local address (the default).
+`"this"`
+:	The socket's address (the default).
 
 `"peer"`
-:	Peer address.
+:	The socket's peer address.
+
+If `address` is provided, it is the address structure used to store the result.
 
 In case of errors, it returns `nil` plus a string describing the error.
 
@@ -394,7 +396,7 @@ Error Messages {#errmsg}
 The following messages can be returned by the I/O operations (after a `nil`) to indicate expected errors:
 
 `"unfulfilled"`
-:	operation not completely fulfilled yet, try again.
+:	operation was not able to complete yet (try again).
 
 `"closed"`
 :	resource is closed.
@@ -418,7 +420,7 @@ The following messages can be returned by the I/O operations (after a `nil`) to 
 :	resource refused.
 
 `"no resources"`
-:	resources are exhausted.
+:	resources were exhausted.
 
 `"too much"`
 :	resource limits were extrapolated.
@@ -438,10 +440,10 @@ The following messages can be returned by the I/O operations (after a `nil`) to 
 `"system error"`
 :	underlying system error.
 
-Moreover, any operation shall raise the followin unexpected errors:
+Moreover, any operation shall raise the following errors:
 
 `"invalid operation"`
-:	operation is not valid for these object or parameters.
+:	operation is not valid for this object or parameters.
 
 `"unsupported"`
 :	operation is not supported in the current system.
