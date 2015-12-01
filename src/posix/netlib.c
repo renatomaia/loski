@@ -16,10 +16,9 @@ LOSKIDRV_API int loskiN_initdrv (loski_NetDriver *drv)
 	return 0;
 }
 
-LOSKIDRV_API int loskiN_freedrv (loski_NetDriver *drv)
+LOSKIDRV_API void loskiN_freedrv (loski_NetDriver *drv)
 {
-	if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) return LOSKI_ERRUNEXPECTED;
-	return 0;
+	signal(SIGPIPE, SIG_DFL) == SIG_ERR);
 }
 
 
@@ -370,6 +369,7 @@ LOSKIDRV_API int loskiN_connectsock (loski_NetDriver *drv,
 		case EINPROGRESS:
 		case EINTR: return LOSKI_ERRUNFULFILLED;
 		case ETIMEDOUT: return LOSKI_ERRTIMEOUT;
+		case EISCONN:
 		case EADDRINUSE: return LOSKI_ERRINUSE;
 		case EADDRNOTAVAIL: return LOSKI_ERRUNAVAILABLE;
 		case ECONNRESET: return LOSKI_ERRCLOSED;
@@ -378,7 +378,6 @@ LOSKIDRV_API int loskiN_connectsock (loski_NetDriver *drv,
 		case ECONNREFUSED: return LOSKI_ERRREFUSED;
 		case ENETDOWN: return LOSKI_ERRSYSTEMDOWN;
 		case ENOBUFS: return LOSKI_ERRNOMEMORY;
-		case EISCONN:
 		case EPROTOTYPE:
 		case EAFNOSUPPORT:
 		case EOPNOTSUPP: return LOSKI_ERRINVALID;

@@ -1,7 +1,7 @@
 #ifndef timelibapi_h
 #define timelibapi_h
 
-#include "loskiconf.h"
+#include <loskiconf.h>
 
 #include <lua.h> /* seconds is a lua_Number */
 

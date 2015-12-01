@@ -2,7 +2,7 @@
 #define netlib_h
 
 
-#include "loskierr.h"
+#include <loskierr.h>
 
 
 /* Addresses */

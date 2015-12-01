@@ -3,7 +3,6 @@ local utils = require "test.utils"
 
 local hosts = {
 	localhost = "127.0.0.1",
-	["ip6-localhost"] = "::1",
 }
 local servs = {
 	ssh = 22,

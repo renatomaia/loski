@@ -88,9 +88,7 @@ for type, case in pairs(cases) do
 		assert(addr[field] == newval)
 		addr[field] = oldval
 		checkaddr(addr)
-		case.changes[field] = nil
 	end
-	assert(next(case.changes) == nil)
 
 	for literal, binary in pairs(case.equivalents) do
 		addr.literal = literal

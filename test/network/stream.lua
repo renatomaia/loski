@@ -26,7 +26,7 @@ for _, kind in ipairs{"datagram", "connection"} do
 		assert(socket:connect(tests.OtherTCP) == true)
 		assert(socket:getaddress("peer") == tests.OtherTCP)
 	else
-		tests.testerror("invalid operation", socket.connect, socket, tests.OtherTCP)
+		tests.testerrmsg("in use", socket:connect(tests.OtherTCP))
 		assert(socket:getaddress("peer") == tests.RemoteTCP)
 	end
 

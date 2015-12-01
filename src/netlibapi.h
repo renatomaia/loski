@@ -1,7 +1,7 @@
 #ifndef netlibapi_h
 #define netlibapi_h
 
-#include "loskiconf.h"
+#include <loskiconf.h>
 
 /*
  * Library
@@ -10,7 +10,7 @@
 #ifndef LOSKI_DISABLE_NETDRV
 LOSKIDRV_API int loskiN_initdrv (loski_NetDriver *drv);
 
-LOSKIDRV_API int loskiN_freedrv (loski_NetDriver *drv);
+LOSKIDRV_API void loskiN_freedrv (loski_NetDriver *drv);
 #endif
 
 /*
@@ -77,13 +77,11 @@ LOSKIDRV_API const char *loskiN_getaddrliteral (loski_NetDriver *drv,
  * Sockets
  */
 
-#ifndef LOSKI_SOCKTYPE_CUSTOM
 typedef enum loski_SocketType {
 	LOSKI_SOCKTYPE_LSTN,
 	LOSKI_SOCKTYPE_CONN,
 	LOSKI_SOCKTYPE_DGRM
 } loski_SocketType;
-#endif
 
 #ifndef LOSKI_SOCKWAY_CUSTOM
 typedef enum loski_SocketWay {
