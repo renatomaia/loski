@@ -1,41 +1,37 @@
-#include "proclib.h"
 #include "loskiaux.h"
+#include "proclib.h"
 
-#define LOSKI_PROCESSCLS LOSKI_PREFIX"process.ChildProcess"
+#include <lua.h>
 
-#define pushresults(L,n,e) luaL_pushresults(L,n,e,loski_processerror)
 
-static const char* getstrfield(lua_State *L, int tabidx, const char *field)
+#ifdef LOSKI_DISABLE_PROCDRV
+#define DRVUPV	0
+#define todrv(L)	NULL
+#else
+#define DRVUPV	1
+#define todrv(L)	((loski_ProcDriver *)lua_touserdata(L, \
+                                       lua_upvalueindex(DRVUPV)))
+#endif
+
+
+#define LOSKI_PROCESSCLS LOSKI_PREFIX"ChildProcess"
+
+static const char* getstrfield(lua_State *L, const char *field, int required)
 {
-	const char* value;
-	lua_getfield(L, tabidx, field);
-	value = lua_tostring(L, -1);
-	lua_pop(L, 1);
-	if (value == NULL) { /* value is not a string? */
-		luaL_error(L, "bad argument #%d (field "LUA_QS" must be a string)",
-		              tabidx, field);
-	}
-	return value;
-}
-
-static const char* optstrfield(lua_State *L, int tabidx, const char *field,
-                                                         const char *value)
-{
-	lua_getfield(L, tabidx, field);
-	if (!lua_isnil(L, -1)) {
+	const char* value = NULL;
+	lua_getfield(L, 1, field);
+	if (required || !lua_isnil(L, -1)) {
 		value = lua_tostring(L, -1);
-		if (value == NULL) { /* value is not a string? */
-			luaL_error(L, "bad argument #%d (field "LUA_QS" must be a string)",
-		                tabidx, field);
-		}
+		if (value == NULL)
+			luaL_error(L, "bad field "LUA_QS" (must be a string)", field);
 	}
 	lua_pop(L, 1);
 	return value;
 }
 
-static FILE* optfilefield(lua_State *L, int tabidx, const char *field)
+static FILE* optfilefield(lua_State *L, const char *field)
 {
-	lua_getfield(L, tabidx, field);
+	lua_getfield(L, 1, field);
 	if (!lua_isnil(L, -1)) {
 		void *p = lua_touserdata(L, -1);
 		if (p != NULL) {  /* value is a userdata? */
@@ -47,49 +43,44 @@ static FILE* optfilefield(lua_State *L, int tabidx, const char *field)
 				}
 			}
 		}
-		luaL_error(L, "bad argument #%d (field "LUA_QS" must be a file)",
-		              tabidx, field);
+		luaL_error(L, "bad field "LUA_QS" (must be a file)", field);
 	}
 	lua_pop(L, 1); /* remove userdata */
 	return NULL;
 }
 
-static const char *argfromindex (lua_State *L, size_t index)
+static const char *getstackarg (void *data, int index)
 {
-	return luaL_checkstring(L, index+1);
+	return lua_tostring((lua_State *)data, index+1);
 }
 
-static const char *argfromtable (lua_State *L, size_t index)
+static const char *gettablearg (void *data, int index)
 {
+	lua_State *L = (lua_State *)data;
 	const char *argv;
-	if (index == 0) {
-		argv = getstrfield(L, 1, "execfile");
-	} else {
-		lua_rawgeti(L, 2, index);
-		luaL_argcheck(L, 1, !lua_isstring(L, 3),
-			"field "LUA_QL("arguments")" must contain only strings");
-		argv = (char *)lua_tostring(L, 3);
-		lua_pop(L, 1); /* pop an argument string */
-	}
+	if (index == 0) lua_getfield(L, 1, "execfile");
+	else lua_rawgeti(L, 2, index);
+	argv = lua_tostring(L, -1);
+	lua_pop(L, 1); /* pop an argument string */
 	return argv;
 }
 
+static const char *getenvvar (void *data, const char **name)
+{
+	lua_State *L = (lua_State *)data;
+	while (lua_next(L, 3) != 0) {
+		const char *value = lua_tostring(L, -1);
+		*name = lua_tostring(L, -2);
+		lua_pop(L, 1);
+		if (*name) return value;
+	}
+	return NULL;
+}
 
-
-
-typedef struct LuaProcess {
-	loski_Process process;
-	int closed;
-} LuaProcess;
-
-
-#define tolproc(L)	((LuaProcess *)luaL_checkinstance(L, 1, LOSKI_PROCESSCLS))
-
-
+/* proc = process.create (cmd [, ...]) */
 static int lp_create(lua_State *L)
 {
-	int err;
-	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_ProcDriver *drv = todrv(L);
 	loski_Process *proc;
 	const char *exec;
 	const char *path = NULL;
@@ -102,149 +93,199 @@ static int lp_create(lua_State *L)
 	size_t envsz = 0;
 	loski_ProcArgInfo arginf;
 	loski_ProcEnvInfo envinf;
+	int err;
 	
 	if (lua_isstring(L, 1)) {
 
-		size_t argc = lua_gettop(L);
+		int i;
+		int argc = lua_gettop(L);
 		exec = luaL_checkstring(L, 1);
-		loski_proc_checkargvals(drv, &arginf, argfromindex, L, argc, &argsz);
+		for (i = 2; i <= argc; ++i) luaL_checkstring(L, i);
+		err = loskiP_checkargs(drv, &arginf, getstackarg, L, argc, &argsz);
+		if (err) { luaL_pusherrmsg(L, err); lua_error(L); }
+		proc = (loski_Process *)lua_newuserdata(L, sizeof(loski_Process));
 		argv = luaL_alloctemporary(L, argsz);
-		loski_proc_toargvals(drv, &arginf, argfromindex, L, argc, argv, argsz);
+		loskiP_initargs(drv, &arginf, getstackarg, L, argc, argv, argsz);
 
 	} else if (lua_istable(L, 1)) {
-		size_t argc = 1; /* execfile */
+		int argc = 0;
 
 		lua_settop(L, 1);
-		exec = getstrfield(L, 1, "execfile");
-		path = optstrfield(L, 1, "runpath", path);
-		stdinput = optfilefield(L, 1, "stdin");
-		stdoutput = optfilefield(L, 1, "stdout");
-		stderror = optfilefield(L, 1, "stderr");
+		exec = getstrfield(L, "execfile", 1);
+		path = getstrfield(L, "runpath", 0);
+		stdinput = optfilefield(L, "stdin");
+		stdoutput = optfilefield(L, "stdout");
+		stderror = optfilefield(L, "stderr");
 
 		lua_getfield(L, 1, "arguments");
 		if (lua_istable(L, 2)) {
-			argc += lua_rawlen(L, 2);
-			loski_proc_checkargvals(drv, &arginf, argfromtable, L, argc, &argsz);
+			int i;
+			argc = 1+lua_rawlen(L, 2);  /* execfile + arguments */
+			/* check arguments are strings */
+			for (i = 1; i < argc; ++i) {
+				lua_rawgeti(L, 2, i);
+				if (!lua_isstring(L, -1)) luaL_error(L,
+					"bad value #%d in field "LUA_QL("arguments")" (must be a string)", i);
+				lua_pop(L, 1); /* pop an argument string */
+			}
+			/* check arguments are valid for the driver */
+			err = loskiP_checkargs(drv, &arginf, gettablearg, L, argc, &argsz);
+			if (err) { luaL_pusherrmsg(L, err); lua_error(L); }
 		} else if (!lua_isnil(L, 2)) {
 			luaL_argerror(L, 1, "field "LUA_QL("arguments")" must be a table");
 		}
 
 		lua_getfield(L, 1, "environment");
-		if (lua_istable(L, -1)) {
-			size_t index = lua_gettop(L);
-			loski_proc_checkenvlist(drv, &envinf, L, index, &envsz);
-			envl = luaL_alloctemporary(L, envsz);
-			loski_proc_toenvlist(drv, &envinf, L, index, envl, envsz);
+		if (lua_istable(L, 3)) {
+			/* check environment variables are strings */
+			lua_pushnil(L);  /* first key */
+			if (lua_next(L, 3) != 0) {
+				const char *name = lua_tostring(L, -2);
+				if (name && !lua_isstring(L, -1))
+					luaL_error(L, "bad value for "LUA_QS" in field "LUA_QL("environment")
+					              " (must be a string)", name);
+				lua_pop(L, 1);
+			}
+			/* check environment variables are valid for the driver */
+			lua_pushnil(L);  /* first key */
+			err = loskiP_checkenv(drv, &envinf, getenvvar, L, &envsz);
+			if (err) { luaL_pusherrmsg(L, err); lua_error(L); }
+			lua_settop(L, 3);  /* discard any left over values */
 		} else if (!lua_isnil(L, -1)) {
 			luaL_argerror(L, 1, "field "LUA_QL("environment")" must be a table");
 		}
-		lua_pop(L, 1); /* pop field 'environment' */
+
+		proc = (loski_Process *)lua_newuserdata(L, sizeof(loski_Process));
+
+		if (lua_istable(L, 3)) {
+			envl = luaL_alloctemporary(L, envsz);
+			if (envl == NULL) luaL_error(L, "insuffient memory");
+			lua_pushnil(L);  /* first key */
+			loskiP_initenv(drv, &envinf, getenvvar, L, envl, envsz);
+			lua_settop(L, 3);  /* discard any left over values */
+		}
 
 		if (lua_istable(L, 2)) {
 			argv = luaL_alloctemporary(L, argsz);
-			loski_proc_toargvals(drv, &arginf, argfromtable, L, argc, argv, argsz);
+			if (argv == NULL) {
+				if (envl != NULL) luaL_freetemporary(L, envl, envsz);
+				luaL_error(L, "insuffient memory");
+			}
+			loskiP_initargs(drv, &arginf, gettablearg, L, argc, argv, argsz);
 		}
-		lua_pop(L, 1); /* pop field 'arguments' */
 
 	} else {
 		return luaL_argerror(L, 1, "table or string expected");
 	}
-	/* push a new proc structure on the stack */
-	proc = (loski_Process *)lua_newuserdata(L, sizeof(loski_Process));
-	err = loski_createprocess(drv, proc, exec, path, argv, envl, stdinput, stdoutput, stderror);
+	err = loskiP_initproc(drv, proc, exec, path, argv, envl,
+	                      stdinput, stdoutput, stderror);
 	if (argv != NULL) luaL_freetemporary(L, argv, argsz);
 	if (envl != NULL) luaL_freetemporary(L, envl, envsz);
-	if (err) return pushresults(L, 1, err); /* return process */
-	/* setup the new proc structure */
-	luaL_getmetatable(L, LOSKI_PROCESSCLS);
-	lua_setmetatable(L, -2);
-	return 1;
+	if (err == 0) luaL_setmetatable(L, LOSKI_PROCESSCLS);
+	return luaL_doresults(L, 1, err); /* return process */
 }
 
-const char *StatusName[] = { "running", "suspended", "dead" };
+#define toproc(L)	((loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS))
 
-static int lp_status(lua_State *L)
-{
-	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
-	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
-	loski_ProcStatus status;
-	int err = loski_processstatus(drv, proc, &status);
-	if (err == 0) lua_pushstring(L, StatusName[status]);
-	return pushresults(L, 1, err);
-}
-
-static int lp_exitval(lua_State *L)
-{
-	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
-	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
-	int code;
-	int err = loski_processexitval(drv, proc, &code);
-	if (err == 0) lua_pushinteger(L, code);
-	return pushresults(L, 1, err);
-}
-
-static int lp_kill(lua_State *L)
-{
-	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
-	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
-	int err = loski_killprocess(drv, proc);
-	return pushresults(L, 0, err);
-}
-
-static int lp_gc(lua_State *L)
-{
-	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, lua_upvalueindex(1));
-	loski_Process* proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
-	loski_discardprocess(drv, proc);
-	return 0;
-}
-
+/* string = tostring(process) */
 static int lp_tostring (lua_State *L)
 {
-	loski_Process *proc = (loski_Process *)luaL_checkudata(L, 1, LOSKI_PROCESSCLS);
-	lua_pushfstring(L, "process (%p)", proc);
+	lua_pushfstring(L, "process (%p)", toproc(L));
 	return 1;
 }
 
-static int lp_sentinel(lua_State *L)
+/* getmetatable(process).__gc */
+static int lp_gc(lua_State *L)
 {
-	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, 1);
-	loski_closeprocesses(drv);
+	loski_ProcDriver *drv = todrv(L);
+	loski_Process* proc = toproc(L);
+	loskiP_freeproc(drv, proc);
 	return 0;
 }
 
-static const luaL_Reg lib[] = {
-	{"create", lp_create},
-	{NULL, NULL}
-};
+/* status = process.status (proc) */
+static int lp_status(lua_State *L)
+{
+	static const char *names[] = { "running", "suspended", "dead" };
+	loski_ProcDriver *drv = todrv(L);
+	loski_Process* proc = toproc(L);
+	loski_ProcStatus status;
+	int err = loskiP_getprocstat(drv, proc, &status);
+	if (err == 0) lua_pushstring(L, names[status]);
+	return luaL_doresults(L, 1, err);
+}
+
+/* number = process.exitval (proc) */
+static int lp_exitval(lua_State *L)
+{
+	loski_ProcDriver *drv = todrv(L);
+	loski_Process* proc = toproc(L);
+	int code;
+	int err = loskiP_getprocexit(drv, proc, &code);
+	if (err == 0) lua_pushinteger(L, code);
+	return luaL_doresults(L, 1, err);
+}
+
+/* succ [, errmsg] = process.kill (proc) */
+static int lp_kill(lua_State *L)
+{
+	loski_ProcDriver *drv = todrv(L);
+	loski_Process* proc = toproc(L);
+	int err = loskiP_killproc(drv, proc);
+	return luaL_doresults(L, 0, err);
+}
+
 
 static const luaL_Reg cls[] = {
-	{"status", lp_status},
-	{"exitval", lp_exitval},
-	{"kill", lp_kill},
 	{"__gc", lp_gc},
 	{"__tostring", lp_tostring},
 	{NULL, NULL}
 };
 
+static const luaL_Reg lib[] = {
+	{"create", lp_create},
+	{"status", lp_status},
+	{"exitval", lp_exitval},
+	{"kill", lp_kill},
+	{NULL, NULL}
+};
+
+#ifndef LOSKI_DISABLE_PROCDRV
+static int lfreedrv (lua_State *L)
+{
+	loski_ProcDriver *drv = (loski_ProcDriver *)lua_touserdata(L, 1);
+	loskiP_freedrv(drv);
+	return 0;
+}
+#endif
+
 LUAMOD_API int luaopen_process(lua_State *L)
 {
+#ifndef LOSKI_DISABLE_PROCDRV
 	/* create sentinel */
-	loski_ProcDriver *drv = (loski_ProcDriver *)luaL_newsentinel(L,
-	                                            sizeof(loski_ProcDriver),
-	                                            lp_sentinel);
+	loski_ProcDriver *drv;
+	int err;
+	lua_settop(L, 0);  /* dicard any arguments */
+	drv = (loski_ProcDriver *)luaL_newsentinel(L, sizeof(loski_ProcDriver),
+	                                              lfreedrv);
 	/* initialize library */
-	if (loski_openprocesses(drv) != 0) {
+	err = loskiP_initdrv(drv);
+	if (err) {
 		luaL_cancelsentinel(L);
-		return luaL_error(L, "unable to initialize library");
+		luaL_pusherrmsg(L, err);
+		return lua_error(L);
 	}
+#define pushsentinel(L)	lua_pushvalue(L, 1)
+#else
+#define pushsentinel(L)	((void)L)
+#endif
 	/* create process class */
-	lua_pushvalue(L, -1);  /* push sentinel */
-	luaL_newclass(L, LOSKI_PROCESSCLS, NULL, cls, 1);
+	pushsentinel(L);
+	luaL_newclass(L, LOSKI_PROCESSCLS, NULL, cls, DRVUPV);
 	lua_pop(L, 1);  /* remove new class */
 	/* create library table */
 	luaL_newlibtable(L, lib);
-	lua_pushvalue(L, -2);  /* push sentinel */
-	luaL_setfuncs(L, lib, 1);
+	pushsentinel(L);
+	luaL_setfuncs(L, lib, DRVUPV);
 	return 1;
 }

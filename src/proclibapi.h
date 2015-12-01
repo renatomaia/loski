@@ -1,73 +1,91 @@
 #ifndef proclibapi_h
 #define proclibapi_h
 
-#include "loskiconf.h"
+#include <loskiconf.h>
+
+/*
+ * Library
+ */
+
+#ifndef LOSKI_DISABLE_PROCDRV
+LOSKIDRV_API int loskiP_initdrv (loski_ProcDriver *drv);
+
+LOSKIDRV_API void loskiP_freedrv (loski_ProcDriver *drv);
+#endif
+
+/*
+ * Command-Line Arguments
+ */
+
+typedef const char * (*loski_ProcArgFunc) (void *data, int index);
+
+LOSKIDRV_API int loskiP_checkargs (loski_ProcDriver *drv,
+                                   loski_ProcArgInfo *info,
+                                   loski_ProcArgFunc getter,
+                                   void *data, int count,
+                                   size_t *size);
+
+LOSKIDRV_API void loskiP_initargs (loski_ProcDriver *drv,
+                                   loski_ProcArgInfo *info,
+                                   loski_ProcArgFunc getter,
+                                   void *data, int count,
+                                   void *args, size_t size);
+
+/*
+ * Environment Variables
+ */
+
+typedef const char * (*loski_ProcEnvFunc) (void *data, const char **name);
+
+LOSKIDRV_API int loskiP_checkenv (loski_ProcDriver *drv,
+                                  loski_ProcEnvInfo *info,
+                                  loski_ProcEnvFunc getter,
+                                  void *data,
+                                  size_t *size);
+
+LOSKIDRV_API void loskiP_initenv (loski_ProcDriver *drv,
+                                  loski_ProcEnvInfo *info,
+                                  loski_ProcEnvFunc getter,
+                                  void *data,
+                                  void *envl, size_t size);
+
+/*
+ * Processes
+ */
 
 #include <stdio.h> /* definition of 'FILE*' */
-#include <lua.h>
 
-typedef const char * (*loski_ProcArgFunc) (lua_State *L, size_t index);
+#ifndef LOSKI_PROCSTAT_CUSTOM
+typedef enum loski_ProcStatus {
+	LOSKI_PROCSTAT_RUNNING,
+	LOSKI_PROCSTAT_SUSPENDED,
+	LOSKI_PROCSTAT_DEAD
+} loski_ProcStatus;
+#endif
 
-enum loski_ProcStatus { LOSKI_RUNNINGPROC, LOSKI_SUSPENDEDPROC, LOSKI_DEADPROC };
-typedef enum loski_ProcStatus loski_ProcStatus;
+LOSKIDRV_API int loskiP_initproc (loski_ProcDriver *drv,
+                                  loski_Process *proc,
+                                  const char *binpath,
+                                  const char *runpath,
+                                  void *argvals,
+                                  void *envlist,
+                                  FILE *stdinput,
+                                  FILE *stdoutput,
+                                  FILE *stderror);
 
-LOSKIDRV_API int loski_openprocesses(loski_ProcDriver *drv);
-
-LOSKIDRV_API int loski_closeprocesses(loski_ProcDriver *drv);
-
-LOSKIDRV_API int loski_processerror(int error, lua_State *L);
-
-LOSKIDRV_API void loski_proc_checkargvals(loski_ProcDriver *drv,
-                                          loski_ProcArgInfo *info,
-                                          loski_ProcArgFunc getarg,
-                                          lua_State *L,
-                                          size_t argc,
-                                          size_t *size);
-
-LOSKIDRV_API void loski_proc_toargvals(loski_ProcDriver *drv,
-                                       loski_ProcArgInfo *info,
-                                       loski_ProcArgFunc getarg,
-                                       lua_State *L,
-                                       size_t argc,
-                                       void *argvals,
-                                       size_t argsize);
-
-LOSKIDRV_API void loski_proc_checkenvlist(loski_ProcDriver *drv,
-                                          loski_ProcEnvInfo *info,
-                                          lua_State *L,
-                                          int index,
-                                          size_t *size);
-
-LOSKIDRV_API void loski_proc_toenvlist(loski_ProcDriver *drv,
-                                       loski_ProcEnvInfo *info,
-                                       lua_State *L,
-                                       int index,
-                                       void *envlist,
-                                       size_t envsize);
-
-LOSKIDRV_API int loski_createprocess(loski_ProcDriver *drv,
-                                     loski_Process *proc,
-                                     const char *binpath,
-                                     const char *runpath,
-                                     void *argvals,
-                                     void *envlist,
-                                     FILE *stdinput,
-                                     FILE *stdoutput,
-                                     FILE *stderror);
-
-LOSKIDRV_API int loski_processstatus(loski_ProcDriver *drv,
+LOSKIDRV_API int loskiP_getprocstat (loski_ProcDriver *drv,
                                      loski_Process *proc,
                                      loski_ProcStatus *status);
 
-LOSKIDRV_API int loski_processexitval(loski_ProcDriver *drv,
-                                      loski_Process *proc,
-                                      int *code);
+LOSKIDRV_API int loskiP_getprocexit (loski_ProcDriver *drv,
+                                     loski_Process *proc,
+                                     int *code);
 
-LOSKIDRV_API int loski_killprocess(loski_ProcDriver *drv,
+LOSKIDRV_API int loskiP_killproc (loski_ProcDriver *drv,
+                                  loski_Process *proc);
+
+LOSKIDRV_API void loskiP_freeproc (loski_ProcDriver *drv,
                                    loski_Process *proc);
-
-LOSKIDRV_API int loski_discardprocess(loski_ProcDriver *drv,
-                                      loski_Process *proc);
 
 
 #endif

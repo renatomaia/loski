@@ -4,25 +4,28 @@
 
 #include "proclib.h"
 
+#define LOSKI_PROCTABMINSZ	4
+
 typedef struct loski_ProcTable {
+	loski_Alloc allocf;
+	void *allocud;
+	loski_Process *mintab[LOSKI_PROCTABMINSZ];
 	loski_Process **table;
 	size_t capacity;
 	size_t count;
 } loski_ProcTable;
 
-LOSKIDRV_API int loski_proctabinit(loski_ProcTable *tab, size_t capacity);
+void loskiP_initproctab(loski_ProcTable *tab, loski_Alloc af, void *aud);
 
-LOSKIDRV_API void loski_proctabclose(loski_ProcTable *tab);
+int loskiP_incproctab(loski_ProcTable *tab);
 
-LOSKIDRV_API loski_Process *loski_proctabput(loski_ProcTable *tab,
-                                             loski_Process *proc);
+void loskiP_putproctab(loski_ProcTable *tab, loski_Process *proc);
 
-LOSKIDRV_API loski_Process *loski_proctabdel(loski_ProcTable *tab,
-                                             loski_Process *proc);
+void loskiP_delproctab(loski_ProcTable *tab, loski_Process *proc);
 
-LOSKIDRV_API loski_Process *loski_proctabget(loski_ProcTable *tab, pid_t pid);
+loski_Process *loskiP_findproctab(loski_ProcTable *tab, pid_t pid);
 
-LOSKIDRV_API int loski_proctabisempty(loski_ProcTable *tab);
+int loskiP_emptyproctab(loski_ProcTable *tab);
 
 
 #endif

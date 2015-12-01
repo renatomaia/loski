@@ -3,7 +3,8 @@ Contents
 
 1. [Time Facilities](#time)
 2. [Network Facilities](#network)
-3. [Error Messages](#errmsg)
+3. [Process Facilities](#process)
+4. [Error Messages](#errmsg)
 
 
 Index
@@ -28,6 +29,11 @@ Index
 - [`socket:shutdown`](#socket:shutdown)
 - [`socket.type`](#socket.type)
 
+- [`process.create`](#process.create)
+- [`process.status`](#process.status)
+- [`process.exitval`](#process.exitval)
+- [`process.kill`](#process.kill)
+
 - [`time`](#time)
 - [`time.now`](#time.now)
 - [`time.sleep`](#time.sleep)
@@ -46,7 +52,6 @@ Returns the number of seconds since some given start time (the "epoch"), just li
 ### `time.sleep (delay)` {#time.sleep}
 
 Suspends the execution for `delay` seconds.
-
 
 Network Facilities {#network}
 ------------------
@@ -321,7 +326,7 @@ Otherwise it returns `nil` plus a string describing the error.
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
 - `"unfulfilled"`
-- `"in use"` (address in use)
+- `"in use"` (socket is connected or address in use)
 - `"unavailable"` (address not available)
 - `"unreachable"` (address in unreachable)
 - `"refused"` (connection refused by peer)
@@ -398,6 +403,57 @@ The current standard implementation of this operation may return the following [
 
 - `"closed"` (socket is not connected)
 - `"no resources"`
+
+Process Facilities {#process}
+---------------
+
+### `proc = process.create (cmd [, ...])` {#process.create}
+
+This function creates a new process.
+`cmd` is the path of the executable image for the new process.
+Every other extra arguments are strings to be used as command-line arguments for the executable image of the new process.
+Alternatively, `cmd` can be a table with the fields described below.
+Unless stated otherwise, when one of these field are not defined in table `cmd`, or `cmd` is a string, the new process inherits the characteristics of the current process, like the current directory, the environment variables, or standard files.
+
+`execfile`
+:	path of the executable image for the new process.
+	This field is required.
+
+`runpath`
+:	path of the current directory of the new process.
+
+`stdin`
+:	file to be set as the standard input of the new process.
+
+`stdout`
+:	file to be set as the standard output of the new process.
+
+`stderr`
+:	file to be set as the standard error output of the new process.
+
+`arguments`
+:	table with the sequence of command-line arguments for the executable image of the new process.
+	When this field is not provided, the new process's executable image received not arguments.
+
+`environment`
+:	table mapping environment variable names to the values they must assume for the new process.
+	If this field is provided, only the variables defined will be available for the new process.
+
+It returns a handle for the new process, or, in case of errors, `nil` plus an error message.
+
+The current standard implementation of this operation may return the following [error messages](#errmsg).
+
+- `"???"` (???)
+
+### `status = process.status (proc)` {#process.status}
+
+### `number = process.exitval (proc)` {#process.exitval}
+
+### `succ [, errmsg] = process.kill (proc)` {#process.kill}
+
+### `time.sleep (delay)` {#time.sleep}
+
+Suspends the execution for `delay` seconds.
 
 Error Messages {#errmsg}
 --------------
