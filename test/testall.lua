@@ -1,3 +1,5 @@
+dofile("test/process/status.lua")
+dofile("test/process/create.lua")
 dofile("test/network/address.lua")
 dofile("test/network/resolve.lua")
 dofile("test/network/getname.lua")

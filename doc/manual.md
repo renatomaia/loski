@@ -97,7 +97,7 @@ If some address is found, returns an iterator function with the following usage 
 
 	[address, socktype, more =] next ([address])
 
-Otherwise, it returns `nil` plus a string describing the error.
+Otherwise, it returns `nil` plus an error message.
 
 Each time the iterator function is called, returns one address found for node with `name`, followed by the type of the socket to be used to connect to the address, and a boolean indicating if there is more results to be returned in future calls.
 If an address structure is provided as `address`, it is used to store the result; otherwise a new address structure is created.
@@ -169,8 +169,10 @@ The `type` string can be any of the following:
 
 `"datagram"`
 :	datagram socket (UDP).
+
 `"connection"`
 :	stream socket to initiate connections (TCP).
+
 `"listen"`
 :	stream socket to accept connections (TCP).
 
@@ -178,6 +180,7 @@ The `domain` string defines the socket's address domain (or family) and can be a
 
 `"ipv4"`
 :	IPv4 addresses. (the default)
+
 `"ipv6"`
 :	IPv6 addresses.
 
@@ -191,7 +194,7 @@ The current standard implementation of this operation may return the following [
 
 ### `type = network.type (value)` {#network.type}
 
-Returns the string `"address"` if `value` is an address structure, or `"socket"` if `value`is a socket handle; otherwise it returns `nil`.
+Returns the string `"address"` if `value` is an address structure, or `"socket"` if `value` is a socket handle; otherwise it returns `nil`.
 
 ### `type = socket.type` {#socket.type}
 
@@ -204,7 +207,7 @@ Closes `socket`.
 Note that sockets are automatically closed when their handles are garbage collected, but that takes an unpredictable amount of time to happen. 
 
 In case of success, this function returns `true`.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -216,7 +219,7 @@ The current standard implementation of this operation may return the following [
 Binds `socket` to the local address provided as `address`.
 
 In case of success, this function returns `true`.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -237,7 +240,7 @@ Returns the address associated with `socket`, as indicated by `site`, which can 
 
 If `address` is provided, it is the address structure used to store the result.
 
-In case of errors, it returns `nil` plus a string describing the error.
+In case of errors, it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -271,10 +274,10 @@ The current standard implementation of this operation may return the following [
 ### `success [, errmsg] = socket:setoption (name, value)` {#socket:setoption}
 
 Sets the option `name` for `socket`.
-There available options are the same as defined in operation `socket:getoption`.
+The available options are the same as defined in operation [`socket:getoption`](#socket:getoption).
 
 In case of success, this function returns `true`.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -290,7 +293,7 @@ By default `backlog` is 32.
 This operation is only available for `listen` sockets.
 
 In case of success, this function returns `true`.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -305,12 +308,11 @@ An address structure can be provided as `address` to be filled with the address 
 This operation is only available for `listen` sockets.
 
 In case of success, this function returns a new `connection` socket for the accepted connection.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
 - `"unfulfilled"`
-- `"no resources"`
 - `"aborted"` (a connection has been aborted)
 - `"no resources"`
 - `"no system memory"`
@@ -321,7 +323,7 @@ Binds `socket` to the peer address provided as `address`.
 This operation is not available for `listen` sockets.
 
 In case of success, this function returns `true`.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -344,7 +346,7 @@ This operation is not available for `listen` sockets.
 For disconnected datagram sockets, it is necessary to provide `address` with the peer address the data is destined.
 
 In case of success, this function returns the number of bytes from `data` effectivelly sent through `socket`.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -372,7 +374,7 @@ This operation is not available for `listen` sockets.
 For disconnected datagram sockets, it is possible to provide `address` with an address structure to be filled with the address of the peer socket from which the received data were originated.
 
 In case of success, this function returns the `data` effectivelly received from `socket`.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -397,7 +399,7 @@ The mode string can be any of the following:
 This operation is only available for `connection` sockets.
 
 In case of success, this function returns `true`.
-Otherwise it returns `nil` plus a string describing the error.
+Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
@@ -433,7 +435,7 @@ Unless stated otherwise, when one of these field are not defined in table `cmd`,
 
 `arguments`
 :	table with the sequence of command-line arguments for the executable image of the new process.
-	When this field is not provided, the new process's executable image received not arguments.
+	When this field is not provided, the new process's executable image receives no arguments.
 
 `environment`
 :	table mapping environment variable names to the values they must assume for the new process.
@@ -443,17 +445,37 @@ It returns a handle for the new process, or, in case of errors, `nil` plus an er
 
 The current standard implementation of this operation may return the following [error messages](#errmsg).
 
-- `"???"` (???)
+- `"access denied"`
+- `"too much"`
+- `"no resources"`
+- `"no system memory"`
 
 ### `status = process.status (proc)` {#process.status}
 
-### `number = process.exitval (proc)` {#process.exitval}
+Returns the status of process `proc`, as a string:
+"running", if the process is running;
+"suspended", if the process is suspended;
+and "dead" if the process terminated.
+In the last case, operation [`process.exitval`]{#process.exitval} can be used to get the exit value of the process.
+
+### `number [, errmsg] = process.exitval (proc)` {#process.exitval}
+
+Returns the exit value of process `proc` as a number in the range [0; 255], or, in case of errors, `nil` plus an error message.
+
+The current standard implementation of this operation may return the following [error messages](#errmsg).
+
+- `"unfulfilled"` (process has not terminated yet)
+- `"aborted"` (process terminated before completion)
 
 ### `succ [, errmsg] = process.kill (proc)` {#process.kill}
 
-### `time.sleep (delay)` {#time.sleep}
+Forces the termination of process `proc`.
+In case of success, this function returns `true`.
+Otherwise it returns `nil` plus an error message.
 
-Suspends the execution for `delay` seconds.
+The current standard implementation of this operation may return the following [error messages](#errmsg).
+
+- `"access denied"`
 
 Error Messages {#errmsg}
 --------------
@@ -517,7 +539,7 @@ Moreover, any operation shall raise the following errors:
 :	underlying system raised an unexpected error, usually due to poor LOSKI support for the particular platform.
 
 `"unspecified error"`
-:	underlying system raised a non-conforming error, usually due to poor platform adherence to standards.
+:	underlying system raised a non-conforming error, usually due to platform's poor adherence to standards.
 
 `"unknown error (<number>)"`
 :	underlying system raised an illegal error value (indicated in the message) due to wrong LOSKI implementation or build.

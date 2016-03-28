@@ -18,7 +18,7 @@ LOSKIDRV_API int loskiN_initdrv (loski_NetDriver *drv)
 
 LOSKIDRV_API void loskiN_freedrv (loski_NetDriver *drv)
 {
-	signal(SIGPIPE, SIG_DFL) == SIG_ERR);
+	signal(SIGPIPE, SIG_DFL);
 }
 
 
@@ -509,9 +509,9 @@ LOSKIDRV_API int loskiN_acceptsock (loski_NetDriver *drv,
 #endif
 		case EWOULDBLOCK:
 		case EINTR: return LOSKI_ERRUNFULFILLED;
-		case EMFILE:
-		case ENFILE: return LOSKI_ERRNORESOURCES;
 		case ECONNABORTED: return LOSKI_ERRABORTED;
+		case EMFILE:
+		case ENFILE:
 		case ENOBUFS: return LOSKI_ERRNORESOURCES;
 		case ENOMEM: return LOSKI_ERRNOMEMORY;
 		case EINVAL: return LOSKI_ERRINVALID;

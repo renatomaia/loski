@@ -1,6 +1,7 @@
 #include "loskiaux.h"
 #include "proclib.h"
 
+#include <string.h>
 #include <lua.h>
 
 
@@ -141,9 +142,9 @@ static int lp_create(lua_State *L)
 			lua_pushnil(L);  /* first key */
 			if (lua_next(L, 3) != 0) {
 				const char *name = lua_tostring(L, -2);
-				if (name && !lua_isstring(L, -1))
-					luaL_error(L, "bad value for "LUA_QS" in field "LUA_QL("environment")
-					              " (must be a string)", name);
+				if (name && (!lua_isstring(L, -1) || strchr(name, '=')))
+					luaL_error(L, "bad name "LUA_QS" in field "LUA_QL("environment")
+					              " (must be a string without "LUA_QL("=")")", name);
 				lua_pop(L, 1);
 			}
 			/* check environment variables are valid for the driver */
@@ -162,7 +163,7 @@ static int lp_create(lua_State *L)
 			if (envl == NULL) luaL_error(L, "insuffient memory");
 			lua_pushnil(L);  /* first key */
 			loskiP_initenv(drv, &envinf, getenvvar, L, envl, envsz);
-			lua_settop(L, 3);  /* discard any left over values */
+			lua_settop(L, 4);  /* discard any left over values */
 		}
 
 		if (lua_istable(L, 2)) {

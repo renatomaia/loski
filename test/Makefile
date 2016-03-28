@@ -35,7 +35,7 @@ ALL_T=	$(TST_T)
 default: $(PLAT)
 
 all: $(PLAT) $(TST_T)
-	$(TST_T)
+	./$(TST_T)
 
 $(TST_T):	$(TST_O) $(TAB_O)
 	$(CC) -o $@ $(LDFLAGS) $(TST_O) $(TAB_O)

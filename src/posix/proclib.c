@@ -29,23 +29,52 @@ LOSKIDRV_API void loskiP_freedrv (loski_ProcDriver *drv)
 	/* nothing to do */
 }
 
+#define sortvalues(A,B,T)	if (A>B) { T=A; A=B; B=T; }
+#define closerange(A,B,T)	for (T=A+1; T<B; ++T) close(T)
 
-static int closefds(int fd1, int fd2, int fd3, int lim)
+static void closefds(int fd1, int fd2, int fd3, int lim)
 {
 	int i = -1;
-	if (fd1 > fd2) { i = fd1; fd1 = fd2; fd2 = i; }
-	if (fd2 > fd3) { i = fd2; fd2 = fd3; fd3 = i; }
-	if (i != -1 && fd1 > fd2) { i = fd1; fd1 = fd2; fd2 = i; }
-	for (i = 3; i < fd1; ++i) if (close(i)) return 0;
-	for (i = fd1+1; i < fd2; ++i) if (close(i)) return 0;
-	for (i = fd2+1; i < fd3; ++i) if (close(i)) return 0;
-	for (i = fd3+1; i < lim; ++i) if (close(i)) return 0;
-	return 1;
+	sortvalues(fd1, fd2, i);
+	sortvalues(fd2, fd3, i);
+	sortvalues(fd1, fd2, i);
+	closerange( 2 , fd1, i);
+	closerange(fd1, fd2, i);
+	closerange(fd2, fd3, i);
+	closerange(fd3, lim, i);
 }
 
-static int setstdfd(int stdfd, int fd)
+#define STDIN_FD	0
+#define STDOUT_FD	1
+#define STDERR_FD	2
+
+static int setupstdfd(int ifd, int ofd, int efd)
 {
-	return (fd==stdfd || (dup2(fd,stdfd)==fd && (fd<3 || close(fd)!=EOF)));
+	if (ifd != STDIN_FD) {
+		/* backup stdin */
+		if (ofd == STDIN_FD || efd == STDIN_FD) {
+			int tfd = dup(STDIN_FD);
+			if (tfd == -1) return 0;
+			if (ofd == STDIN_FD) ofd = tfd;
+			if (efd == STDIN_FD) efd = tfd;
+		}
+		/* replace stdin */
+		if (dup2(ifd, STDIN_FD) != STDIN_FD) return 0;
+	}
+	if (ofd != STDOUT_FD) {
+		/* backup stdout */
+		if (efd == STDOUT_FD) {
+			efd = dup(STDOUT_FD);
+			if (efd == -1) return 0;
+		}
+		/* replace stdin */
+		if (dup2(ofd, STDOUT_FD) != STDOUT_FD) return 0;
+	}
+	if ((efd != STDERR_FD) && (dup2(efd, STDERR_FD) != STDERR_FD)) return 0;
+	if (ifd > 2) if (close(ifd)) return 0;
+	if (ofd > 2) if (close(ofd)) return 0;
+	if (efd > 2) if (close(efd)) return 0;
+	return 1;
 }
 
 static int execvep(const char *file,
@@ -150,15 +179,15 @@ LOSKIDRV_API void loskiP_initenv (loski_ProcDriver *drv,
 	envl[i] = NULL; /* put NULL to mark the end of 'envl' array */
 }
 
-LOSKIDRV_API int loski_initproc (loski_ProcDriver *drv,
-                                 loski_Process *proc,
-                                 const char *binpath,
-                                 const char *runpath,
-                                 void *argv,
-                                 void *envl,
-                                 FILE *stdin,
-                                 FILE *stdout,
-                                 FILE *stderr)
+LOSKIDRV_API int loskiP_initproc (loski_ProcDriver *drv,
+                                  loski_Process *proc,
+                                  const char *binpath,
+                                  const char *runpath,
+                                  void *argv,
+                                  void *envl,
+                                  FILE *stdin,
+                                  FILE *stdout,
+                                  FILE *stderr)
 {
 	int err;
 	char pathbuf[PATH_MAX];
@@ -167,26 +196,30 @@ LOSKIDRV_API int loski_initproc (loski_ProcDriver *drv,
 	int efd = stderr ? fileno(stderr) : 2;
 	int mfd = sysconf(_SC_OPEN_MAX);
 	if (ifd==-1 || ofd==-1 || efd==-1 || mfd==-1) return LOSKI_ERRUNEXPECTED;
-	if (ifd<=2 || ofd<=2 || efd<=2) return LOSKI_ERRUNSUPPORTED; // TODO: FIX IT!
-	if (!loskiP_incprocmgr()) return LOSKI_ERRNOMEMORY;
-	if (getcwd(pathbuf, PATH_MAX) == NULL) {
-		switch (errno) {
-			case EINVAL:
-			case ERANGE:
-			case EACCES:
-			case ENOMEM: return LOSKI_ERRUNEXPECTED;
+	loskiP_lockprocmgr();
+	err = !loskiP_incprocmgr();
+	loskiP_unlockprocmgr();
+	if (err) return LOSKI_ERRNOMEMORY;
+	if (runpath) {
+		if (getcwd(pathbuf, PATH_MAX) == NULL) {
+			switch (errno) {
+				case EINVAL:
+				case ERANGE:
+				case EACCES:
+				case ENOMEM: return LOSKI_ERRUNEXPECTED;
+			}
+			return LOSKI_ERRUNSPECIFIED;
 		}
-		return LOSKI_ERRUNSPECIFIED;
-	}
-	if (chdir(runpath)) {
-		switch (errno) {
-			case EACCES: return LOSKI_ERRDENIED;
-			case ELOOP:
-			case ENAMETOOLONG: return LOSKI_ERRTOOMUCH;
-			case ENOENT:
-			case ENOTDIR: return LOSKI_ERRINVALID;
+		if (chdir(runpath)) {
+			switch (errno) {
+				case EACCES: return LOSKI_ERRDENIED;
+				case ELOOP:
+				case ENAMETOOLONG: return LOSKI_ERRTOOMUCH;
+				case ENOENT:
+				case ENOTDIR: return LOSKI_ERRINVALID;
+			}
+			return LOSKI_ERRUNSPECIFIED;
 		}
-		return LOSKI_ERRUNSPECIFIED;
 	}
 	fflush(stdout);
 	fflush(stderr);
@@ -204,9 +237,9 @@ LOSKIDRV_API int loski_initproc (loski_ProcDriver *drv,
 		err = 0;
 	} else {
 		/* child process */
-		if (closefds(ifd, ofd, efd, mfd) &&
-		    setstdfd(0, ifd) && setstdfd(1, ofd) && setstdfd(2, efd) &&
-		    resetinheritableprops()) {
+		loskiP_unlockprocmgr();
+		closefds(ifd, ofd, efd, mfd);
+		if (setupstdfd(ifd, ofd, efd) && resetinheritableprops()) {
 			if (!envl) execvp(binpath, (char *const *)argv);
 			else execvep(binpath, (char *const *)argv, (char *const *)envl, pathbuf);
 		}
@@ -214,7 +247,7 @@ LOSKIDRV_API int loski_initproc (loski_ProcDriver *drv,
 		err = LOSKI_ERRUNEXPECTED;  /* avoid warning */
 	}
 	loskiP_unlockprocmgr();
-	if (chdir(pathbuf)) return LOSKI_ERRUNEXPECTED;
+	if (runpath && chdir(pathbuf)) err = LOSKI_ERRUNEXPECTED;
 	return err;
 }
 
@@ -245,7 +278,12 @@ LOSKIDRV_API int loskiP_getprocstat (loski_ProcDriver *drv,
 				proc->pid = 0;
 			}
 		}
-		else err = errno;
+		else switch (errno) {
+			case EINTR:
+			case ECHILD:
+			case EINVAL: err = LOSKI_ERRUNEXPECTED; break;
+			default: err = LOSKI_ERRUNSPECIFIED;
+		}
 		loskiP_unlockprocmgr();
 	}
 	else *status = LOSKI_PROCSTAT_DEAD;
@@ -256,9 +294,13 @@ LOSKIDRV_API int loskiP_getprocexit (loski_ProcDriver *drv,
                                      loski_Process *proc,
                                      int *code)
 {
-	if ( (proc->pid == 0) && WIFEXITED(proc->status) ) {
-		*code = WEXITSTATUS(proc->status);
-		return 0;
+	if (proc->pid == 0) {
+		if (WIFEXITED(proc->status)) {
+			*code = WEXITSTATUS(proc->status);
+			return 0;
+		} else if (WIFSIGNALED(proc->status)) {
+			return LOSKI_ERRABORTED;
+		}
 	}
 	return LOSKI_ERRUNFULFILLED;
 }
@@ -266,8 +308,11 @@ LOSKIDRV_API int loskiP_getprocexit (loski_ProcDriver *drv,
 LOSKIDRV_API int loskiP_killproc (loski_ProcDriver *drv,
                                   loski_Process *proc)
 {
-	if (proc->pid != 0) {
-		if (kill(proc->pid, SIGKILL) == -1) return errno;
+	if (proc->pid != 0) if (kill(proc->pid, SIGKILL) == -1) switch (errno) {
+		case EPERM: return LOSKI_ERRDENIED;
+		case ESRCH:
+		case EINVAL: return LOSKI_ERRUNEXPECTED;
+		default: return LOSKI_ERRUNSPECIFIED;
 	}
 	return 0;
 }

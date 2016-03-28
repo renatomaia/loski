@@ -1,21 +1,5 @@
 #include "proctab.h"
 
-#include <stdio.h>
-void loskiP_printproctab(loski_ProcTable *tab)
-{
-	size_t i;
-	if (1) return;
-	printf("  %p:\n", tab);
-	for (i = 0; i < tab->capacity; ++i) {
-		loski_Process *proc = tab->table[i];
-		printf("    %ld:", i);
-		while (proc) {
-			printf(" %d", proc->pid);
-			proc = proc->next;
-		}
-		printf("\n");
-	}
-}
 
 #include <string.h>  /* memcpy */
 
@@ -82,9 +66,6 @@ void loskiP_initproctab(loski_ProcTable *tab, loski_Alloc af, void *aud)
 	tab->capacity = LOSKI_PROCTABMINSZ;
 	tab->table = tab->mintab;
 	for (i=0; i<tab->capacity; ++i) tab->table[i] = NULL;
-
-loskiP_printproctab(tab);
-
 }
 
 int loskiP_incproctab(loski_ProcTable *tab)
@@ -113,9 +94,6 @@ void loskiP_putproctab(loski_ProcTable *tab, loski_Process *proc)
 {
 	addentry(tab->table, calchash(proc->pid, tab->capacity), proc);
 	++(tab->count);
-
-loskiP_printproctab(tab);
-
 }
 
 void loskiP_delproctab(loski_ProcTable *tab, loski_Process *proc)
@@ -135,9 +113,6 @@ void loskiP_delproctab(loski_ProcTable *tab, loski_Process *proc)
 			                         calcsize(tab->capacity));
 		}
 	}
-
-loskiP_printproctab(tab);
-
 }
 
 loski_Process *loskiP_findproctab(loski_ProcTable *tab, pid_t pid)

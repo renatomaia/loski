@@ -1,32 +1,40 @@
 #include <stdio.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include "proctab.h"
 
 #define calcsize(C)	(C*sizeof(loski_Process *))
 
-#define MAXPROC 768
-#define MAXSIZE 1024
+#define MAXPROC 192
+#define MAXSIZE 256
 #define MAXPID (MAXPROC*MAXSIZE)
 #define UNUSED ((char)0xff)
 
 static size_t memsz = 0;
 static char memory[calcsize(MAXSIZE)];
+static char *allocmem = NULL;
 
 static void *allocf (void *ud, void *ptr, size_t osize, size_t nsize) {
 	size_t i;
+	size_t oini = calcsize(MAXSIZE)-osize;
 	assert(ud == &memsz);
-	assert(ptr == NULL || ptr == memory);
+	assert(ptr == allocmem);
 	assert((ptr == NULL && osize == 0 && memsz == 0) || (ptr && osize == memsz));
-	assert(0 <= nsize);
-	for (i=osize; i<calcsize(MAXSIZE); ++i) assert(memory[i] == UNUSED);
-	for (i=nsize; i<calcsize(MAXSIZE); ++i) memory[i] = UNUSED;
+	assert(nsize >= 0);
+	for (i=0; i<oini; ++i) assert(memory[i] == UNUSED);
 	if (nsize == 0) {
+		for (i=0; i<calcsize(MAXSIZE); ++i) memory[i] = UNUSED;
 		memsz = 0;
+		allocmem = NULL;
 	} else if (nsize <= calcsize(MAXSIZE)) {
+		size_t nini = calcsize(MAXSIZE)-nsize;
+		memmove(memory+nini, memory+oini, osize<nsize ? osize : nsize);
+		for (i=0; i<nini; ++i) memory[i] = UNUSED;
 		memsz = nsize;
-		return memory;
+		allocmem = memory+nini;
+		return allocmem;
 	}
 	return NULL;
 }
@@ -46,29 +54,29 @@ static void checkvalues(loski_ProcTable *t, size_t s, size_t n, size_t g)
 static void checkmemo()
 {
 	size_t i;
-	for (i=memsz; i<calcsize(MAXSIZE); ++i) assert(memory[i] == UNUSED);
+	for (i=0; i<calcsize(MAXSIZE)-memsz; ++i) assert(memory[i] == UNUSED);
 }
 
 int main (int argc, const char* argv[])
 {
-	size_t n=MAXPROC, g, i;
+	size_t n=MAXPROC, b=1, g, i;
 	loski_ProcTable t;
+
+	printf("posix/proctab.c ");
+
 	for (i=0; i<calcsize(MAXSIZE); ++i) memory[i] = UNUSED;
 
 	loskiP_initproctab(&t, allocf, &memsz);
 
-	for (g=1; g<=n*4/3; ++g) {
+	for (g=1; g<=MAXSIZE; i=g, g=g+b, b=i) {
 
-//printf("n=%ld, g=%ld\n", n, g);
+	printf("."); fflush(stdout);
 
 		assert(memsz == 0);
 		checkmemo();
 		for (i=0; i<n; ++i) {
 			p[i].pid = i*g;
 			assert(loskiP_incproctab(&t));
-
-//printf("  loskiP_putproctab(&t, p+%ld) /* {pid=%d} */\n", i, (int)(i*g));
-
 			loskiP_putproctab(&t, p+i);
 			if (i+1 < LOSKI_PROCTABMINSZ) assert(memsz == 0);
 			else assert(memsz > 0);
@@ -80,14 +88,8 @@ int main (int argc, const char* argv[])
 		assert(memsz == calcsize(MAXSIZE));
 		checkvalues(&t, 0, n, g);
 		for (i=0; i<n; ++i) {
-
-//printf("  loskiP_delproctab(&t, p+%ld) /* {pid=%d} */\n", i, (int)(i*g));
-
 			loskiP_delproctab(&t, p+i);
 			assert(p[i].pid == i*g);
-
-//printf("  loskiP_findproctab(&t, %ld)=p+%ld /* {pid=%d}, i=%ld */\n", i, loskiP_findproctab(&t, i)-p, loskiP_findproctab(&t, i)->pid, i/g);
-
 			assert(loskiP_findproctab(&t, i*g) == NULL);
 			checkvalues(&t, i+1, n, g);
 		}
@@ -98,6 +100,8 @@ int main (int argc, const char* argv[])
 
 	assert(memsz == 0);
 	checkmemo();
+
+	printf(" OK\n");
 
 	return 0;
 }

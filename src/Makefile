@@ -29,7 +29,7 @@ MYOBJS=
 
 AUX_O=	loskiaux.o
 TIM_O=	ltimelib.o $(PLAT_DIR)/timelib.o
-PRC_O=	lproclib.o $(PLAT_DIR)/proclib.o $(PLAT_DIR)/proctab.o
+PRC_O=	lproclib.o $(PLAT_DIR)/proclib.o $(PLAT_DIR)/st/procmgr.o $(PLAT_DIR)/proctab.o
 NET_O=	lnetlib.o $(PLAT_DIR)/netlib.o
 EVT_O=	leventlib.o $(PLAT_DIR)/eventlib.o $(PLAT_DIR)/timeaux.o lnetaux.o
 #FLS_O=	lfilesys.o $(PLAT_DIR)/filesyslib.o
