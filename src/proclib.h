@@ -1,14 +1,18 @@
-#ifndef proclibapi_h
-#define proclibapi_h
+#ifndef proclib_h
+#define proclib_h
+
+
+#include "procdef.h"
 
 #include <loskiconf.h>
+#include <loskierr.h>
 
 /*
  * Library
  */
 
 #ifndef LOSKI_DISABLE_PROCDRV
-LOSKIDRV_API int loskiP_initdrv (loski_ProcDriver *drv);
+LOSKIDRV_API loski_ErrorCode loskiP_initdrv (loski_ProcDriver *drv);
 
 LOSKIDRV_API void loskiP_freedrv (loski_ProcDriver *drv);
 #endif
@@ -53,8 +57,6 @@ LOSKIDRV_API void loskiP_initenv (loski_ProcDriver *drv,
  * Processes
  */
 
-#include <stdio.h> /* definition of 'FILE*' */
-
 #ifndef LOSKI_PROCSTAT_CUSTOM
 typedef enum loski_ProcStatus {
 	LOSKI_PROCSTAT_RUNNING,
@@ -63,26 +65,26 @@ typedef enum loski_ProcStatus {
 } loski_ProcStatus;
 #endif
 
-LOSKIDRV_API int loskiP_initproc (loski_ProcDriver *drv,
-                                  loski_Process *proc,
-                                  const char *binpath,
-                                  const char *runpath,
-                                  void *argvals,
-                                  void *envlist,
-                                  FILE *stdinput,
-                                  FILE *stdoutput,
-                                  FILE *stderror);
+LOSKIDRV_API loski_ErrorCode loskiP_initproc (loski_ProcDriver *drv,
+                                              loski_Process *proc,
+                                              const char *binpath,
+                                              const char *runpath,
+                                              void *argvals,
+                                              void *envlist,
+                                              loski_ProcStream *stdinput,
+                                              loski_ProcStream *stdoutput,
+                                              loski_ProcStream *stderror);
 
-LOSKIDRV_API int loskiP_getprocstat (loski_ProcDriver *drv,
-                                     loski_Process *proc,
-                                     loski_ProcStatus *status);
+LOSKIDRV_API loski_ErrorCode loskiP_getprocstat (loski_ProcDriver *drv,
+                                                 loski_Process *proc,
+                                                 loski_ProcStatus *status);
 
-LOSKIDRV_API int loskiP_getprocexit (loski_ProcDriver *drv,
-                                     loski_Process *proc,
-                                     int *code);
+LOSKIDRV_API loski_ErrorCode loskiP_getprocexit (loski_ProcDriver *drv,
+                                                 loski_Process *proc,
+                                                 int *code);
 
-LOSKIDRV_API int loskiP_killproc (loski_ProcDriver *drv,
-                                  loski_Process *proc);
+LOSKIDRV_API loski_ErrorCode loskiP_killproc (loski_ProcDriver *drv,
+                                              loski_Process *proc);
 
 LOSKIDRV_API void loskiP_freeproc (loski_ProcDriver *drv,
                                    loski_Process *proc);

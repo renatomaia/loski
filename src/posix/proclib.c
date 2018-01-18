@@ -7,8 +7,6 @@
  * http://www.linuxjournal.com/article/2121?page=0,1
  */
 
-#include <loskierr.h>
-
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,9 +14,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <lauxlib.h>
 
 
-LOSKIDRV_API int loskiP_initdrv (loski_ProcDriver *drv)
+LOSKIDRV_API loski_ErrorCode loskiP_initdrv (loski_ProcDriver *drv)
 {
 	loskiP_initprocmgr(NULL, NULL);
 	return 0;
@@ -179,21 +178,21 @@ LOSKIDRV_API void loskiP_initenv (loski_ProcDriver *drv,
 	envl[i] = NULL; /* put NULL to mark the end of 'envl' array */
 }
 
-LOSKIDRV_API int loskiP_initproc (loski_ProcDriver *drv,
-                                  loski_Process *proc,
-                                  const char *binpath,
-                                  const char *runpath,
-                                  void *argv,
-                                  void *envl,
-                                  FILE *stdin,
-                                  FILE *stdout,
-                                  FILE *stderr)
+LOSKIDRV_API loski_ErrorCode loskiP_initproc (loski_ProcDriver *drv,
+                                              loski_Process *proc,
+                                              const char *binpath,
+                                              const char *runpath,
+                                              void *argv,
+                                              void *envl,
+                                              loski_ProcStream *stdin,
+                                              loski_ProcStream *stdout,
+                                              loski_ProcStream *stderr)
 {
 	int err;
 	char pathbuf[PATH_MAX];
-	int ifd = stdin ? fileno(stdin) : 0;
-	int ofd = stdout ? fileno(stdout) : 1;
-	int efd = stderr ? fileno(stderr) : 2;
+	int ifd = stdin ? *stdin : 0;
+	int ofd = stdout ? *stdout : 1;
+	int efd = stderr ? *stderr : 2;
 	int mfd = sysconf(_SC_OPEN_MAX);
 	if (ifd==-1 || ofd==-1 || efd==-1 || mfd==-1) return LOSKI_ERRUNEXPECTED;
 	loskiP_lockprocmgr();
@@ -221,8 +220,6 @@ LOSKIDRV_API int loskiP_initproc (loski_ProcDriver *drv,
 			return LOSKI_ERRUNSPECIFIED;
 		}
 	}
-	fflush(stdout);
-	fflush(stderr);
 	loskiP_lockprocmgr();
 	proc->pid = fork();
 	proc->status = 0;
@@ -251,9 +248,9 @@ LOSKIDRV_API int loskiP_initproc (loski_ProcDriver *drv,
 	return err;
 }
 
-LOSKIDRV_API int loskiP_getprocstat (loski_ProcDriver *drv,
-                                     loski_Process *proc,
-                                     loski_ProcStatus *status)
+LOSKIDRV_API loski_ErrorCode loskiP_getprocstat (loski_ProcDriver *drv,
+                                                 loski_Process *proc,
+                                                 loski_ProcStatus *status)
 {
 	int err = 0;
 	if (proc->pid != 0) {
@@ -290,9 +287,9 @@ LOSKIDRV_API int loskiP_getprocstat (loski_ProcDriver *drv,
 	return err;
 }
 
-LOSKIDRV_API int loskiP_getprocexit (loski_ProcDriver *drv,
-                                     loski_Process *proc,
-                                     int *code)
+LOSKIDRV_API loski_ErrorCode loskiP_getprocexit (loski_ProcDriver *drv,
+                                                 loski_Process *proc,
+                                                 int *code)
 {
 	if (proc->pid == 0) {
 		if (WIFEXITED(proc->status)) {
@@ -305,8 +302,8 @@ LOSKIDRV_API int loskiP_getprocexit (loski_ProcDriver *drv,
 	return LOSKI_ERRUNFULFILLED;
 }
 
-LOSKIDRV_API int loskiP_killproc (loski_ProcDriver *drv,
-                                  loski_Process *proc)
+LOSKIDRV_API loski_ErrorCode loskiP_killproc (loski_ProcDriver *drv,
+                                              loski_Process *proc)
 {
 	if (proc->pid != 0) if (kill(proc->pid, SIGKILL) == -1) switch (errno) {
 		case EPERM: return LOSKI_ERRDENIED;
@@ -326,4 +323,13 @@ LOSKIDRV_API void loskiP_freeproc (loski_ProcDriver *drv,
 		loskiP_unlockprocmgr();
 		proc->pid = 0;
 	}
+}
+
+LOSKIDRV_API int loskiP_luafilestream (lua_State *L, int idx,
+                                       loski_ProcStream *fd)
+{
+	FILE **fp = (FILE **)luaL_testudata(L, idx, LUA_FILEHANDLE);
+	if (*fp == NULL) return 0;
+	*fd = fileno(*fp);
+	return 1;
 }

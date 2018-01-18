@@ -5,6 +5,7 @@
 
 #include <errno.h>
 #include <signal.h>
+#include <wait.h>
 #include <stdlib.h>
 
 

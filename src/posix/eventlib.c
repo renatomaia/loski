@@ -1,20 +1,23 @@
 #include "eventlib.h"
 #include "timeaux.h"
 
+#include <loskierr.h>
+
 #include <errno.h>
 #include <sys/select.h>
 #include <lua.h> /* to copy error messages to Lua */
 
 #define UNWATCHABLE_OBJECT_ERROR (-1)
 
-LOSKIDRV_API int loski_openevents(loski_EventDriver *drv)
+LOSKIDRV_API int loskiE_initdrv (loski_EventDriver *drv)
 {
+	/* nothing to do */
 	return 0;
 }
 
-LOSKIDRV_API int loski_closeevents(loski_EventDriver *drv)
+LOSKIDRV_API void loskiE_freedrv (loski_EventDriver *drv)
 {
-	return 0;
+	/* nothing to do */
 }
 
 LOSKIDRV_API int loski_eventerror(int error, lua_State* L)

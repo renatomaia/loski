@@ -1,5 +1,5 @@
-#include "lnetlib.h"
 #include "loskiaux.h"
+#include "lnetaux.h"
 
 #include <lua.h>
 #include <string.h>
@@ -465,7 +465,7 @@ static int cnt_setoption (lua_State *L)
 	loski_NetDriver *drv = todrv(L);
 	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_CONN);
 	loski_SocketOption opt = checksockopt(L, 2, cnt_opts);
-	int val = (opt == LOSKI_SOCKOPT_LINGER) ? luaL_checkint(L, 3)
+	int val = (opt == LOSKI_SOCKOPT_LINGER) ? luaL_checkinteger(L, 3)
 	                                        : lua_toboolean(L, 3);
 	int err = loskiN_setsockopt(drv, socket, opt, val);
 	return luaL_doresults(L, 0, err);
@@ -599,7 +599,7 @@ static int lst_listen (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
 	loski_Socket *socket = tosock(L, LOSKI_SOCKTYPE_LSTN);
-	int backlog = luaL_optint(L, 2, 32);
+	int backlog = luaL_optinteger(L, 2, 32);
 	int err = loskiN_listensock(drv, socket, backlog);
 	return luaL_doresults(L, 0, err);
 }

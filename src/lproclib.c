@@ -1,5 +1,5 @@
 #include "loskiaux.h"
-#include "proclib.h"
+#include "lprocaux.h"
 
 #include <string.h>
 #include <lua.h>
@@ -15,8 +15,6 @@
 #endif
 
 
-#define LOSKI_PROCESSCLS LOSKI_PREFIX"ChildProcess"
-
 static const char* getstrfield(lua_State *L, const char *field, int required)
 {
 	const char* value = NULL;
@@ -30,24 +28,20 @@ static const char* getstrfield(lua_State *L, const char *field, int required)
 	return value;
 }
 
-static FILE* optfilefield(lua_State *L, const char *field)
+static int optstreamfield(lua_State *L,
+                          const char *field,
+                          loski_ProcStream *stream)
 {
+	int res = 0;
 	lua_getfield(L, 1, field);
 	if (!lua_isnil(L, -1)) {
-		void *p = lua_touserdata(L, -1);
-		if (p != NULL) {  /* value is a userdata? */
-			if (lua_getmetatable(L, -1)) {  /* does it have a metatable? */
-				lua_getfield(L, LUA_REGISTRYINDEX, LUA_FILEHANDLE); /* get FILE metatable */
-				if (lua_rawequal(L, -1, -2)) {  /* does it have the correct mt? */
-					lua_pop(L, 3); /* remove userdata and both metatables */
-					return *((FILE**)p);
-				}
-			}
-		}
-		luaL_error(L, "bad field "LUA_QS" (must be a file)", field);
+		loski_ProcStreamConv tostream = loski_getprocstreamconv(L);
+		if (tostream == NULL || !tostream(L, -1, stream))
+			luaL_error(L, "bad field "LUA_QS" (must be a stream)", field);
+		res = 1;
 	}
-	lua_pop(L, 1); /* remove userdata */
-	return NULL;
+	lua_pop(L, 1); /* remove value */
+	return res;
 }
 
 static const char *getstackarg (void *data, int index)
@@ -85,9 +79,12 @@ static int lp_create(lua_State *L)
 	loski_Process *proc;
 	const char *exec;
 	const char *path = NULL;
-	FILE *stdinput = NULL;
-	FILE *stdoutput = NULL;
-	FILE *stderror = NULL;
+	int hasinput = 0;
+	int hasoutput = 0;
+	int haserror = 0;
+	loski_ProcStream stdinput;
+	loski_ProcStream stdoutput;
+	loski_ProcStream stderror;
 	void *argv = NULL;
 	void *envl = NULL;
 	size_t argsz = 0;
@@ -114,9 +111,9 @@ static int lp_create(lua_State *L)
 		lua_settop(L, 1);
 		exec = getstrfield(L, "execfile", 1);
 		path = getstrfield(L, "runpath", 0);
-		stdinput = optfilefield(L, "stdin");
-		stdoutput = optfilefield(L, "stdout");
-		stderror = optfilefield(L, "stderr");
+		hasinput = optstreamfield(L, "stdin", &stdinput);
+		hasoutput = optstreamfield(L, "stdout", &stdoutput);
+		haserror = optstreamfield(L, "stderr", &stderror);
 
 		lua_getfield(L, 1, "arguments");
 		if (lua_istable(L, 2)) {
@@ -179,7 +176,9 @@ static int lp_create(lua_State *L)
 		return luaL_argerror(L, 1, "table or string expected");
 	}
 	err = loskiP_initproc(drv, proc, exec, path, argv, envl,
-	                      stdinput, stdoutput, stderror);
+	                      (hasinput ? &stdinput : NULL),
+	                      (hasoutput ? &stdoutput : NULL),
+	                      (haserror ? &stderror : NULL));
 	if (argv != NULL) luaL_freetemporary(L, argv, argsz);
 	if (envl != NULL) luaL_freetemporary(L, envl, envsz);
 	if (err == 0) luaL_setmetatable(L, LOSKI_PROCESSCLS);
@@ -269,17 +268,19 @@ LUAMOD_API int luaopen_process(lua_State *L)
 	lua_settop(L, 0);  /* dicard any arguments */
 	drv = (loski_ProcDriver *)luaL_newsentinel(L, sizeof(loski_ProcDriver),
 	                                              lfreedrv);
+#define pushsentinel(L)	lua_pushvalue(L, 1)
+#define cancelsentinel(L)	luaL_cancelsentinel(L)
+#else
+#define pushsentinel(L)	((void)L)
+#define cancelsentinel(L)	((void)L)
+#endif
 	/* initialize library */
 	err = loskiP_initdrv(drv);
 	if (err) {
-		luaL_cancelsentinel(L);
+		cancelsentinel(L);
 		luaL_pusherrmsg(L, err);
 		return lua_error(L);
 	}
-#define pushsentinel(L)	lua_pushvalue(L, 1)
-#else
-#define pushsentinel(L)	((void)L)
-#endif
 	/* create process class */
 	pushsentinel(L);
 	luaL_newclass(L, LOSKI_PROCESSCLS, NULL, cls, DRVUPV);
@@ -288,5 +289,8 @@ LUAMOD_API int luaopen_process(lua_State *L)
 	luaL_newlibtable(L, lib);
 	pushsentinel(L);
 	luaL_setfuncs(L, lib, DRVUPV);
+#ifdef LOSKI_ENABLE_PROCFILESTREAM
+	loski_setprocstreamconv(L, LUA_FILEHANDLE, loskiP_luafilestream);
+#endif
 	return 1;
 }

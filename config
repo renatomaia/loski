@@ -5,9 +5,8 @@ PLAT= none
 
 LUA_HOME= /usr/local
 LUA_INC= $(LUA_HOME)/include
-LUA_LIB= $(LUA_HOME)/lib
 LUA_BIN= $(LUA_HOME)/bin
-LUA_VER= 5.2
+LUA_VER= 5.3
 
 TIM_M=	time.so
 PRC_M=	process.so

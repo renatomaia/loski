@@ -9,7 +9,7 @@ PLAT_DIR= posix
 CC= gcc
 LD= ld
 CFLAGS= -O2 -Wall -I. -I$(LUA_INC) -I$(PLAT_DIR) $(SYSCFLAGS) $(MYCFLAGS)
-LDFLAGS= -L$(LUA_LIB) $(SYSLDFLAGS) $(MYLDFLAGS)
+LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= $(SYSLIBS) $(MYLIBS)
 
 AR= ar rcu
@@ -110,19 +110,31 @@ solaris:
 .PHONY: all $(PLATS) default o a so clean depend echo none
 
 # DO NOT DELETE
-leventlib.o: posix/eventlib.h eventlibapi.h posix/timelib.h timelibapi.h loskiconf.h
-leventlib.o: posix/proclib.h proclibapi.h posix/netlib.h netlibapi.h
-leventlib.o: loskiaux.h lnetlib.h
-lnetlib.o: lnetlib.h loskiconf.h posix/netlib.h netlibapi.h loskiaux.h
-loskiaux.o: loskiaux.h
-lproclib.o: posix/proclib.h proclibapi.h loskiconf.h loskiaux.h
-ltimelib.o: posix/timelib.h timelibapi.h loskiconf.h
-luaoski.o: luaoski.h
-posix/eventlib.o: posix/eventlib.h eventlibapi.h posix/timelib.h timelibapi.h loskiconf.h
-posix/eventlib.o: posix/proclib.h proclibapi.h posix/netlib.h netlibapi.h
-posix/eventlib.o: posix/timeaux.h
-posix/netlib.o: posix/netlib.h netlibapi.h loskiconf.h
-posix/proclib.o: posix/proclib.h proclibapi.h loskiconf.h posix/proctab.h
-posix/proctab.o: posix/proctab.h posix/proclib.h proclibapi.h loskiconf.h
-posix/timeaux.o: posix/timeaux.h posix/timelib.h timelibapi.h loskiconf.h
-posix/timelib.o: posix/timelib.h timelibapi.h loskiconf.h
+loskiaux.o: loskiaux.c loskiaux.h loskierr.h loskiconf.h
+ 
+leventlib.o: leventlib.c lnetaux.h \
+             netlib.h posix/netdef.h \
+             proclib.h posix/procdef.h \
+             timelib.h posix/timedef.h \
+             eventlib.h posix/eventdef.h \
+             loskiaux.h loskierr.h loskiconf.h
+
+lnetaux.o: lnetaux.c lnetaux.h \
+           netlib.h posix/netdef.h \
+           loskiaux.h loskierr.h loskiconf.h
+lnetlib.o: lnetlib.c lnetaux.h \
+           netlib.h posix/netdef.h \
+           loskiaux.h loskierr.h loskiconf.h
+
+lprocaux.o: lprocaux.c lprocaux.h \
+            proclib.h posix/procdef.h \
+            loskiaux.h loskierr.h loskiconf.h
+lproclib.o: lproclib.c lprocaux.h \
+            proclib.h posix/procdef.h \
+            loskiaux.h loskierr.h loskiconf.h
+
+ltimelib.o: ltimelib.c \
+            timelib.h posix/timedef.h \
+            loskiaux.h loskierr.h loskiconf.h
+
+luaoski.o: luaoski.c luaoski.h

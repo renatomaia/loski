@@ -192,8 +192,8 @@ do
 			local tests = require "test.process.utils"
 			tests.runscript{
 				script = [=[
-					assert(io.stdin:write("stdin") == nil)  -- TODO: why?
-					assert(io.stdout:read("*a") == nil)     -- TODO: why?
+					assert(io.stdin:write("stdin") == nil)   -- bad file descriptor
+					assert(io.stdout:read("*a") == "stdout") -- TODO: shouldn't fail?
 					assert(io.stderr:write("stderr"))
 				]=],
 				stdin = io.stderr,

@@ -111,58 +111,58 @@ do
 end
 
 do
-	utils.testerror("bad argument #1 to '?' (string expected, got boolean)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got boolean)",
 		network.address, true)
-	utils.testerror("bad argument #1 to '?' (string expected, got boolean)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got boolean)",
 		network.address, true, 8080)
-	utils.testerror("bad argument #1 to '?' (string expected, got boolean)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got boolean)",
 		network.address, true, 8080, "t")
-	utils.testerror("bad argument #1 to '?' (string expected, got boolean)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got boolean)",
 		network.address, true, 8080, "b")
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil)
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil, nil)
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil, nil, nil)
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil, 8080)
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil, 8080, "t")
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil, 8080, "b")
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil, nil)
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil, nil, "t")
-	utils.testerror("bad argument #1 to '?' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
 		network.address, nil, nil, "b")
-	utils.testerror("bad argument #2 to '?' (number expected, got nil)",
+	utils.testerror("bad argument #2 to 'network.address' (number expected, got nil)",
 		network.address, "192.168.0.1:8080", nil)
-	utils.testerror("bad argument #2 to '?' (number expected, got nil)",
+	utils.testerror("bad argument #2 to 'network.address' (number expected, got nil)",
 		network.address, "192.168.0.1", nil, "t")
-	utils.testerror("bad argument #2 to '?' (number expected, got nil)",
+	utils.testerror("bad argument #2 to 'network.address' (number expected, got nil)",
 		network.address, "\192\168\0\1", nil, "b")
-	utils.testerror("bad argument #2 to '?' (number expected, got string)",
+	utils.testerror("bad argument #2 to 'network.address' (number expected, got string)",
 		network.address, "192.168.0.1", "port")
-	utils.testerror("bad argument #2 to '?' (number expected, got string)",
+	utils.testerror("bad argument #2 to 'network.address' (number expected, got string)",
 		network.address, "192.168.0.1", "port", "t")
-	utils.testerror("bad argument #2 to '?' (number expected, got string)",
+	utils.testerror("bad argument #2 to 'network.address' (number expected, got string)",
 		network.address, "192.168.0.1", "port", "b")
-	utils.testerror("bad argument #3 to '?' (invalid mode)",
+	utils.testerror("bad argument #3 to 'network.address' (invalid mode)",
 		network.address, 3232235776, 8080, "n")
 
-	utils.testerror("bad argument #1 to '?' (invalid URI format)",
+	utils.testerror("bad argument #1 to 'network.address' (invalid URI format)",
 		network.address, "192.168.0.1")
 	utils.testerror("invalid operation",
 		network.address, "localhost:8080")
 	utils.testerror("invalid operation",
 		network.address, "291.168.0.1:8080")
-	utils.testerror("bad argument #1 to '?' (invalid port)",
+	utils.testerror("bad argument #1 to 'network.address' (invalid port)",
 		network.address, "192.168.0.1:65536")
-	utils.testerror("bad argument #1 to '?' (invalid port)",
+	utils.testerror("bad argument #1 to 'network.address' (invalid port)",
 		network.address, "192.168.0.1:-8080")
-	utils.testerror("bad argument #1 to '?' (invalid port)",
+	utils.testerror("bad argument #1 to 'network.address' (invalid port)",
 		network.address, "192.168.0.1:0x1f90")
 
 	utils.testerror("invalid operation",
@@ -170,12 +170,12 @@ do
 	utils.testerror("invalid operation",
 		network.address, "291.168.0.1", 8080, "t")
 
-	utils.testerror("bad argument #2 to '?' (invalid port)",
+	utils.testerror("bad argument #2 to 'network.address' (invalid port)",
 		network.address, "192.168.0.1", 65536, "t")
-	utils.testerror("bad argument #2 to '?' (invalid port)",
+	utils.testerror("bad argument #2 to 'network.address' (invalid port)",
 		network.address, "192.168.0.1", -1, "t")
-	utils.testerror("bad argument #2 to '?' (invalid port)",
+	utils.testerror("bad argument #2 to 'network.address' (invalid port)",
 		network.address, "\192\168\000\001", 65536, "b")
-	utils.testerror("bad argument #2 to '?' (invalid port)",
+	utils.testerror("bad argument #2 to 'network.address' (invalid port)",
 		network.address, "\192\168\000\001", -1, "b")
 end
