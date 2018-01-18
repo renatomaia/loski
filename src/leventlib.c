@@ -5,8 +5,18 @@
 #include "lnetaux.h"
 
 
-#define WATCHER_CLASS LOSKI_PREFIX"event.EventWatcher"
-#define WATCHER_REGISTRY LOSKI_PREFIX"event.WatchedMapRegistry"
+#ifdef LOSKI_DISABLE_EVTDRV
+#define DRVUPV	0
+#define todrv(L)	NULL
+#else
+#define DRVUPV	1
+#define todrv(L)	((loski_EventDriver *)lua_touserdata(L, \
+                                        lua_upvalueindex(DRVUPV)))
+#endif
+
+
+#define WATCHER_CLASS LOSKI_PREFIX"EventWatcher"
+#define WATCHER_REGISTRY LOSKI_PREFIX"WatchedMapRegistry"
 
 
 #define pushresults(L,n,e) luaL_pushresults(L,n,e,loski_eventerror)
@@ -148,7 +158,7 @@ static int aux_close(loski_EventDriver *drv, lua_State *L, LuaWatcher *p)
 
 static int ew_close(lua_State *L)
 {
-	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_EventDriver *drv = todrv(L);
 	LuaWatcher *p = tolwatcher(L);
 	towatcher(L);  /* make sure argument is a valid watcher */
 	return aux_close(drv, L, p);
@@ -157,7 +167,7 @@ static int ew_close(lua_State *L)
 
 static int ew_gc(lua_State *L)
 {
-	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_EventDriver *drv = todrv(L);
 	LuaWatcher *p = tolwatcher(L);
 	if (!p->closed) aux_close(drv, L, p);
 	return 0;
@@ -174,17 +184,17 @@ static LuaWatcher *newwatcher (lua_State *L) {
 
 /* watcher [, errmsg] = event.watcher() */
 static int evt_watcher (lua_State *L) {
-	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
-	LuaWatcher *p = newwatcher(L);
-	int res = loski_initwatcher(drv, &p->watcher);
-	if (res == 0) p->closed = 0;
-	return pushresults(L, 1, res);
+	loski_EventDriver *drv = todrv(L);
+	LuaWatcher *lw = newwatcher(L);
+	int err = loskiE_initwatcher(drv, &lw->watcher);
+	if (err == 0) lw->closed = 0;
+	return luaL_doresults(L, 1, err);
 }
 
 
 /* succ [, errmsg] = watcher:add(object [, event]) */
 static int ew_add (lua_State *L) {
-	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_EventDriver *drv = todrv(L);
 	loski_EventWatcher *watcher = towatcher(L);
 	loski_EventWatch watch;
 	loski_WatchableReference ref;
@@ -198,7 +208,7 @@ static int ew_add (lua_State *L) {
 
 /* succ [, errmsg] = watcher:remove(object [, event]) */
 static int ew_remove (lua_State *L) {
-	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_EventDriver *drv = todrv(L);
 	loski_EventWatcher *watcher = towatcher(L);
 	loski_EventWatch watch;
 	loski_WatchableReference ref;
@@ -219,7 +229,7 @@ static int ew_wait (lua_State *L) {
 	size_t qsize;
 	void *queue;
 	int res;
-	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, lua_upvalueindex(1));
+	loski_EventDriver *drv = todrv(L);
 	loski_EventWatcher *watcher = towatcher(L);
 	lua_Number timeout = luaL_optnumber(L, 2, -1);
 	size_t count = luaL_optint(L, 3, 0);
@@ -247,13 +257,13 @@ static int ew_wait (lua_State *L) {
 	return pushresults(L, 2, res);
 }
 
-
-static int evt_sentinel(lua_State *L) {
+#ifndef LOSKI_DISABLE_EVTDRV
+static int lfreedrv (lua_State *L) {
 	loski_EventDriver *drv = (loski_EventDriver *)lua_touserdata(L, 1);
 	loski_closeevents(drv);
 	return 0;
 }
-
+#endif
 
 static luaL_Reg ew[] = {
 	{"__tostring", ew_tostring},
@@ -272,23 +282,32 @@ static const luaL_Reg lib[] = {
 
 LUAMOD_API int luaopen_event(lua_State *L)
 {
+#ifndef LOSKI_DISABLE_EVTDRV
 	/* create sentinel */
-	loski_EventDriver *drv = (loski_EventDriver *)luaL_newsentinel(L,
-	                                              sizeof(loski_EventDriver),
-	                                              evt_sentinel);
+	loski_EventDriver *drv;
+	int err;
+	lua_settop(L, 0);  /* dicard any arguments */
+	drv = (loski_EventDriver *)luaL_newsentinel(L, sizeof(loski_EventDriver),
+	                                               lfreedrv);
 	/* initialize library */
-	if (loski_openevents(drv) != 0) {
+	err = loskiE_initdrv(drv);
+	if (err != 0) {
 		luaL_cancelsentinel(L);
-		return luaL_error(L, "unable to initialize library");
+		luaL_pusherrmsg(L, err);
+		return lua_error(L);
 	}
+#define pushsentinel(L)	lua_pushvalue(L, 1)
+#else
+#define pushsentinel(L)	((void)L)
+#endif
 	/* create abstract base socket class */
-	lua_pushvalue(L, -1);  /* push sentinel */
-	luaL_newclass(L, WATCHER_CLASS, NULL, ew, 1);
+	pushsentinel(L);
+	luaL_newclass(L, WATCHER_CLASS, NULL, ew, DRVUPV);
 	lua_pop(L, 1);  /* remove new class */
 	/* create library table */
 	luaL_newlibtable(L, lib);
-	lua_pushvalue(L, -2);  /* push sentinel */
-	luaL_setfuncs(L, lib, 1);
+	pushsentinel(L);
+	luaL_setfuncs(L, lib, DRVUPV);
 	/* create poll member registry */
 	lua_newtable(L);
 	lua_createtable(L, 0, 1);

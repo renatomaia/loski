@@ -4,8 +4,6 @@
 
 #include <winsock.h>
 
-#define LOSKI_SOCKETSTRING "%d"
-
 typedef void loski_NetDriver;
 typedef struct loski_Socket {
 	SOCKET id;

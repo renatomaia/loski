@@ -1,5 +1,8 @@
-#ifndef eventlibapi_h
-#define eventlibapi_h
+#ifndef eventlib_h
+#define eventlib_h
+
+
+#include "eventdef.h"
 
 #include <stdio.h> /* definition of 'FILE*' */
 #include <lua.h> /* to copy error messages to Lua */

@@ -18,7 +18,7 @@ LUALIB_API void luaL_freetemporary(lua_State *L, void *memo, size_t size)
 	assert(memo == NULL);
 }
 
-LUALIB_API void luaL_pusherrmsg(lua_State *L, int err)
+LUALIB_API void luaL_pusherrmsg(lua_State *L, loski_ErrorCode err)
 {
 	switch (err) {
 		case LOSKI_ERRCLOSED: lua_pushliteral(L, "closed"); break;
@@ -46,7 +46,7 @@ LUALIB_API void luaL_pusherrmsg(lua_State *L, int err)
 	}
 }
 
-LUALIB_API int luaL_doresults(lua_State *L, int nres, int err)
+LUALIB_API int luaL_doresults(lua_State *L, int nres, loski_ErrorCode err)
 {
 	if (err) {
 		lua_pushnil(L);
@@ -173,6 +173,35 @@ LUALIB_API void *luaL_checkinstance(lua_State *L, int idx, const char *cls)
 		return NULL;
 	}
 	return p;
+}
+
+LOSKILIB_API int loskiU_setclassop (lua_State *L,
+                                    const char *opid,
+                                    const char *cls,
+                                    void *func)
+{
+	luaL_getsubtable(L, LUA_REGISTRYINDEX, opid);
+	if (luaL_getmetatable(L, cls) == LUA_TTABLE) {
+		if (func == NULL) lua_pushnil(L);
+		else lua_pushlightuserdata(L, func);
+		lua_settable(L, -3);
+		lua_pop(L, 1);
+		return 1;
+	}
+	lua_pop(L, 2);
+	return 0;
+}
+
+LOSKILIB_API void *loskiU_getvalueop (lua_State *L, const char *opid)
+{
+	void *func = NULL;
+	int idx = lua_gettop(L);
+	if ((lua_getfield(L, LUA_REGISTRYINDEX, opid) == LUA_TTABLE) &&
+	    (lua_getmetatable(L, idx)) &&
+	    (lua_gettable(L, -2) == LUA_TLIGHTUSERDATA))
+		func = lua_touserdata(L, -1);
+	lua_settop(L, idx);
+	return func;
 }
 
 LUALIB_API void luaL_printstack(lua_State *L)

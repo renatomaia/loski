@@ -1,5 +1,5 @@
-#ifndef eventlib_h
-#define eventlib_h
+#ifndef eventdef_h
+#define eventdef_h
 
 
 #include <sys/select.h>
@@ -13,9 +13,6 @@ typedef struct loski_EventWatcher {
 typedef int loski_WatchableFile;
 typedef int loski_WatchableSocket;
 typedef int loski_WatchableProcess;
-
-
-#include "eventlibapi.h"
 
 
 #endif

@@ -1,8 +1,5 @@
-#ifndef netlib_h
-#define netlib_h
-
-
-#include <loskierr.h>
+#ifndef netdef_h
+#define netdef_h
 
 
 /* Addresses */
@@ -57,8 +54,6 @@ typedef int loski_AddressNameFlag;
 #define LOSKI_ADDRNAME_DGRM	NI_DGRAM
 #define LOKSI_ADDRNAME_CUSTOM
 
-
-#include "netlibapi.h"
 
 
 #endif
