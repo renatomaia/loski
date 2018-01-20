@@ -4,8 +4,8 @@
 
 #include "netdef.h"
 
-#include <loskiconf.h>
-#include <loskierr.h>
+#include "loskiconf.h"
+#include "loskierr.h"
 
 /*
  * Library
@@ -112,8 +112,8 @@ typedef enum loski_SocketOption {
 
 #ifndef LOSKI_SOCKRCV_CUSTOM
 typedef enum loski_SocketRecvFlag {
-	LOSKI_SOCKRCV_PEEKONLY = 1,
-	LOSKI_SOCKRCV_WAITALL = 2
+	LOSKI_SOCKRCV_PEEKONLY = 0x01,
+	LOSKI_SOCKRCV_WAITALL = 0x02
 } loski_SocketRecvFlag;
 #endif
 
@@ -186,19 +186,19 @@ LOSKIDRV_API loski_ErrorCode loskiN_closesock (loski_NetDriver *drv,
 
 #ifndef LOKSI_ADDRFIND_CUSTOM
 typedef enum loski_AddressFindFlag {
-	LOSKI_ADDRFIND_IPV4 = 1,
-	LOSKI_ADDRFIND_IPV6 = 2,
-	LOSKI_ADDRFIND_MAP4 = 4,
-	LOSKI_ADDRFIND_LSTN = 8,
-	LOSKI_ADDRFIND_DGRM = 16,
-	LOSKI_ADDRFIND_STRM = 32
+	LOSKI_ADDRFIND_IPV4 = 0x01,
+	LOSKI_ADDRFIND_IPV6 = 0x02,
+	LOSKI_ADDRFIND_MAP4 = 0x04,
+	LOSKI_ADDRFIND_LSTN = 0x08,
+	LOSKI_ADDRFIND_DGRM = 0x10,
+	LOSKI_ADDRFIND_STRM = 0x20
 } loski_AddressFindFlag;
 #endif
 
 #ifndef LOKSI_ADDRNAME_CUSTOM
 typedef enum loski_AddressNameFlag {
-	LOSKI_ADDRNAME_LOCAL = 1,
-	LOSKI_ADDRNAME_DGRM = 2,
+	LOSKI_ADDRNAME_LOCAL = 0x01,
+	LOSKI_ADDRNAME_DGRM = 0x02,
 } loski_AddressNameFlag;
 #endif
 

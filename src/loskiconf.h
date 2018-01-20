@@ -11,8 +11,13 @@
 #define LOSKIDRV_API
 #endif
 
+#ifndef LOSKI_VALUEID
+#define LOSKI_VALUEID LUA_INTEGER
+#endif
+
 #define LOSKI_PREFIX "loski:"
 
+typedef LOSKI_VALUEID loski_IntUniqueId;
 typedef void * (*loski_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 
 

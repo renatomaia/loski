@@ -1,12 +1,12 @@
-# Makefile for building Lua
-# See ../doc/readme.html for installation and customization instructions.
+# Makefile for installing LOSKI
+# See README.md for installation and customization instructions.
 
 include ../config
 
 # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
 
 PLAT_DIR= posix
-CC= gcc
+CC= gcc -std=gnu99
 LD= ld
 CFLAGS= -O2 -Wall -I. -I$(LUA_INC) -I$(PLAT_DIR) $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
@@ -27,17 +27,21 @@ MYOBJS=
 
 # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
 
-AUX_O=	loskiaux.o
-TIM_O=	ltimelib.o $(PLAT_DIR)/timelib.o
-PRC_O=	lproclib.o $(PLAT_DIR)/proclib.o $(PLAT_DIR)/st/procmgr.o $(PLAT_DIR)/proctab.o
-NET_O=	lnetlib.o $(PLAT_DIR)/netlib.o
-EVT_O=	leventlib.o $(PLAT_DIR)/eventlib.o $(PLAT_DIR)/timeaux.o lnetaux.o
-#FLS_O=	lfilesys.o $(PLAT_DIR)/filesyslib.o
+LIB_O=	loskiaux.o \
+      	$(PLAT_DIR)/timelib.o $(PLAT_DIR)/timeaux.o \
+      	$(PLAT_DIR)/proclib.o $(PLAT_DIR)/st/procmgr.o $(PLAT_DIR)/proctab.o \
+      	lnetaux.o $(PLAT_DIR)/netlib.o \
+      	leventaux.o $(PLAT_DIR)/eventlib.o
+TIM_O=	ltimelib.o
+PRC_O=	lproclib.o
+NET_O=	lnetlib.o
+EVT_O=	leventlib.o
 
-ALL_O=	$(AUX_O) $(TIM_O) $(PRC_O) $(NET_O) $(EVT_O) $(FLS_O) $(MYOBJS)
+ALL_O=	$(LIB_O) $(TIM_O) $(PRC_O) $(NET_O) $(EVT_O) $(MYOBJS)
 ALL_A= $(LIB_A)
-ALL_M= $(TIM_M) $(PRC_M) $(NET_M) $(EVT_M) $(FLS_M)
-ALL_T= $(ALL_A) $(ALL_M)
+ALL_S= $(LIB_S)
+ALL_M= $(TIM_M) $(PRC_M) $(NET_M) $(EVT_M)
+ALL_T= $(ALL_A) $(ALL_S) $(ALL_M)
 
 # Targets start here.
 default: $(PLAT)
@@ -48,21 +52,23 @@ o:	$(ALL_O)
 
 a:	$(ALL_A)
 
+s:	$(ALL_S)
+
 m:	$(ALL_M)
 
-$(TIM_M): $(TIM_O) $(AUX_O)
+$(LIB_S): $(LIB_O)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
-$(PRC_M): $(PRC_O) $(AUX_O)
+$(TIM_M): $(TIM_O) $(LIB_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
-$(NET_M): $(NET_O) $(AUX_O)
+$(PRC_M): $(PRC_O) $(LIB_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
-$(EVT_M): $(EVT_O) $(AUX_O)
+$(NET_M): $(NET_O) $(LIB_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
-$(FLS_M): $(FLS_O) $(AUX_O)
+$(EVT_M): $(EVT_O) $(LIB_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
 $(LIB_A): $(ALL_O)
@@ -112,10 +118,7 @@ solaris:
 # DO NOT DELETE
 loskiaux.o: loskiaux.c loskiaux.h loskierr.h loskiconf.h
  
-leventlib.o: leventlib.c lnetaux.h \
-             netlib.h posix/netdef.h \
-             proclib.h posix/procdef.h \
-             timelib.h posix/timedef.h \
+leventlib.o: leventlib.c leventaux.h \
              eventlib.h posix/eventdef.h \
              loskiaux.h loskierr.h loskiconf.h
 

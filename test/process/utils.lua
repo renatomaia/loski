@@ -37,6 +37,7 @@ do
 			env.LUA_INIT = os.getenv("LUA_INIT")
 			env.LUA_PATH = os.getenv("LUA_PATH")
 			env.LUA_CPATH = os.getenv("LUA_CPATH")
+			env.LD_LIBRARY_PATH = os.getenv("LD_LIBRARY_PATH")
 		end
 		return env
 	end

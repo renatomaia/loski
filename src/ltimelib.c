@@ -53,7 +53,7 @@ LUAMOD_API int luaopen_time (lua_State *L)
 	err = loskiT_initdrv(drv)
 	if (err) {
 		luaL_cancelsentinel(L);
-		luaL_pusherrmsg(L, err);
+		loskiL_pusherrmsg(L, err);
 		return lua_error(L);
 	}
 #define pushsentinel(L)	lua_pushvalue(L, 1)

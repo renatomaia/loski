@@ -1,16 +1,17 @@
 #include "loskiaux.h"
 
 #include <assert.h>
-#include <string.h>
+#include <stdio.h>
 
-LUALIB_API void *luaL_alloctemporary(lua_State *L, size_t size)
+
+LUALIB_API void *luaL_allocmemo(lua_State *L, size_t size)
 {
 	void *userdata;
 	lua_Alloc alloc = lua_getallocf(L, &userdata);
 	return alloc(userdata, NULL, 0, size);
 }
 
-LUALIB_API void luaL_freetemporary(lua_State *L, void *memo, size_t size)
+LUALIB_API void luaL_freememo(lua_State *L, void *memo, size_t size)
 {
 	void *userdata;
 	lua_Alloc alloc = lua_getallocf(L, &userdata);
@@ -18,83 +19,6 @@ LUALIB_API void luaL_freetemporary(lua_State *L, void *memo, size_t size)
 	assert(memo == NULL);
 }
 
-LUALIB_API void luaL_pusherrmsg(lua_State *L, loski_ErrorCode err)
-{
-	switch (err) {
-		case LOSKI_ERRCLOSED: lua_pushliteral(L, "closed"); break;
-		case LOSKI_ERRINUSE: lua_pushliteral(L, "in use"); break;
-		case LOSKI_ERRNOTFOUND: lua_pushliteral(L, "not found"); break;
-		case LOSKI_ERRUNAVAILABLE: lua_pushliteral(L, "unavailable"); break;
-		case LOSKI_ERRUNREACHABLE: lua_pushliteral(L, "unreachable"); break;
-		case LOSKI_ERRNORESOURCES: lua_pushliteral(L, "no resources"); break;
-		case LOSKI_ERRNOMEMORY: lua_pushliteral(L, "no system memory"); break;
-		case LOSKI_ERRUNFULFILLED: lua_pushliteral(L, "unfulfilled"); break;
-		case LOSKI_ERRTOOMUCH: lua_pushliteral(L, "too much"); break;
-		case LOSKI_ERRABORTED: lua_pushliteral(L, "aborted"); break;
-		case LOSKI_ERRREFUSED: lua_pushliteral(L, "refused"); break;
-		case LOSKI_ERRDENIED: lua_pushliteral(L, "access denied"); break;
-		case LOSKI_ERRTIMEOUT: lua_pushliteral(L, "timeout"); break;
-		case LOSKI_ERRSYSTEMRESET: lua_pushliteral(L, "system reset"); break;
-		case LOSKI_ERRSYSTEMDOWN: lua_pushliteral(L, "system down"); break;
-		case LOSKI_ERRSYSTEMFAIL: lua_pushliteral(L, "system error"); break;
-		/* unrecoverable */
-		case LOSKI_ERRINVALID: luaL_error(L, "invalid operation");
-		case LOSKI_ERRUNSUPPORTED: luaL_error(L, "unsupported");
-		case LOSKI_ERRUNEXPECTED: luaL_error(L, "unexpected error");
-		case LOSKI_ERRUNSPECIFIED: luaL_error(L, "unspecified error");
-		default: luaL_error(L, "unknown error (%d)", err);
-	}
-}
-
-LUALIB_API int luaL_doresults(lua_State *L, int nres, loski_ErrorCode err)
-{
-	if (err) {
-		lua_pushnil(L);
-		luaL_pusherrmsg(L, err);
-		nres = 2;
-	} else if (nres == 0) {
-		lua_pushboolean(L, 1);
-		nres = 1;
-	}
-	return nres;
-}
-
-LUALIB_API int luaL_pushresults(lua_State *L, int nres, int err,
-                                int (*pusherrmsg) (int, lua_State *)) {
-	if (err) {
-		int msgerr;
-		lua_pushnil(L);
-		msgerr = pusherrmsg(err, L);
-		if (msgerr) {
-			lua_pushfstring(L, "unable to get message for error code %d: ", err);
-			if (pusherrmsg(msgerr, L) != 0) {
-				lua_pushfstring(L, "message retrival error code %d", msgerr);
-			}
-			lua_concat(L, 2);
-		}
-		lua_pushinteger(L, err);
-		nres = 3;
-	} else if (nres == 0) {
-		lua_pushboolean(L, 1);
-		nres = 1;
-	}
-	return nres;
-}
-
-LUALIB_API int luaL_pushobjtab(lua_State *L, int regidx, int validx)
-{
-	lua_pushvalue(L, validx);    /* ...,val */
-	lua_gettable(L, regidx);     /* ...,set */
-	if (!lua_istable(L, -1)) {   /* ...,set */
-		lua_pop(L, 1);             /* ... */
-		lua_createtable(L, 0, 1);  /* ...,set */
-		lua_pushvalue(L, validx);  /* ...,set,val */
-		lua_pushvalue(L, -2);      /* ...,set,val,set */
-		lua_settable(L, regidx);   /* ...,set */
-		return 1;
-	}
-	return 0;
-}
 
 LUALIB_API void *luaL_newsentinel(lua_State *L, size_t size, lua_CFunction f)
 {
@@ -111,6 +35,7 @@ LUALIB_API void luaL_cancelsentinel(lua_State *L)
 	lua_pushnil(L);
 	lua_setmetatable(L, -2);  /* remove sentinel's metatable */
 }
+
 
 LUALIB_API void luaL_newclass(lua_State *L,
                               const char *name,
@@ -175,34 +100,6 @@ LUALIB_API void *luaL_checkinstance(lua_State *L, int idx, const char *cls)
 	return p;
 }
 
-LOSKILIB_API int loskiU_setclassop (lua_State *L,
-                                    const char *opid,
-                                    const char *cls,
-                                    void *func)
-{
-	luaL_getsubtable(L, LUA_REGISTRYINDEX, opid);
-	if (luaL_getmetatable(L, cls) == LUA_TTABLE) {
-		if (func == NULL) lua_pushnil(L);
-		else lua_pushlightuserdata(L, func);
-		lua_settable(L, -3);
-		lua_pop(L, 1);
-		return 1;
-	}
-	lua_pop(L, 2);
-	return 0;
-}
-
-LOSKILIB_API void *loskiU_getvalueop (lua_State *L, const char *opid)
-{
-	void *func = NULL;
-	int idx = lua_gettop(L);
-	if ((lua_getfield(L, LUA_REGISTRYINDEX, opid) == LUA_TTABLE) &&
-	    (lua_getmetatable(L, idx)) &&
-	    (lua_gettable(L, -2) == LUA_TLIGHTUSERDATA))
-		func = lua_touserdata(L, -1);
-	lua_settop(L, idx);
-	return func;
-}
 
 LUALIB_API void luaL_printstack(lua_State *L)
 {
@@ -230,4 +127,76 @@ LUALIB_API void luaL_printstack(lua_State *L)
 		printf("\n");
 	}
 	printf("\n");
+}
+
+
+LOSKILIB_API void loskiL_pusherrmsg(lua_State *L, loski_ErrorCode err)
+{
+	switch (err) {
+		case LOSKI_ERRCLOSED: lua_pushliteral(L, "closed"); break;
+		case LOSKI_ERRINUSE: lua_pushliteral(L, "in use"); break;
+		case LOSKI_ERRNOTFOUND: lua_pushliteral(L, "not found"); break;
+		case LOSKI_ERRUNAVAILABLE: lua_pushliteral(L, "unavailable"); break;
+		case LOSKI_ERRUNREACHABLE: lua_pushliteral(L, "unreachable"); break;
+		case LOSKI_ERRNORESOURCES: lua_pushliteral(L, "no resources"); break;
+		case LOSKI_ERRNOMEMORY: lua_pushliteral(L, "no system memory"); break;
+		case LOSKI_ERRUNFULFILLED: lua_pushliteral(L, "unfulfilled"); break;
+		case LOSKI_ERRTOOMUCH: lua_pushliteral(L, "too much"); break;
+		case LOSKI_ERRABORTED: lua_pushliteral(L, "aborted"); break;
+		case LOSKI_ERRREFUSED: lua_pushliteral(L, "refused"); break;
+		case LOSKI_ERRDENIED: lua_pushliteral(L, "access denied"); break;
+		case LOSKI_ERRTIMEOUT: lua_pushliteral(L, "timeout"); break;
+		case LOSKI_ERRSYSTEMRESET: lua_pushliteral(L, "system reset"); break;
+		case LOSKI_ERRSYSTEMDOWN: lua_pushliteral(L, "system down"); break;
+		case LOSKI_ERRSYSTEMFAIL: lua_pushliteral(L, "system error"); break;
+		/* avoidable conditions */
+		case LOSKI_ERRINVALID: luaL_error(L, "invalid operation");
+		case LOSKI_ERRUNSUPPORTED: luaL_error(L, "unsupported");
+		case LOSKI_ERRUNEXPECTED: luaL_error(L, "unexpected error");
+		case LOSKI_ERRUNSPECIFIED: luaL_error(L, "unspecified error");
+		default: luaL_error(L, "wrong error (%d)", err);
+	}
+}
+
+LOSKILIB_API int loskiL_doresults(lua_State *L, int nres, loski_ErrorCode err)
+{
+	if (err) {
+		lua_pushnil(L);
+		loskiL_pusherrmsg(L, err);
+		nres = 2;
+	} else if (nres == 0) {
+		lua_pushboolean(L, 1);
+		nres = 1;
+	}
+	return nres;
+}
+
+
+LOSKILIB_API int loskiL_setclassop (lua_State *L,
+                                    const char *opid,
+                                    const char *cls,
+                                    void *func)
+{
+	luaL_getsubtable(L, LUA_REGISTRYINDEX, opid);
+	if (luaL_getmetatable(L, cls) == LUA_TTABLE) {
+		if (func == NULL) lua_pushnil(L);
+		else lua_pushlightuserdata(L, func);
+		lua_settable(L, -3);
+		lua_pop(L, 1);
+		return 1;
+	}
+	lua_pop(L, 2);
+	return 0;
+}
+
+LOSKILIB_API void *loskiL_getvalueop (lua_State *L, const char *opid)
+{
+	void *func = NULL;
+	int idx = lua_gettop(L);
+	if ((lua_getfield(L, LUA_REGISTRYINDEX, opid) == LUA_TTABLE) &&
+	    (lua_getmetatable(L, idx)) &&
+	    (lua_gettable(L, -2) == LUA_TLIGHTUSERDATA))
+		func = lua_touserdata(L, -1);
+	lua_settop(L, idx);
+	return func;
 }

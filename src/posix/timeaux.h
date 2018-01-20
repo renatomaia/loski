@@ -2,11 +2,12 @@
 #define timeaux_h
 
 
-#include "timelib.h"
+#include "loskiconf.h"
 
+#include <lua.h> /* seconds is a lua_Number */
 #include <sys/time.h>
 
-void seconds2timeval(lua_Number s, struct timeval *t);
+LOSKILIB_API void loski_seconds2timeval(lua_Number s, struct timeval *t);
 
 
 #endif

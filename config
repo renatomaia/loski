@@ -8,12 +8,14 @@ LUA_INC= $(LUA_HOME)/include
 LUA_BIN= $(LUA_HOME)/bin
 LUA_VER= 5.3
 
+LIB_NAME= luaosi
+
 TIM_M=	time.so
 PRC_M=	process.so
 NET_M=	network.so
 EVT_M=	event.so
-FLS_M=	filesys.so
-LIB_A=	libluaoski.a
+LIB_S=	lib$(LIB_NAME).so
+LIB_A=	lib$(LIB_NAME).a
 
 # == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
 
