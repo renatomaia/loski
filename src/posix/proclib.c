@@ -20,7 +20,7 @@
 LOSKIDRV_API loski_ErrorCode loskiP_initdrv (loski_ProcDriver *drv)
 {
 	loskiP_initprocmgr(NULL, NULL);
-	return 0;
+	return LOSKI_ERRNONE;
 }
 
 LOSKIDRV_API void loskiP_freedrv (loski_ProcDriver *drv)
@@ -294,7 +294,7 @@ LOSKIDRV_API loski_ErrorCode loskiP_getprocexit (loski_ProcDriver *drv,
 	if (proc->pid == 0) {
 		if (WIFEXITED(proc->status)) {
 			*code = WEXITSTATUS(proc->status);
-			return 0;
+			return LOSKI_ERRNONE;
 		} else if (WIFSIGNALED(proc->status)) {
 			return LOSKI_ERRABORTED;
 		}
@@ -311,7 +311,7 @@ LOSKIDRV_API loski_ErrorCode loskiP_killproc (loski_ProcDriver *drv,
 		case EINVAL: return LOSKI_ERRUNEXPECTED;
 		default: return LOSKI_ERRUNSPECIFIED;
 	}
-	return 0;
+	return LOSKI_ERRNONE;
 }
 
 LOSKIDRV_API void loskiP_freeproc (loski_ProcDriver *drv,
@@ -325,11 +325,11 @@ LOSKIDRV_API void loskiP_freeproc (loski_ProcDriver *drv,
 	}
 }
 
-LOSKIDRV_API int loskiP_luafilestream (lua_State *L, int idx,
-                                       loski_ProcStream *fd)
+LOSKIDRV_API int loskiP_luafile2stream (lua_State *L, int idx,
+                                        loski_ProcStream *fd)
 {
 	FILE **fp = (FILE **)luaL_testudata(L, idx, LUA_FILEHANDLE);
-	if (*fp == NULL) return 0;
+	if (*fp == NULL) return LOSKI_ERRNONE;
 	*fd = fileno(*fp);
 	return 1;
 }

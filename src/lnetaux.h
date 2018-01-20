@@ -3,15 +3,20 @@
 
 
 #include "loskiconf.h"
+#include "netlib.h"
 
-#include <netlib.h>
 #include <lua.h>
+#include <lauxlib.h>
 
 
 #define LOSKI_NETADDRCLS LOSKI_PREFIX"NetworkAddress"
 
-LOSKILIB_API int loski_isaddress (lua_State *L, int idx);
-LOSKILIB_API loski_Address *loski_toaddress (lua_State *L, int idx);
+#define loski_toaddress(L,i)	((loski_Address *) \
+                               luaL_testudata(L, i, LOSKI_NETADDRCLS))
+
+#define loski_isaddress(L,i)	(loski_toaddress(L, i) != NULL)
+
+LOSKILIB_API loski_Address *loski_newaddress (lua_State *L);
 
 
 /* superclasses used only in Lua */
@@ -31,8 +36,13 @@ typedef struct LuaSocket {
 	int closed;
 } LuaSocket;
 
-LOSKILIB_API int loski_issocket (lua_State *L, int idx, int cls);
+LOSKILIB_API loski_Socket *loski_newsocket (lua_State *L, int cls);
+
+LOSKILIB_API void loski_enablesocket (lua_State *L, int idx);
+
 LOSKILIB_API loski_Socket *loski_tosocket (lua_State *L, int idx, int cls);
+
+#define loski_issocket(L,i,c)	(loski_tosocket(L, i, c) != NULL)
 
 
 #endif

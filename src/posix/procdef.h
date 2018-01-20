@@ -2,7 +2,8 @@
 #define procdef_h
 
 
-#include <loskiconf.h>
+#include "loskiconf.h"
+
 #include <lua.h>
 #include <sys/types.h>
 
@@ -22,7 +23,8 @@ typedef int loski_ProcStream;  /* file descriptor */
 
 #define LOSKI_ENABLE_PROCFILESTREAM
 
-LOSKIDRV_API int loskiP_luafilestream (lua_State *L, int idx,
-                                       loski_ProcStream *fd);
+LOSKIDRV_API int loskiP_luafile2stream (lua_State *L, int idx,
+                                        loski_ProcStream *fd);
+
 
 #endif

@@ -3,7 +3,8 @@
 
 
 typedef enum loski_ErrorCode {
-	LOSKI_ERRCLOSED = 1, /* resource closed */
+	LOSKI_ERRNONE = 0, /* no error */
+	LOSKI_ERRCLOSED, /* resource closed */
 	LOSKI_ERRINUSE, /* resource in use */
 	LOSKI_ERRNOTFOUND, /* resource not found */
 	LOSKI_ERRUNAVAILABLE, /* resource unavailable */

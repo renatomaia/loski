@@ -1,18 +1,15 @@
 #include "eventlib.h"
-#include "timeaux.h"
 
-#include <loskierr.h>
+
+#include "leventaux.h"
 
 #include <errno.h>
 #include <sys/select.h>
-#include <lua.h> /* to copy error messages to Lua */
 
-#define UNWATCHABLE_OBJECT_ERROR (-1)
-
-LOSKIDRV_API int loskiE_initdrv (loski_EventDriver *drv)
+LOSKIDRV_API loski_ErrorCode loskiE_initdrv (loski_EventDriver *drv)
 {
 	/* nothing to do */
-	return 0;
+	return LOSKI_ERRNONE;
 }
 
 LOSKIDRV_API void loskiE_freedrv (loski_EventDriver *drv)
@@ -20,133 +17,115 @@ LOSKIDRV_API void loskiE_freedrv (loski_EventDriver *drv)
 	/* nothing to do */
 }
 
-LOSKIDRV_API int loski_eventerror(int error, lua_State* L)
+LOSKIDRV_API loski_ErrorCode loskiE_initwatcher(loski_EventDriver *drv,
+                                                loski_EventWatcher *watcher)
 {
-	switch (error) {
-	case UNWATCHABLE_OBJECT_ERROR:
-		lua_pushliteral(L, "unwatchable");
-		break;
-	default:
-		lua_pushstring(L, strerror(error));
-		break;
-	}
-	return 0;
+	watcher->maxfd = 0;
+	FD_ZERO(&watcher->sets[LOSKI_EVTVAL_INPUT]);
+	FD_ZERO(&watcher->sets[LOSKI_EVTVAL_OUTPUT]);
+	return LOSKI_ERRNONE;
 }
 
-LOSKIDRV_API int loski_initwatcher(loski_EventDriver *drv,
-                                   loski_EventWatcher *watcher)
+LOSKIDRV_API loski_ErrorCode loskiE_endwatcher(loski_EventDriver *drv,
+                                               loski_EventWatcher *watcher)
 {
-	FD_ZERO(&watcher->sets[0]);
-	FD_ZERO(&watcher->sets[1]);
-	return 0;
+	return LOSKI_ERRNONE;
 }
 
-LOSKIDRV_API int loski_endwatcher(loski_EventDriver *drv,
-                                  loski_EventWatcher *watcher)
+LOSKIDRV_API loski_ErrorCode loskiE_addwatch(loski_EventDriver *drv,
+                                             loski_EventWatcher *watcher,
+                                             loski_EventSource *source,
+                                             loski_EventValue event)
 {
-	return 0;
+	if (*source < 0 || *source >= FD_SETSIZE) return LOSKI_ERRINVALID;
+	FD_SET(*source, &watcher->sets[event]);
+	if (*source >= watcher->maxfd) watcher->maxfd = *source+1;
+	return LOSKI_ERRNONE;
 }
 
-LOSKIDRV_API void loski_pushwachedkey(lua_State *L,
-                                      loski_EventWatch *watch)
+LOSKIDRV_API loski_ErrorCode loskiE_delwatch(loski_EventDriver *drv,
+                                             loski_EventWatcher *watcher,
+                                             loski_EventSource *source,
+                                             loski_EventValue event)
 {
-	switch (watch->kind) {
-		case LOSKI_WATCHFILE:
-			lua_pushnumber(L, watch->object.file);
-			break;
-		default:
-			lua_pushnil(L);
-			break;
-	}
-}
-
-LOSKIDRV_API int loski_addwatch(loski_EventDriver *drv,
-                                loski_EventWatcher *watcher,
-                                loski_EventWatch *watch,
-                                loski_WatchableReference *ref)
-{
-	int fd;
-	switch (watch->kind) {
-		case LOSKI_WATCHSOCKET:
-			fd = *(ref->socket);
-			watch->object.file = fd;
-			watch->kind = LOSKI_WATCHFILE;
-			break;
-		default:
-			return UNWATCHABLE_OBJECT_ERROR;
-	}
-	FD_SET(fd, &watcher->sets[watch->event]);
-	if (fd >= watcher->maxfd) watcher->maxfd = fd+1;
-	return 0;
-}
-
-LOSKIDRV_API int loski_delwatch(loski_EventDriver *drv,
-                                loski_EventWatcher *watcher,
-                                loski_EventWatch *watch,
-                                loski_WatchableReference *ref)
-{
-	int fd, i;
-	switch (watch->kind) {
-		case LOSKI_WATCHSOCKET:
-			fd = *(ref->socket);
-			watch->object.file = fd;
-			watch->kind = LOSKI_WATCHFILE;
-			break;
-		default:
-			return UNWATCHABLE_OBJECT_ERROR;
-	}
-	FD_CLR(fd, &watcher->sets[watch->event]);
-	if (fd+1 == watcher->maxfd) {
-		for (i=fd-1; i>=0; --i)
-			if (FD_ISSET(i, &watcher->sets[watch->event]))
+	if (*source < 0 || *source >= FD_SETSIZE) return LOSKI_ERRINVALID;
+	FD_CLR(*source, &watcher->sets[event]);
+	if (*source+1 == watcher->maxfd) {
+		int i;
+		for (i=*source-1; i>=0; --i)
+			if (FD_ISSET(i, &watcher->sets[LOSKI_EVTVAL_INPUT])
+			||  FD_ISSET(i, &watcher->sets[LOSKI_EVTVAL_OUTPUT]))
 				break;
 		watcher->maxfd = i+1;
 	}
-	return 0;
+	return LOSKI_ERRNONE;
 }
 
-LOSKIDRV_API size_t loski_eventqueuesize(loski_EventDriver *drv,
-                                         loski_EventWatcher *watcher,
-                                         size_t count)
+LOSKIDRV_API loski_IntUniqueId loskiE_getsourceid(loski_EventDriver *drv,
+                                                  loski_EventSource *source)
 {
-	return 2*sizeof(fd_set);
+	return (loski_IntUniqueId)(*source);
 }
 
-LOSKIDRV_API int loski_waitevent(loski_EventDriver *drv,
-                                 loski_EventWatcher *watcher,
-                                 void *queue,
-                                 size_t *count,
-                                 lua_Number timeout)
+LOSKIDRV_API loski_ErrorCode loskiE_waitevent(loski_EventDriver *drv,
+                                              loski_EventWatcher *watcher,
+                                              lua_Number timeout)
 {
-	int res;
-	fd_set *sets = (fd_set *)queue;
-	memcpy(&sets[0], &watcher->sets[0], sizeof(fd_set));
-	memcpy(&sets[1], &watcher->sets[1], sizeof(fd_set));
+	watcher->maxvisited = 0;
+	watcher->selected[LOSKI_EVTVAL_INPUT] = watcher->sets[LOSKI_EVTVAL_INPUT];
+	watcher->selected[LOSKI_EVTVAL_OUTPUT] = watcher->sets[LOSKI_EVTVAL_OUTPUT];
 	if (timeout >= 0) {
 		struct timeval tm;
-		seconds2timeval(timeout, &tm);
-		res = select(watcher->maxfd, &sets[0], &sets[1], NULL, &tm);
+		loski_seconds2timeval(timeout, &tm);
+		watcher->unvisited = select(watcher->maxfd,
+		                            &watcher->selected[LOSKI_EVTVAL_INPUT],
+		                            &watcher->selected[LOSKI_EVTVAL_OUTPUT],
+		                            NULL, &tm);
 	} else {
-		res = select(watcher->maxfd, &sets[0], &sets[1], NULL, NULL);
+		watcher->unvisited = select(watcher->maxfd,
+		                            &watcher->selected[LOSKI_EVTVAL_INPUT],
+		                            &watcher->selected[LOSKI_EVTVAL_OUTPUT],
+		                            NULL, NULL);
 	}
-	if (res == -1) return errno;
-	*count = 2*(watcher->maxfd);
+	if (watcher->unvisited != -1) return LOSKI_ERRNONE;
+	switch (errno) {
+		case EBADF:
+		case EINVAL: return LOSKI_ERRINVALID;
+		case EINTR: return LOSKI_ERRUNFULFILLED;
+	}
+	return LOSKI_ERRUNSPECIFIED;
+}
+
+LOSKIDRV_API int loskiE_nextevent(loski_EventDriver *drv,
+                                  loski_EventWatcher *watcher,
+                                  size_t *index,
+                                  loski_EventSource *source,
+                                  loski_EventValue *event)
+{
+	while (1) {
+		int setidx = *index%2;
+		int fd = (*index-setidx)/2;
+		if (fd >= watcher->maxvisited && watcher->unvisited == 0)
+			break;
+		else if (FD_ISSET(fd, &watcher->selected[setidx])) {
+			if (fd >= watcher->maxvisited) {
+				watcher->maxvisited = fd + 1;
+				--watcher->unvisited;
+			}
+			*source = fd;
+			*event = setidx;
+			return 1;
+		}
+		++*index;
+	}
 	return 0;
 }
 
-LOSKIDRV_API int loski_getevent(loski_EventDriver *drv,
-                                loski_EventWatch *watch,
-                                void *queue,
-                                size_t index)
+LOSKIDRV_API int loskiE_luafile2evtsrc (lua_State *L, int idx,
+                                        loski_EventSource *fd)
 {
-	fd_set *sets = (fd_set *)queue;
-	int si = index%2;
-	int fd = (index-si)/2;
-	if (FD_ISSET(fd, &sets[si])) {
-		watch->kind = LOSKI_WATCHFILE;
-		watch->object.file = fd;
-		watch->event = si;
-		return 0;
-	}
+	FILE **fp = (FILE **)luaL_testudata(L, idx, LUA_FILEHANDLE);
+	if (*fp == NULL) return LOSKI_ERRNONE;
+	*fd = fileno(*fp);
 	return 1;
 }

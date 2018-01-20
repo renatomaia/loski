@@ -3,8 +3,7 @@
 
 
 #include "timedef.h"
-
-#include <loskiconf.h>
+#include "loskiconf.h"
 
 #include <lua.h> /* seconds is a lua_Number */
 

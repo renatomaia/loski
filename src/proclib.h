@@ -4,8 +4,8 @@
 
 #include "procdef.h"
 
-#include <loskiconf.h>
-#include <loskierr.h>
+#include "loskiconf.h"
+#include "loskierr.h"
 
 /*
  * Library

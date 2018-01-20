@@ -23,6 +23,9 @@ typedef int loski_AddressType;
 
 /* Sockets */
 
+#include "eventlib.h"
+
+#include <lua.h>
 #include <sys/socket.h>
 
 typedef int loski_Socket;
@@ -37,6 +40,11 @@ typedef int loski_SocketWay;
 #define LOSKI_SOCKWAY_OUT	SHUT_WR;
 #define LOSKI_SOCKWAY_BOTH	SHUT_RDWR;
 #define LOSKI_SOCKWAY_CUSTOM
+
+#define LOSKI_ENABLE_SOCKETEVENTS
+
+LOSKIDRV_API int loskiN_socket2evtsrc (lua_State *L, int idx,
+                                       loski_EventSource *fd);
 
 
 /* Names */
