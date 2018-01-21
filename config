@@ -14,6 +14,7 @@ TIM_M=	time.so
 PRC_M=	process.so
 NET_M=	network.so
 EVT_M=	event.so
+RTL_S=	lib$(LIB_NAME)rt.so
 LIB_S=	lib$(LIB_NAME).so
 LIB_A=	lib$(LIB_NAME).a
 

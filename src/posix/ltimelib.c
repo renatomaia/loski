@@ -3,11 +3,11 @@
  *   http://w3.impa.br/~diego/software/luasocket/
  */
 
-#include "timeaux.h"
+#include "luaosi/ltimelib.h"
 
 #define INTSEC_MAX (1.0e6)
 
-void seconds2timeval(lua_Number s, struct timeval *t)
+void loski_seconds2timeval(lua_Number s, struct timeval *t)
 {
 	t->tv_sec = (int) s;
 	t->tv_usec = (int) ((s - t->tv_sec) * INTSEC_MAX);

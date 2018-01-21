@@ -1,5 +1,5 @@
-#ifndef loskiconf_h
-#define loskiconf_h
+#ifndef luaosi_config_h
+#define luaosi_config_h
 
 #include <luaconf.h>
 

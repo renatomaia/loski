@@ -1,11 +1,11 @@
-#ifndef proclib_h
-#define proclib_h
+#ifndef luaosi_proclib_h
+#define luaosi_proclib_h
 
 
-#include "procdef.h"
+#include "luaosi/procdef.h"
 
-#include "loskiconf.h"
-#include "loskierr.h"
+#include "luaosi/config.h"
+#include "luaosi/errors.h"
 
 /*
  * Library

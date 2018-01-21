@@ -1,8 +1,8 @@
-#ifndef proctab_h
-#define proctab_h
+#ifndef luaosi_proctab_h
+#define luaosi_proctab_h
 
 
-#include "proclib.h"
+#include "luaosi/proclib.h"
 
 #define LOSKI_PROCTABMINSZ	4
 

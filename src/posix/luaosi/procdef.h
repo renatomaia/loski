@@ -1,8 +1,8 @@
-#ifndef procdef_h
-#define procdef_h
+#ifndef luaosi_procdef_h
+#define luaosi_procdef_h
 
 
-#include "loskiconf.h"
+#include "luaosi/config.h"
 
 #include <lua.h>
 #include <sys/types.h>

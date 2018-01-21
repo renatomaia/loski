@@ -1,9 +1,9 @@
-#ifndef timelib_h
-#define timelib_h
+#ifndef luaosi_timelib_h
+#define luaosi_timelib_h
 
 
-#include "timedef.h"
-#include "loskiconf.h"
+#include "luaosi/timedef.h"
+#include "luaosi/config.h"
 
 #include <lua.h> /* seconds is a lua_Number */
 

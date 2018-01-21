@@ -1,4 +1,4 @@
-#include "netlib.h"
+#include "luaosi/netlib.h"
 
 
 /*****************************************************************************
@@ -173,7 +173,7 @@ LOSKIDRV_API const char *loskiN_getaddrliteral (loski_NetDriver *drv,
  *****************************************************************************/
 
 
-#include "lnetaux.h"
+#include "luaosi/lnetlib.h"
 
 #include <unistd.h>
 #include <netinet/tcp.h> /* TCP options (nagle algorithm disable) */

@@ -13,14 +13,9 @@
 */
 
 
-#define luaoski_c
-#define LUA_OSKI
+#include "luaosi.h"
 
-#include "lua.h"
-#include "lauxlib.h"
-
-#include "luaoski.h"
-
+#include <lauxlib.h>
 
 /*
 ** these libs are loaded by lua.c and are readily available to any Lua
@@ -44,7 +39,7 @@ static const luaL_Reg preloadedlibs[] = {
 };
 
 
-LOSKILIB_API int loski_openlibs (lua_State *L) {
+LOSKILIB_API void loski_openlibs (lua_State *L) {
   const luaL_Reg *lib;
   /* call open functions from 'loadedlibs' and set results to global table */
   for (lib = loadedlibs; lib->func; lib++) {
@@ -58,6 +53,5 @@ LOSKILIB_API int loski_openlibs (lua_State *L) {
     lua_setfield(L, -2, lib->name);
   }
   lua_pop(L, 1);  /* remove _PRELOAD table */
-	return 0;
 }
 

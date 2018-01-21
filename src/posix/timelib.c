@@ -3,7 +3,7 @@
  *   http://w3.impa.br/~diego/software/luasocket/
  */
 
-#include "timelib.h"
+#include "luaosi/timelib.h"
 
 #include <time.h>
 #include <sys/time.h>

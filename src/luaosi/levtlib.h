@@ -1,9 +1,9 @@
-#ifndef leventaux_h
-#define leventaux_h
+#ifndef luaosi_levtlib_h
+#define luaosi_levtlib_h
 
 
-#include "eventlib.h"
-#include "loskiaux.h"
+#include "luaosi/evtlib.h"
+#include "luaosi/lauxlib.h"
 
 
 #define LOSKI_WATCHERCLS LOSKI_PREFIX"EventWatcher"

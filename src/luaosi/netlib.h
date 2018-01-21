@@ -1,11 +1,11 @@
-#ifndef netlib_h
-#define netlib_h
+#ifndef luaosi_netlib_h
+#define luaosi_netlib_h
 
 
-#include "netdef.h"
+#include "luaosi/netdef.h"
 
-#include "loskiconf.h"
-#include "loskierr.h"
+#include "luaosi/config.h"
+#include "luaosi/errors.h"
 
 /*
  * Library

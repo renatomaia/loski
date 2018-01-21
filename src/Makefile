@@ -27,21 +27,22 @@ MYOBJS=
 
 # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
 
-LIB_O=	loskiaux.o \
-      	$(PLAT_DIR)/timelib.o $(PLAT_DIR)/timeaux.o \
+RTL_O=	lauxlib.o \
+      	$(PLAT_DIR)/timelib.o $(PLAT_DIR)/ltimelib.o \
       	$(PLAT_DIR)/proclib.o $(PLAT_DIR)/st/procmgr.o $(PLAT_DIR)/proctab.o \
-      	lnetaux.o $(PLAT_DIR)/netlib.o \
-      	leventaux.o $(PLAT_DIR)/eventlib.o
-TIM_O=	ltimelib.o
-PRC_O=	lproclib.o
-NET_O=	lnetlib.o
-EVT_O=	leventlib.o
+      	$(PLAT_DIR)/netlib.o lnetlib.o \
+      	$(PLAT_DIR)/evtlib.o levtlib.o
+LIB_O=	luaosi.o
+TIM_O=	ltimemod.o
+PRC_O=	lprocmod.o
+NET_O=	lnetmod.o
+EVT_O=	levtmod.o
 
-ALL_O=	$(LIB_O) $(TIM_O) $(PRC_O) $(NET_O) $(EVT_O) $(MYOBJS)
-ALL_A= $(LIB_A)
-ALL_S= $(LIB_S)
-ALL_M= $(TIM_M) $(PRC_M) $(NET_M) $(EVT_M)
-ALL_T= $(ALL_A) $(ALL_S) $(ALL_M)
+ALL_O=	$(RTL_O) $(LIB_O) $(TIM_O) $(PRC_O) $(NET_O) $(EVT_O) $(MYOBJS)
+ALL_A=	$(LIB_A)
+ALL_S=	$(LIB_S) $(RTL_S)
+ALL_M=	$(TIM_M) $(PRC_M) $(NET_M) $(EVT_M)
+ALL_T=	$(ALL_A) $(ALL_S) $(ALL_M)
 
 # Targets start here.
 default: $(PLAT)
@@ -56,19 +57,22 @@ s:	$(ALL_S)
 
 m:	$(ALL_M)
 
-$(LIB_S): $(LIB_O)
+$(RTL_S): $(RTL_O)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
-$(TIM_M): $(TIM_O) $(LIB_S)
+$(TIM_M): $(TIM_O) $(RTL_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
-$(PRC_M): $(PRC_O) $(LIB_S)
+$(PRC_M): $(PRC_O) $(RTL_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
-$(NET_M): $(NET_O) $(LIB_S)
+$(NET_M): $(NET_O) $(RTL_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
-$(EVT_M): $(EVT_O) $(LIB_S)
+$(EVT_M): $(EVT_O) $(RTL_S)
+	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
+
+$(LIB_S): $(LIB_O) $(RTL_S) $(ALL_M)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
 $(LIB_A): $(ALL_O)
@@ -79,7 +83,7 @@ clean:
 	$(RM) $(ALL_T) $(ALL_O)
 
 depend:
-	@$(CC) $(CFLAGS) -MM l*.c
+	@$(CC) $(CFLAGS) -MM *.c $(PLAT_DIR)/*.c $(PLAT_DIR)/st/*.c
 
 echo:
 	@echo "PLAT= $(PLAT)"
@@ -116,28 +120,48 @@ solaris:
 .PHONY: all $(PLATS) default o a so clean depend echo none
 
 # DO NOT DELETE
-loskiaux.o: loskiaux.c loskiaux.h loskierr.h loskiconf.h
- 
-leventlib.o: leventlib.c leventaux.h \
-             eventlib.h posix/eventdef.h \
-             loskiaux.h loskierr.h loskiconf.h
-
-lnetaux.o: lnetaux.c lnetaux.h \
-           netlib.h posix/netdef.h \
-           loskiaux.h loskierr.h loskiconf.h
-lnetlib.o: lnetlib.c lnetaux.h \
-           netlib.h posix/netdef.h \
-           loskiaux.h loskierr.h loskiconf.h
-
-lprocaux.o: lprocaux.c lprocaux.h \
-            proclib.h posix/procdef.h \
-            loskiaux.h loskierr.h loskiconf.h
-lproclib.o: lproclib.c lprocaux.h \
-            proclib.h posix/procdef.h \
-            loskiaux.h loskierr.h loskiconf.h
-
-ltimelib.o: ltimelib.c \
-            timelib.h posix/timedef.h \
-            loskiaux.h loskierr.h loskiconf.h
-
-luaoski.o: luaoski.c luaoski.h
+lauxlib.o:              lauxlib.c luaosi/lauxlib.h \
+                        luaosi/errors.h luaosi/config.h
+$(PLAT_DIR)/timelib.o:  $(PLAT_DIR)/timelib.c luaosi/timelib.h $(PLAT_DIR)/luaosi/timedef.h \
+                        luaosi/config.h
+$(PLAT_DIR)/proctab.o:  $(PLAT_DIR)/proctab.c $(PLAT_DIR)/luaosi/proctab.h \
+                        luaosi/proclib.h $(PLAT_DIR)/luaosi/procdef.h \
+                        luaosi/errors.h luaosi/config.h
+$(PLAT_DIR)/procmgr.o:  posix/st/procmgr.c posix/luaosi/procmgr.h posix/luaosi/proctab.h \
+                        luaosi/proclib.h posix/luaosi/procdef.h \
+                        luaosi/config.h luaosi/errors.h
+$(PLAT_DIR)/proclib.o:  $(PLAT_DIR)/proclib.c luaosi/proclib.h \
+                        $(PLAT_DIR)/luaosi/procdef.h \
+                        luaosi/errors.h luaosi/config.h \
+                        $(PLAT_DIR)/luaosi/procmgr.h
+$(PLAT_DIR)/netlib.o:   $(PLAT_DIR)/netlib.c luaosi/netlib.h $(PLAT_DIR)/luaosi/netdef.h \
+                        luaosi/evtlib.h $(PLAT_DIR)/luaosi/evtdef.h \
+                        luaosi/lauxlib.h luaosi/errors.h luaosi/config.h
+$(PLAT_DIR)/evtlib.o:   $(PLAT_DIR)/evtlib.c luaosi/evtlib.h \
+                        $(PLAT_DIR)/luaosi/evtdef.h \
+                        luaosi/levtlib.h \
+                        $(PLAT_DIR)/luaosi/ltimelib.h \
+                        luaosi/lauxlib.h luaosi/errors.h luaosi/config.h
+$(PLAT_DIR)/ltimelib.o: $(PLAT_DIR)/ltimelib.c $(PLAT_DIR)/luaosi/ltimelib.h \
+                        luaosi/config.h
+lnetlib.o:              lnetlib.c luaosi/lnetlib.h \
+                        luaosi/netlib.h $(PLAT_DIR)/luaosi/netdef.h \
+                        luaosi/evtlib.h $(PLAT_DIR)/luaosi/evtdef.h \
+                        luaosi/lauxlib.h luaosi/errors.h luaosi/config.h
+levtlib.o:              levtlib.c luaosi/levtlib.h \
+                        luaosi/evtlib.h $(PLAT_DIR)/luaosi/evtdef.h \
+                        luaosi/lauxlib.h luaosi/errors.h luaosi/config.h
+ltimemod.o:             ltimemod.c \
+                        luaosi/timelib.h $(PLAT_DIR)/luaosi/timedef.h \
+                        luaosi/lauxlib.h luaosi/errors.h luaosi/config.h
+lprocmod.o:             lprocmod.c \
+                        luaosi/lproclib.h luaosi/proclib.h $(PLAT_DIR)/luaosi/procdef.h \
+                        luaosi/lauxlib.h luaosi/errors.h luaosi/config.h
+lnetmod.o:              lnetmod.c \
+                        luaosi/lnetlib.h luaosi/netlib.h $(PLAT_DIR)/luaosi/netdef.h \
+                        luaosi/levtlib.h luaosi/evtlib.h $(PLAT_DIR)/luaosi/evtdef.h \
+                        luaosi/lauxlib.h luaosi/errors.h luaosi/config.h
+levtmod.o:              levtmod.c \
+                        luaosi/levtlib.h luaosi/evtlib.h $(PLAT_DIR)/luaosi/evtdef.h \
+                        luaosi/lauxlib.h luaosi/errors.h luaosi/config.h
+luaosi.o:               luaosi.c luaosi.h

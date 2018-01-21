@@ -1,7 +1,7 @@
-#include "procmgr.h"
+#include "luaosi/procmgr.h"
 
 
-#include "proctab.h"
+#include "luaosi/proctab.h"
 
 #include <errno.h>
 #include <signal.h>

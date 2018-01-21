@@ -1,8 +1,8 @@
-#ifndef eventdef_h
-#define eventdef_h
+#ifndef luaosi_evtdef_h
+#define luaosi_evtdef_h
 
 
-#include "loskiconf.h"
+#include "luaosi/config.h"
 
 #include <lua.h>
 #include <sys/select.h>

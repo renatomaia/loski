@@ -1,4 +1,4 @@
-#include "loskiaux.h"
+#include "luaosi/lauxlib.h"
 
 #include <assert.h>
 #include <stdio.h>

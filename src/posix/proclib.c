@@ -1,5 +1,5 @@
-#include "proclib.h"
-#include "procmgr.h"
+#include "luaosi/proclib.h"
+#include "luaosi/procmgr.h"
 
 /*
  * See:

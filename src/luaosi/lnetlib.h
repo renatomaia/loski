@@ -1,9 +1,9 @@
-#ifndef lnetaux_h
-#define lnetaux_h
+#ifndef luaosi_lnetlib_h
+#define luaosi_lnetlib_h
 
 
-#include "loskiconf.h"
-#include "netlib.h"
+#include "luaosi/config.h"
+#include "luaosi/netlib.h"
 
 #include <lua.h>
 #include <lauxlib.h>
