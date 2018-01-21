@@ -1,8 +1,8 @@
-#ifndef procmgr_h
-#define procmgr_h
+#ifndef luaosi_procmgr_h
+#define luaosi_procmgr_h
 
 
-#include "proclib.h"
+#include "luaosi/proclib.h"
 
 int loskiP_initprocmgr (loski_Alloc allocf, void *allocud);
 

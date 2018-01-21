@@ -1,7 +1,8 @@
-#include "eventlib.h"
+#include "luaosi/evtlib.h"
 
 
-#include "leventaux.h"
+#include "luaosi/levtlib.h"
+#include "luaosi/ltimelib.h"
 
 #include <errno.h>
 #include <sys/select.h>

@@ -1,5 +1,5 @@
-#ifndef timedef_h
-#define timedef_h
+#ifndef luaosi_timedef_h
+#define luaosi_timedef_h
 
 
 typedef void loski_TimeDriver;

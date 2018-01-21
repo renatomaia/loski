@@ -1,8 +1,8 @@
-#ifndef timeaux_h
-#define timeaux_h
+#ifndef luaosi_ltimelib_h
+#define luaosi_ltimelib_h
 
 
-#include "loskiconf.h"
+#include "luaosi/config.h"
 
 #include <lua.h> /* seconds is a lua_Number */
 #include <sys/time.h>

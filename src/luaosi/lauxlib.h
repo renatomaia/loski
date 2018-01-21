@@ -1,5 +1,5 @@
-#ifndef loskiaux_h
-#define loskiaux_h
+#ifndef luaosi_lauxlib_h
+#define luaosi_lauxlib_h
 
 
 #include <lua.h>
@@ -24,8 +24,8 @@ LUALIB_API void *luaL_checkinstance(lua_State *L, int idx, const char *cls);
 LUALIB_API void luaL_printstack(lua_State *L);
 
 
-#include "loskiconf.h"
-#include "loskierr.h"
+#include "luaosi/config.h"
+#include "luaosi/errors.h"
 
 
 LOSKILIB_API void loskiL_pusherrmsg(lua_State *L, loski_ErrorCode err);

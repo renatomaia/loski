@@ -1,4 +1,4 @@
-#include "lprocaux.h"
+#include "luaosi/lproclib.h"
 
 #include <string.h>
 

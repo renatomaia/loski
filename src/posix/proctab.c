@@ -1,4 +1,4 @@
-#include "proctab.h"
+#include "luaosi/proctab.h"
 
 
 #include <string.h>  /* memcpy */

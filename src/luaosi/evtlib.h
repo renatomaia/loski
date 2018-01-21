@@ -1,11 +1,11 @@
-#ifndef eventlib_h
-#define eventlib_h
+#ifndef luaosi_evtlib_h
+#define luaosi_evtlib_h
 
 
-#include "eventdef.h"
+#include "luaosi/evtdef.h"
 
-#include "timeaux.h"
-#include "loskierr.h"
+#include "luaosi/errors.h"
+#include <lua.h>
 
 #ifndef LOSKI_EVTVAL_CUSTOM
 typedef enum loski_EventValue {

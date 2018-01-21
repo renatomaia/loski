@@ -1,9 +1,9 @@
-#ifndef lprocaux_h
-#define lprocaux_h
+#ifndef luaosi_lproclib_h
+#define luaosi_lproclib_h
 
 
-#include "proclib.h"
-#include "loskiaux.h"
+#include "luaosi/proclib.h"
+#include "luaosi/lauxlib.h"
 
 
 #define LOSKI_PROCESSCLS LOSKI_PREFIX"ChildProcess"

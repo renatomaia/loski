@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "proctab.h"
+#include "luaosi/proctab.h"
 
 #define calcsize(C)	(C*sizeof(loski_Process *))
 

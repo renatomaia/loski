@@ -1,6 +1,5 @@
-#include "loskiaux.h"
-
-#include <timelib.h>
+#include "luaosi/lauxlib.h"
+#include "luaosi/timelib.h"
 
 
 #ifdef LOSKI_DISABLE_TIMEDRV

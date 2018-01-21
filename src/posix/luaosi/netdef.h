@@ -1,5 +1,5 @@
-#ifndef netdef_h
-#define netdef_h
+#ifndef luaosi_netdef_h
+#define luaosi_netdef_h
 
 
 /* Addresses */
@@ -23,7 +23,7 @@ typedef int loski_AddressType;
 
 /* Sockets */
 
-#include "eventlib.h"
+#include "luaosi/evtlib.h"
 
 #include <lua.h>
 #include <sys/socket.h>

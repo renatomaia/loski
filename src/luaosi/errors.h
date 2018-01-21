@@ -1,5 +1,5 @@
-#ifndef loskierr_h
-#define loskierr_h
+#ifndef luaosi_errors_h
+#define luaosi_errors_h
 
 
 typedef enum loski_ErrorCode {
