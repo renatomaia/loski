@@ -1,62 +1,61 @@
 Contents
 ========
 
-1. [Time Facilities](#time)
+1. [Time Facilities](#time-facilities)
 2. [Network Facilities](#network)
 3. [Process Facilities](#process)
 4. [Error Messages](#errmsg)
 
-
 Index
 =====
 
-- [`network`](#network)
-- [`network.address`](#network.address)
-- [`network.getname`](#network.getname)
-- [`network.resolve`](#network.resolve)
-- [`network.socket`](#network.socket)
-- [`network.type`](#network.type)
-- [`socket:accept`](#socket:accept)
-- [`socket:bind`](#socket:bind)
-- [`socket:close`](#socket:close)
-- [`socket:connect`](#socket:connect)
-- [`socket:getaddress`](#socket:getaddress)
-- [`socket:getoption`](#socket:getoption)
-- [`socket:listen`](#socket:listen)
-- [`socket:receive`](#socket:receive)
-- [`socket:send`](#socket:send)
-- [`socket:setoption`](#socket:setoption)
-- [`socket:shutdown`](#socket:shutdown)
-- [`socket.type`](#socket.type)
+- [`network`](#network-facilities)
+- [`network.address`](#address--networkaddress-data--port--mode)
+- [`network.getname`](#name--service--networkgetname-address--mode)
+- [`network.resolve`](#next--errmsg--networkresolve-name--service--mode)
+- [`network.socket`](#socket--errmsg--networksocket-type--domain)
+- [`network.type`](#type--networktype-value)
+- [`socket:accept`](#connection--errmsg--socketaccept-address)
+- [`socket:bind`](#success--errmsg--socketbind-address)
+- [`socket:close`](#success--errmsg--socketclose-)
+- [`socket:connect`](#success--errmsg--socketconnect-address)
+- [`socket:getaddress`](#address--errmsg--socketgetaddress-site--address)
+- [`socket:getoption`](#value--errmsg--socketgetoption-name)
+- [`socket:listen`](#success--errmsg--socketlisten-backlog)
+- [`socket:receive`](#data--errmsg--socketreceive-size--mode--address)
+- [`socket:send`](#sent--errmsg--socketsend-data--i--j--address)
+- [`socket:setoption`](#success--errmsg--socketsetoption-name-value)
+- [`socket:shutdown`](#success--errmsg--socketshutdown-mode)
+- [`socket.type`](#type--sockettype)
 
-- [`process.create`](#process.create)
-- [`process.status`](#process.status)
-- [`process.exitval`](#process.exitval)
-- [`process.kill`](#process.kill)
+- [`process`](#process-facilities)
+- [`process.create`](#proc--processcreate-cmd--)
+- [`process.exitval`](#number--errmsg--processexitval-proc)
+- [`process.kill`](#succ--errmsg--processkill-proc)
+- [`process.status`](#status--processstatus-proc)
 
-- [`time`](#time)
-- [`time.now`](#time.now)
-- [`time.sleep`](#time.sleep)
-
+- [`time`](#time-facilities)
+- [`time.now`](#seconds--timenow-)
+- [`time.sleep`](#timesleep-delay)
 
 Manual
 ======
 
-Time Facilities {#time}
+Time Facilities
 ---------------
 
-### `seconds = time.now ()` {#time.now}
+### `seconds = time.now ()`
 
 Returns the number of seconds since some given start time (the "epoch"), just like `os.time()`, but with sub-second precision.
 
-### `time.sleep (delay)` {#time.sleep}
+### `time.sleep (delay)`
 
 Suspends the execution for `delay` seconds.
 
-Network Facilities {#network}
+Network Facilities
 ------------------
 
-### `address = network.address ([data [, port [, mode]]])` {#network.address}
+### `address = network.address ([data [, port [, mode]]])`
 
 Creates an address structure.
 
@@ -88,7 +87,7 @@ Returns a structure that provides the following fields:
 
 Moreover, you can pass the object to the standard function `tostring` to obtain the address as a string inside a URI, like `"192.0.2.128:80"` (IPv4) or `[::ffff:c000:0280]:80` (IPv6).
 
-### `next [, errmsg] = network.resolve (name [, service [, mode]])` {#network.resolve}
+### `next [, errmsg] = network.resolve (name [, service [, mode]])`
 
 Searches for the addresses for a network node with name `name`.
 If `name` is `nil`, the loopback address is searched.
@@ -146,7 +145,7 @@ Finally, an example that fills existing addreses objects with the results
 	next = network.resolve("www.lua.org", "http", "s")
 	repeat until not select(3, next(getSomeAddressObject()))
 
-### `name [, service] = network.getname (address [, mode])` {#network.getname}
+### `name [, service] = network.getname (address [, mode])`
 
 Searches for a network name for `address`.
 If `address` is an address structure, it returns a host name and a port service name for the address.
@@ -161,7 +160,7 @@ The current standard implementation of this operation may return the following [
 - `"no system memory"`
 - `"system error"`
 
-### `socket [, errmsg] = network.socket (type [, domain])` {#network.socket}
+### `socket [, errmsg] = network.socket (type [, domain])`
 
 This function creates a socket, of the type specified in the string `type`.
 
@@ -192,16 +191,16 @@ The current standard implementation of this operation may return the following [
 - `"access denied"`
 - `"no system memory"`
 
-### `type = network.type (value)` {#network.type}
+### `type = network.type (value)`
 
 Returns the string `"address"` if `value` is an address structure, or `"socket"` if `value` is a socket handle; otherwise it returns `nil`.
 
-### `type = socket.type` {#socket.type}
+### `type = socket.type`
 
 The type of `socket`, which can be: `"datagram"` `"connection"`, `"listen"`.
 This field is read-only.
 
-### `success [, errmsg] = socket:close ()` {#socket:close}
+### `success [, errmsg] = socket:close ()`
 
 Closes `socket`.
 Note that sockets are automatically closed when their handles are garbage collected, but that takes an unpredictable amount of time to happen. 
@@ -214,7 +213,7 @@ The current standard implementation of this operation may return the following [
 - `"unfulfilled"` (interrupted by signal)
 - `"system error"`
 
-### `success [, errmsg] = socket:bind (address)` {#socket:bind}
+### `success [, errmsg] = socket:bind (address)`
 
 Binds `socket` to the local address provided as `address`.
 
@@ -228,7 +227,7 @@ The current standard implementation of this operation may return the following [
 - `"unreachable"` (address is not local)
 - `"no system memory"`
 
-### `address [, errmsg] = socket:getaddress ([site [, address]])` {#socket:getaddress}
+### `address [, errmsg] = socket:getaddress ([site [, address]])`
 
 Returns the address associated with `socket`, as indicated by `site`, which can be:
 
@@ -247,7 +246,7 @@ The current standard implementation of this operation may return the following [
 - `"closed"` (socket is not connected)
 - `"no system memory"`
 
-### `value [, errmsg] = socket:getoption (name)` {#socket:getoption}
+### `value [, errmsg] = socket:getoption (name)`
 
 Returns the value of option `name` of `socket`, or, in case of errors, `nil` plus an error message.
 There available options are:
@@ -271,7 +270,7 @@ The current standard implementation of this operation may return the following [
 - `"access denied"`
 - `"no system memory"`
 
-### `success [, errmsg] = socket:setoption (name, value)` {#socket:setoption}
+### `success [, errmsg] = socket:setoption (name, value)`
 
 Sets the option `name` for `socket`.
 The available options are the same as defined in operation [`socket:getoption`](#socket:getoption).
@@ -284,7 +283,7 @@ The current standard implementation of this operation may return the following [
 - `"in use"` (socket is connected)
 - `"too much"` (value too large for option)
 
-### `success [, errmsg] = socket:listen ([backlog])` {#socket:listen}
+### `success [, errmsg] = socket:listen ([backlog])`
 
 Starts listening for new connections on socket.
 `backlog` is a hint for the underlying system about the suggested number of outstanding connections that shall be kept in the socket's listen queue.
@@ -300,7 +299,7 @@ The current standard implementation of this operation may return the following [
 - `"access denied"`
 - `"no resources"`
 
-### `connection [, errmsg] = socket:accept ([address])` {#socket:accept}
+### `connection [, errmsg] = socket:accept ([address])`
 
 Accepts a new pending connection on `socket`.
 An address structure can be provided as `address` to be filled with the address of the accepted connection's peer socket.
@@ -317,7 +316,7 @@ The current standard implementation of this operation may return the following [
 - `"no resources"`
 - `"no system memory"`
 
-### `success [, errmsg] = socket:connect (address)` {#socket:connect}
+### `success [, errmsg] = socket:connect (address)`
 
 Binds `socket` to the peer address provided as `address`.
 This operation is not available for `listen` sockets.
@@ -337,7 +336,7 @@ The current standard implementation of this operation may return the following [
 - `"system down"`
 - `"no system memory"`
 
-### `sent [, errmsg] = socket:send (data [, i [, j [, address]]])` {#socket:send}
+### `sent [, errmsg] = socket:send (data [, i [, j [, address]]])`
 
 Sends the substring of `data` that starts at `i` and continues until `j`; `i` and `j` can be negative.
 If `j` is absent, then it is assumed to be equal to -1 (which is the same as the string length).
@@ -360,7 +359,7 @@ The current standard implementation of this operation may return the following [
 - `"system down"`
 - `"system error"`
 
-### `data [, errmsg] = socket:receive (size [, mode [, address]])` {#socket:receive}
+### `data [, errmsg] = socket:receive (size [, mode [, address]])`
 
 Receives up to `size` bytes from socket `socket`, using the mode specified in the string `mode`.
 The mode string can be contain any of the following characters:
@@ -387,7 +386,7 @@ The current standard implementation of this operation may return the following [
 - `"system down"` (network interface is down)
 - `"system error"`
 
-### `success [, errmsg] = socket:shutdown ([mode])` {#socket:shutdown}
+### `success [, errmsg] = socket:shutdown ([mode])`
 
 Shuts down `socket` connection in one or both directions, as specified in the string `mode`.
 The mode string can be any of the following:
@@ -406,10 +405,10 @@ The current standard implementation of this operation may return the following [
 - `"closed"` (socket is not connected)
 - `"no resources"`
 
-Process Facilities {#process}
+Process Facilities
 ---------------
 
-### `proc = process.create (cmd [, ...])` {#process.create}
+### `proc = process.create (cmd [, ...])`
 
 This function creates a new process.
 `cmd` is the path of the executable image for the new process.
@@ -450,7 +449,7 @@ The current standard implementation of this operation may return the following [
 - `"no resources"`
 - `"no system memory"`
 
-### `status = process.status (proc)` {#process.status}
+### `status = process.status (proc)`
 
 Returns the status of process `proc`, as a string:
 "running", if the process is running;
@@ -458,7 +457,7 @@ Returns the status of process `proc`, as a string:
 and "dead" if the process terminated.
 In the last case, operation [`process.exitval`]{#process.exitval} can be used to get the exit value of the process.
 
-### `number [, errmsg] = process.exitval (proc)` {#process.exitval}
+### `number [, errmsg] = process.exitval (proc)`
 
 Returns the exit value of process `proc` as a number in the range [0; 255], or, in case of errors, `nil` plus an error message.
 
@@ -467,7 +466,7 @@ The current standard implementation of this operation may return the following [
 - `"unfulfilled"` (process has not terminated yet)
 - `"aborted"` (process terminated before completion)
 
-### `succ [, errmsg] = process.kill (proc)` {#process.kill}
+### `succ [, errmsg] = process.kill (proc)`
 
 Forces the termination of process `proc`.
 In case of success, this function returns `true`.
@@ -477,7 +476,7 @@ The current standard implementation of this operation may return the following [
 
 - `"access denied"`
 
-Error Messages {#errmsg}
+Error Messages
 --------------
 
 The following messages can be returned by the I/O operations (after a `nil`) to indicate expected errors:

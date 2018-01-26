@@ -53,7 +53,7 @@ o:	$(ALL_O)
 
 a:	$(ALL_A)
 
-s:	$(ALL_S)
+so:	$(ALL_S)
 
 m:	$(ALL_M)
 
