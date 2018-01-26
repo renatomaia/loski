@@ -11,7 +11,7 @@
 
 
 #define calcsize(C)	(C*sizeof(loski_Process *))
-#define calchash(P,C) (((P)-1)%(C))
+#define calchash(P,C) ((P)%(C))
 
 
 static void addentry(loski_Process **table,
