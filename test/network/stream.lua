@@ -36,6 +36,13 @@ end
 
 for _, kind in ipairs{"datagram", "connection"} do
 	local socket = tests.testcreatesocket(kind)
+	tests.testerror("unknown mode char (got 'l')",
+	                socket.receive, socket, 5, "all")
+	tests.testclose(socket)
+end
+
+for _, kind in ipairs{"datagram", "connection"} do
+	local socket = tests.testcreatesocket(kind)
 	assert(socket:setoption("blocking", false) == true)
 
 	if kind == "datagram" then

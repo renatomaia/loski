@@ -2,12 +2,19 @@ Contents
 ========
 
 1. [Time Facilities](#time-facilities)
-2. [Network Facilities](#network)
-3. [Process Facilities](#process)
-4. [Error Messages](#errmsg)
+2. [Process Facilities](#process-facilities)
+3. [Network Facilities](#network-facilities)
+3. [Event Facilities](#event-facilities)
+4. [Error Messages](#error-mesages)
 
 Index
 =====
+
+- [`event`](#event-facilities)
+- [`event.watcher`](#watcher--errmsg--eventwatcher-)
+- [`watcher:set`](#succ--errmsg--watcherset-source--events)
+- [`watcher:wait`](#map--errmsg--watcherwait-timeout)
+- [`watcher:close`](#succ--errmsg--watcherclose-)
 
 - [`network`](#network-facilities)
 - [`network.address`](#address--networkaddress-data--port--mode)
@@ -116,7 +123,7 @@ When neither `4` nor `6` are provided, the search only includes addresses of the
 When neither `d` nor `s` are provided, the search behaves as if both `d` and `s` were provided.
 By default, `mode` is the empty string.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"not found"`
 - `"no system memory"`
@@ -154,7 +161,7 @@ If `address` is a string, it returns a canonical name for that network name.
 
 In case of errors, it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"not found"`
 - `"no system memory"`
@@ -162,7 +169,7 @@ The current standard implementation of this operation may return the following [
 
 ### `socket [, errmsg] = network.socket (type [, domain])`
 
-This function creates a socket, of the type specified in the string `type`.
+Creates a socket, of the type specified in the string `type`.
 
 The `type` string can be any of the following:
 
@@ -185,7 +192,7 @@ The `domain` string defines the socket's address domain (or family) and can be a
 
 It returns a new socket handle, or, in case of errors, `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"no resources"` (no descriptors available)
 - `"access denied"`
@@ -208,7 +215,7 @@ Note that sockets are automatically closed when their handles are garbage collec
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"unfulfilled"` (interrupted by signal)
 - `"system error"`
@@ -220,7 +227,7 @@ Binds `socket` to the local address provided as `address`.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"in use"` (socket is connected)
 - `"unavailable"` (address is in use)
@@ -241,7 +248,7 @@ If `address` is provided, it is the address structure used to store the result.
 
 In case of errors, it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"closed"` (socket is not connected)
 - `"no system memory"`
@@ -255,7 +262,7 @@ There available options are:
 - `"reuseaddr"`: is `true` when address reuse is allowed for `socket`, or `false`otherwise.
 - `"dontroute"`: is `true` when routing facilities are disabled for `socket`, or `false` otherwise.
 
-Sockets of type `"connection" accept the additional options:
+Sockets of type `"connection"` accept the additional options:
 
 - `"linger"`: is the number of seconds that `socket:close` can be delayed when there is pending data to be sent.
 - `"keepalive"`: is `true` when periodic transmission of messages is enabled for `socket`, or `false` otherwise.
@@ -265,7 +272,7 @@ Sockets type `"datagram"` accept the additional option:
 
 - `"broadcast"`: is `true` when sending of broadcast messages are permited for `socket`, or `false` otherwise.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"access denied"`
 - `"no system memory"`
@@ -273,12 +280,12 @@ The current standard implementation of this operation may return the following [
 ### `success [, errmsg] = socket:setoption (name, value)`
 
 Sets the option `name` for `socket`.
-The available options are the same as defined in operation [`socket:getoption`](#socket:getoption).
+The available options are the same as defined in operation [`socket:getoption`](#value--errmsg--socketgetoption-name).
 
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"in use"` (socket is connected)
 - `"too much"` (value too large for option)
@@ -294,7 +301,7 @@ This operation is only available for `listen` sockets.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"access denied"`
 - `"no resources"`
@@ -309,7 +316,7 @@ This operation is only available for `listen` sockets.
 In case of success, this function returns a new `connection` socket for the accepted connection.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"unfulfilled"`
 - `"aborted"` (a connection has been aborted)
@@ -324,7 +331,7 @@ This operation is not available for `listen` sockets.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"unfulfilled"`
 - `"in use"` (socket is connected or address in use)
@@ -347,7 +354,7 @@ For disconnected datagram sockets, it is necessary to provide `address` with the
 In case of success, this function returns the number of bytes from `data` effectivelly sent through `socket`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"unfulfilled"`
 - `"too much"` (message too large)
@@ -375,7 +382,7 @@ For disconnected datagram sockets, it is possible to provide `address` with an a
 In case of success, this function returns the `data` effectivelly received from `socket`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"unfulfilled"`
 - `"timeout"`
@@ -400,7 +407,7 @@ This operation is only available for `connection` sockets.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"closed"` (socket is not connected)
 - `"no resources"`
@@ -442,7 +449,7 @@ Unless stated otherwise, when one of these field are not defined in table `cmd`,
 
 It returns a handle for the new process, or, in case of errors, `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"access denied"`
 - `"too much"`
@@ -461,7 +468,7 @@ In the last case, operation [`process.exitval`]{#process.exitval} can be used to
 
 Returns the exit value of process `proc` as a number in the range [0; 255], or, in case of errors, `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"unfulfilled"` (process has not terminated yet)
 - `"aborted"` (process terminated before completion)
@@ -472,9 +479,64 @@ Forces the termination of process `proc`.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#errmsg).
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"access denied"`
+
+Event Facilities
+----------------
+
+### `watcher [, errmsg] = event.watcher ()`
+
+Creates a new event watcher.
+
+In case of success, this function returns the event watcher.
+Otherwise it returns `nil` plus an error message.
+
+### `succ [, errmsg] = watcher:set (source [, events])`
+
+Defines which events should be watched from `source` object.
+
+`source` is either a file, socket or process, depending on the LOSI support for the current platform.
+
+`events` is a string containing the following characters defining which events should be watched from `source`:
+
+- `r`: availability to read data from the `source`
+- `w`: availability to write data to the `source`.
+
+If `events` is not provided or is the empty string, the `source` will not be watched by the `watcher`.
+
+When `source` is a process, availability to read data indicates the process terminated and it is possible to obtain its exit value ([`process.exitval`](#number--errmsg--processexitval-proc)).
+
+In case of success, this function returns `true`.
+Otherwise it returns `nil` plus an error message.
+
+### `map [, errmsg] = watcher:wait ([timeout])`
+
+Waits until for any of the events watched by `watcher` happens.
+
+`timeout` is an optional timeout for the operation.
+If no `timeout` is provided, the call waits indefinetaly for one of the wached events to happen.
+
+It returns a table mapping sources to a string indicating the events that happened, like the parameter `events` of ([`watcher:set`](#succ--errmsg--watcherset-source--events)).
+Otherwise it returns `nil` plus an error message.
+
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
+
+- `"unfulfilled"` (interrupted by signal)
+
+### `succ [, errmsg] = watcher:close ()`
+
+Closes `watcher` and releases all its resources, including references to watched sources, which might be collected if no other references to them exist.
+Note that watchers are automatically closed when their handles are garbage collected, but that takes an unpredictable amount of time to happen. 
+
+In case of success, this function returns `true`.
+Otherwise it returns `nil` plus an error message.
+
+The current standard implementation of this operation may return the following [error messages](#error-mesages).
+
+- `"unfulfilled"` (interrupted by signal)
+- `"system error"`
 
 Error Messages
 --------------

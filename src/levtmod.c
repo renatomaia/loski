@@ -18,48 +18,16 @@ static void getsource(lua_State *L, loski_EventSource *source)
 		luaL_error(L, "invalid watchable object");
 }
 
-static void pushregkey(lua_State *L, loski_EventSource *source) {
-	loski_EventDriver *drv = todrv(L);
-	lua_getuservalue(L, 1);
-	lua_pushinteger(L, loskiE_getsourceid(drv, source));
-}
-
-static void savesource(lua_State *L, loski_EventSource *source) {
-	pushregkey(L, source);
-	lua_pushvalue(L, 2);
-	lua_settable(L, -3);
-	lua_pop(L, 1);
-}
-
-static int knownsource(lua_State *L, loski_EventSource *source) {
-	int found = 0;
-	pushregkey(L, source);
-	lua_gettable(L, -2);
-	found = !lua_isnil(L, -1);
-	lua_pop(L, 2);
-	return found;
-}
-
-static void forgetsource(lua_State *L, loski_EventSource *source) {
-	pushregkey(L, source);
-	lua_pushnil(L);
-	lua_settable(L, -3);
-	lua_pop(L, 1);
-}
-
-static void pushsource(lua_State *L, loski_EventSource *source) {
-	pushregkey(L, source);
-	lua_gettable(L, -2);
-	lua_remove(L, -2);
-}
+#define pushsrcid(L,D,S)	(lua_pushinteger(L, loskiE_getsourceid(D,S)))
 
 
 /* watcher [, errmsg] = event.watcher() */
-static int evt_watcher (lua_State *L) {
+static int evt_watcher (lua_State *L)
+{
 	loski_EventDriver *drv = todrv(L);
 	loski_EventWatcher *watcher = loski_newwatcher(L);
 	loski_ErrorCode err = loskiE_initwatcher(drv, watcher);
-	if (!err) loski_enablewatcher (L, -1);
+	if (!err) loski_enablewatcher(L);
 	return loskiL_doresults(L, 1, err);
 }
 
@@ -69,20 +37,20 @@ static int evt_watcher (lua_State *L) {
 /* string = tostring(watcher) */
 static int ew_tostring (lua_State *L)
 {
-	LuaWatcher *p = tolwatcher(L);
-	if (p->closed)
+	LuaWatcher *lw = tolwatcher(L);
+	if (lw->closed)
 		lua_pushliteral(L, "event watcher (closed)");
 	else
-		lua_pushfstring(L, "event watcher (%p)", p);
+		lua_pushfstring(L, "event watcher (%p)", lw->watcher);
 	return 1;
 }
 
 
-static int endwatcher (loski_EventDriver *drv, lua_State *L, LuaWatcher *p)
+static int endwatcher (loski_EventDriver *drv, lua_State *L, LuaWatcher *lw)
 {
-	loski_ErrorCode err = loskiE_endwatcher(drv, &p->watcher);
+	loski_ErrorCode err = loskiE_endwatcher(drv, &lw->watcher);
 	if (!err) {
-		p->closed = 1;  /* mark watcher as closed */
+		lw->closed = 1;  /* mark watcher as closed */
 		lua_pushnil(L);
 		lua_setuservalue(L, 1);
 	}
@@ -115,48 +83,31 @@ static int ew_close(lua_State *L)
 }
 
 
-static const char *const EventName[] = {
-	"r",
-	"w",
-	NULL
-};
-static const loski_EventValue EventValue[] = {
-	LOSKI_EVTVAL_INPUT,
-	LOSKI_EVTVAL_OUTPUT
-};
-
-/* succ [, errmsg] = watcher:add(source [, events]) */
-static int ew_add (lua_State *L) {
+/* succ [, errmsg] = watcher:set(source [, events]) */
+static int ew_set (lua_State *L) {
 	loski_EventDriver *drv = todrv(L);
 	loski_EventWatcher *watcher = towatcher(L);
 	loski_EventSource source;
-	int optevt = luaL_checkoption(L, 3, "r", EventName);
+	loski_EventFlags evtflags = LOSKI_EVTFLAGS_NONE;
+	const char *events = luaL_optstring(L, 3, "");
 	loski_ErrorCode err;
-	lua_settop(L, 2);
-	getsource(L, &source);
-	err = loskiE_addwatch(drv, watcher, &source, EventValue[optevt]);
-	if (!err) savesource(L, &source);
-	return loskiL_doresults(L, 0, err);
-}
-
-
-/* succ [, errmsg] = watcher:remove(object [, event]) */
-static int ew_remove (lua_State *L) {
-	loski_EventDriver *drv = todrv(L);
-	loski_EventWatcher *watcher = towatcher(L);
-	loski_EventSource source;
-	int optevt = luaL_checkoption(L, 3, "r", EventName);
-	lua_settop(L, 2);
-	getsource(L, &source);
-	if (knownsource(L, &source)) {
-		loski_ErrorCode err = loskiE_delwatch(drv, watcher, &source,
-		                                      EventValue[optevt]);
-		if (!err) forgetsource(L, &source);
-		return loskiL_doresults(L, 0, err);
+	for (; *events; ++events) switch (*events) {
+		case 'r': evtflags |= LOSKI_EVTFLAGS_INPUT; break;
+		case 'w': evtflags |= LOSKI_EVTFLAGS_OUTPUT; break;
+		default: return luaL_error(L, "unknown event (got '%c')", *events);
 	}
-	lua_pushnil(L);
-	lua_pushliteral(L, "not found");
-	return 2;
+	lua_settop(L, 2);
+	getsource(L, &source);
+	err = loskiE_setwatch(drv, watcher, &source, evtflags);
+	if (!err) {
+		lua_getuservalue(L, 1);
+		pushsrcid(L, drv, &source);
+		if (evtflags == LOSKI_EVTFLAGS_NONE) lua_pushnil(L);
+		else                                 lua_pushvalue(L, 2);
+		lua_settable(L, -3);
+		lua_pop(L, 1);
+	}
+	return loskiL_doresults(L, 0, err);
 }
 
 
@@ -166,28 +117,31 @@ static int ew_wait (lua_State *L) {
 	loski_EventWatcher *watcher = towatcher(L);
 	lua_Number timeout = luaL_optnumber(L, 2, -1);
 	loski_ErrorCode err = loskiE_waitevent(drv, watcher, timeout);
-	lua_settop(L, 1);  /* wch */
+	lua_settop(L, 1);
 	if (!err) {
 		size_t i = 0;
 		loski_EventSource source;
-		loski_EventValue event;
-		lua_newtable(L);  /* wch,tab */
-		while (loskiE_nextevent(drv, watcher, &i, &source, &event)) {
-			const char *ename = EventName[event];
-			pushsource(L, &source);  /* wch,tab,src */
-			lua_pushvalue(L, -1);  /* wch,tab,src,src */
-			lua_gettable(L, -3);  /* wch,tab,src,??? */
-			if (lua_isnil(L, -1)) {  /* wch,tab,src,nil */
-				lua_pop(L, 1);  /* wch,tab,src */
-				lua_pushstring(L, ename);  /* wch,tab,src,evt */
-				lua_settable(L, 2);  /* wch,tab */
-			} else if (!strchr(lua_tostring(L, -1), *ename)) {  /* wch,tab,src,str */
-				lua_pushstring(L, ename);  /* wch,tab,src,str,evt */
-				lua_concat(L, 2);  /* wch,tab,src,str */
-				lua_settable(L, 2);  /* wch,tab */
-			} else {
-				lua_settop(L,2);  /* wch,tab */
+		loski_EventFlags evtflags;
+		lua_getuservalue(L, 1);  /* places source registry at index 2 */
+		lua_newtable(L);  /* creates result table at index 3 */
+		while (loskiE_nextevent(drv, watcher, &i, &source, &evtflags)) {
+			pushsrcid(L, drv, &source);
+			lua_gettable(L, 2);  /* get source from registry (index 2) */
+			switch (evtflags) {
+				case LOSKI_EVTFLAGS_INPUT:
+					lua_pushliteral(L, "r");
+					break;
+				case LOSKI_EVTFLAGS_OUTPUT:
+					lua_pushliteral(L, "w");
+					break;
+				case LOSKI_EVTFLAGS_INPUT|LOSKI_EVTFLAGS_OUTPUT:
+					lua_pushliteral(L, "rw");
+					break;
+				default:
+					lua_pushnil(L);
+					break;
 			}
+			lua_settable(L, 3);  /* places into result table (index 3) */
 		}
 	}
 	return loskiL_doresults(L, 1, err);
@@ -205,8 +159,7 @@ static int lfreedrv (lua_State *L) {
 static const luaL_Reg wch[] = {
 	{"__tostring", ew_tostring},
 	{"__gc", ew_gc},
-	{"add", ew_add},
-	{"remove", ew_remove},
+	{"set", ew_set},
 	{"wait", ew_wait},
 	{"close", ew_close},
 	{NULL, NULL}

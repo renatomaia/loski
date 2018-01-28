@@ -15,7 +15,7 @@ typedef struct LuaWatcher {
 
 LOSKILIB_API loski_EventWatcher *loski_newwatcher (lua_State *L);
 
-LOSKILIB_API void loski_enablewatcher (lua_State *L, int idx);
+LOSKILIB_API void loski_enablewatcher (lua_State *L);
 
 LOSKILIB_API loski_EventWatcher *loski_towatcher (lua_State *L, int idx);
 

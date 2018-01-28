@@ -527,7 +527,7 @@ static int recvdata(lua_State *L, int cls, loski_Address *addr)
 	luaL_Buffer lbuf;
 	char *buf;
 	loski_ErrorCode err;
-	while (*mode) switch (*(mode++)) {
+	for (; *mode; ++mode) switch (*mode) {
 		case 'p': flags |= LOSKI_SOCKRCV_PEEKONLY; break;
 		case 'a': flags |= LOSKI_SOCKRCV_WAITALL; break;
 		default: return luaL_error(L, "unknown mode char (got '%c')", *mode);
