@@ -105,6 +105,7 @@ LUALIB_API void luaL_printstack(lua_State *L)
 {
 	int i;
 	for(i = 1; i <= lua_gettop(L); ++i) {
+		const char *typename = NULL;
 		printf("%d = ", i);
 		switch (lua_type(L, i)) {
 			case LUA_TNUMBER:
@@ -119,8 +120,14 @@ LUALIB_API void luaL_printstack(lua_State *L)
 			case LUA_TNIL:
 				printf("nil");
 				break;
+			case LUA_TUSERDATA:
+				if (lua_getmetatable(L, i)) {
+					lua_getfield(L, -1, "__name");
+					typename = lua_tostring(L, -1);
+					lua_pop(L, 2);
+				}
 			default:
-				printf("%s: %p", luaL_typename(L, i),
+				printf("%s: %p", typename ? typename : luaL_typename(L, i),
 				                 lua_topointer(L, i));
 				break;
 		}

@@ -60,3 +60,6 @@ utils.testerror("service must be provided for '*'",
 	network.resolve, "*")
 utils.testerror("service must be provided for '*'",
 	network.resolve, "*", nil)
+
+utils.testerror("unknown mode char (got 'i')",
+	network.resolve, "localhost", 0, "ipv6")

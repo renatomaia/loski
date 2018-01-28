@@ -22,8 +22,12 @@ LOSKIDRV_API loski_ErrorCode loskiE_initwatcher(loski_EventDriver *drv,
                                                 loski_EventWatcher *watcher)
 {
 	watcher->maxfd = 0;
-	FD_ZERO(&watcher->sets[LOSKI_EVTVAL_INPUT]);
-	FD_ZERO(&watcher->sets[LOSKI_EVTVAL_OUTPUT]);
+	FD_ZERO(&watcher->sets[0]);
+	FD_ZERO(&watcher->sets[1]);
+	watcher->maxvisited = 0;
+	watcher->unvisited = 0;
+	FD_ZERO(&watcher->selected[0]);
+	FD_ZERO(&watcher->selected[1]);
 	return LOSKI_ERRNONE;
 }
 
@@ -33,29 +37,22 @@ LOSKIDRV_API loski_ErrorCode loskiE_endwatcher(loski_EventDriver *drv,
 	return LOSKI_ERRNONE;
 }
 
-LOSKIDRV_API loski_ErrorCode loskiE_addwatch(loski_EventDriver *drv,
+LOSKIDRV_API loski_ErrorCode loskiE_setwatch(loski_EventDriver *drv,
                                              loski_EventWatcher *watcher,
                                              loski_EventSource *source,
-                                             loski_EventValue event)
+                                             loski_EventFlags evtflags)
 {
 	if (*source < 0 || *source >= FD_SETSIZE) return LOSKI_ERRINVALID;
-	FD_SET(*source, &watcher->sets[event]);
-	if (*source >= watcher->maxfd) watcher->maxfd = *source+1;
-	return LOSKI_ERRNONE;
-}
-
-LOSKIDRV_API loski_ErrorCode loskiE_delwatch(loski_EventDriver *drv,
-                                             loski_EventWatcher *watcher,
-                                             loski_EventSource *source,
-                                             loski_EventValue event)
-{
-	if (*source < 0 || *source >= FD_SETSIZE) return LOSKI_ERRINVALID;
-	FD_CLR(*source, &watcher->sets[event]);
-	if (*source+1 == watcher->maxfd) {
+	if (evtflags & LOSKI_EVTFLAGS_INPUT) FD_SET(*source, &watcher->sets[0]);
+	else                                 FD_CLR(*source, &watcher->sets[0]);
+	if (evtflags & LOSKI_EVTFLAGS_OUTPUT) FD_SET(*source, &watcher->sets[1]);
+	else                                  FD_CLR(*source, &watcher->sets[1]);
+	if (evtflags != LOSKI_EVTFLAGS_NONE) {
+		if (*source >= watcher->maxfd) watcher->maxfd = *source+1;
+	} else if (*source+1 == watcher->maxfd) {
 		int i;
 		for (i=*source-1; i>=0; --i)
-			if (FD_ISSET(i, &watcher->sets[LOSKI_EVTVAL_INPUT])
-			||  FD_ISSET(i, &watcher->sets[LOSKI_EVTVAL_OUTPUT]))
+			if (FD_ISSET(i, &watcher->sets[0]) || FD_ISSET(i, &watcher->sets[1]))
 				break;
 		watcher->maxfd = i+1;
 	}
@@ -73,19 +70,19 @@ LOSKIDRV_API loski_ErrorCode loskiE_waitevent(loski_EventDriver *drv,
                                               lua_Number timeout)
 {
 	watcher->maxvisited = 0;
-	watcher->selected[LOSKI_EVTVAL_INPUT] = watcher->sets[LOSKI_EVTVAL_INPUT];
-	watcher->selected[LOSKI_EVTVAL_OUTPUT] = watcher->sets[LOSKI_EVTVAL_OUTPUT];
+	watcher->selected[0] = watcher->sets[0];
+	watcher->selected[1] = watcher->sets[1];
 	if (timeout >= 0) {
 		struct timeval tm;
 		loski_seconds2timeval(timeout, &tm);
 		watcher->unvisited = select(watcher->maxfd,
-		                            &watcher->selected[LOSKI_EVTVAL_INPUT],
-		                            &watcher->selected[LOSKI_EVTVAL_OUTPUT],
+		                            &watcher->selected[0],
+		                            &watcher->selected[1],
 		                            NULL, &tm);
 	} else {
 		watcher->unvisited = select(watcher->maxfd,
-		                            &watcher->selected[LOSKI_EVTVAL_INPUT],
-		                            &watcher->selected[LOSKI_EVTVAL_OUTPUT],
+		                            &watcher->selected[0],
+		                            &watcher->selected[1],
 		                            NULL, NULL);
 	}
 	if (watcher->unvisited != -1) return LOSKI_ERRNONE;
@@ -101,23 +98,26 @@ LOSKIDRV_API int loskiE_nextevent(loski_EventDriver *drv,
                                   loski_EventWatcher *watcher,
                                   size_t *index,
                                   loski_EventSource *source,
-                                  loski_EventValue *event)
+                                  loski_EventFlags *evtflags)
 {
 	while (1) {
-		int setidx = *index%2;
-		int fd = (*index-setidx)/2;
-		if (fd >= watcher->maxvisited && watcher->unvisited == 0)
-			break;
-		else if (FD_ISSET(fd, &watcher->selected[setidx])) {
-			if (fd >= watcher->maxvisited) {
-				watcher->maxvisited = fd + 1;
-				--watcher->unvisited;
-			}
+		int fd = (int)*index;
+		if (fd >= watcher->maxvisited && watcher->unvisited <= 0) break;
+		++(*index);
+		*evtflags = LOSKI_EVTFLAGS_NONE;
+		if (FD_ISSET(fd, &watcher->selected[0])) {
+			*evtflags |= LOSKI_EVTFLAGS_INPUT;
+			--watcher->unvisited;
+		}
+		if (FD_ISSET(fd, &watcher->selected[1])) {
+			*evtflags |= LOSKI_EVTFLAGS_OUTPUT;
+			--watcher->unvisited;
+		}
+		if (*evtflags != LOSKI_EVTFLAGS_NONE) {
+			if (fd >= watcher->maxvisited) watcher->maxvisited = fd + 1;
 			*source = fd;
-			*event = setidx;
 			return 1;
 		}
-		++*index;
 	}
 	return 0;
 }

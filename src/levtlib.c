@@ -11,13 +11,13 @@ LOSKILIB_API loski_EventWatcher *loski_newwatcher (lua_State *L)
 	return &lw->watcher;
 }
 
-LOSKILIB_API void loski_enablewatcher (lua_State *L, int idx)
+LOSKILIB_API void loski_enablewatcher (lua_State *L)
 {
-	LuaWatcher *lw = tolwatcher(L, idx);
+	LuaWatcher *lw = tolwatcher(L, -1);
 	if (lw) {
 		lw->closed = 0;
 		lua_newtable(L);
-		lua_setuservalue(L, idx);
+		lua_setuservalue(L, -2);
 	}
 }
 
