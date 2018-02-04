@@ -5,7 +5,6 @@ http://pauillac.inria.fr/~xleroy/linuxthreads/faq.html#J
 
 Not Priorized:
 - Add support to wait for child process termination in 'event' module.
-- Avoid realloc child process structure on removal, which is called from signal handler. Only realloc on insertion, just like Lua tables.
 - Object to represent buffers (LuaMemory)
 - Support for (named) pipes
 - Support for async file operations
