@@ -34,7 +34,7 @@ ALL_T=	$(TST_T)
 # Targets start here.
 default: $(PLAT)
 
-all: $(PLAT) $(TST_T)
+all: $(TST_T)
 	./$(TST_T)
 
 $(TST_T):	$(TST_O) $(TAB_O)
@@ -66,7 +66,7 @@ none:
 generic: $(ALL)
 
 linux:
-	$(MAKE) $(ALL) SYSCFLAGS="-fpic" SYSLDFLAGS="-shared"
+	$(MAKE) $(ALL) #SYSCFLAGS="-fpic" SYSLDFLAGS="-shared"
 
 macosx:
 	$(MAKE) $(ALL) CC='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc' \

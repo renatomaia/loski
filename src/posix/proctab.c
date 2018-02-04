@@ -86,6 +86,22 @@ int loskiP_incproctab(loski_ProcTable *tab)
 		}
 		tab->table = memo;
 		rehashtable(tab, capacity);
+	} else if (tab->table != tab->mintab &&
+	           tab->count < capacity*RATIO_EMPTY/RATIO_BASE) {
+		size_t newcapacity = capacity;
+		do { newcapacity /= RATIO_INC; }
+		while (newcapacity > LOSKI_PROCTABMINSZ &&
+		       tab->count < newcapacity*RATIO_EMPTY/RATIO_BASE);
+		rehashtable(tab, newcapacity);
+		if (tab->capacity <= LOSKI_PROCTABMINSZ) {
+			memcpy(tab->mintab, tab->table, calcsize(tab->capacity));
+			tab->allocf(tab->allocud, tab->table, calcsize(capacity), 0);
+			tab->table = tab->mintab;
+		} else {
+			tab->table = tab->allocf(tab->allocud, tab->table,
+			                         calcsize(capacity),
+			                         calcsize(tab->capacity));
+		}
 	}
 	return 1;
 }
@@ -98,21 +114,8 @@ void loskiP_putproctab(loski_ProcTable *tab, loski_Process *proc)
 
 void loskiP_delproctab(loski_ProcTable *tab, loski_Process *proc)
 {
-	size_t capacity = tab->capacity;
-	removeentry(tab->table, calchash(proc->pid, capacity), proc);
+	removeentry(tab->table, calchash(proc->pid, tab->capacity), proc);
 	--(tab->count);
-	if (tab->table != tab->mintab && tab->count < capacity*RATIO_EMPTY/RATIO_BASE) {
-		rehashtable(tab, capacity/RATIO_INC);
-		if (tab->capacity == LOSKI_PROCTABMINSZ) {
-			memcpy(tab->mintab, tab->table, calcsize(tab->capacity));
-			tab->allocf(tab->allocud, tab->table, calcsize(capacity), 0);
-			tab->table = tab->mintab;
-		} else {
-			tab->table = tab->allocf(tab->allocud, tab->table,
-			                         calcsize(capacity),
-			                         calcsize(tab->capacity));
-		}
-	}
 }
 
 loski_Process *loskiP_findproctab(loski_ProcTable *tab, pid_t pid)
