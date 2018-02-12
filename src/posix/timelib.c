@@ -8,7 +8,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-lua_Number loskiT_now (loski_TimeDriver *drv)
+lua_Number losiT_now (losi_TimeDriver *drv)
 {
 	struct timeval v;
 	gettimeofday(&v, (struct timezone *) NULL);
@@ -16,7 +16,7 @@ lua_Number loskiT_now (loski_TimeDriver *drv)
 	return v.tv_sec + v.tv_usec/1.0e6;
 }
 
-void loskiT_wait (loski_TimeDriver *drv, lua_Number n)
+void losiT_wait (losi_TimeDriver *drv, lua_Number n)
 {
 	struct timespec t, r;
 	t.tv_sec = (int) n;

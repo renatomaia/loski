@@ -7,7 +7,7 @@
 
 #include <windows.h>
 
-lua_Number loskiT_now (loski_TimeDriver *drv)
+lua_Number losiT_now (losi_TimeDriver *drv)
 {
 	FILETIME ft;
 	double t;
@@ -18,7 +18,7 @@ lua_Number loskiT_now (loski_TimeDriver *drv)
 	return (t - 11644473600.0);
 }
 
-void loskiT_wait (loski_TimeDriver *drv, lua_Number seconds)
+void losiT_wait (losi_TimeDriver *drv, lua_Number seconds)
 {
 	Sleep((int)(seconds*1000));
 }

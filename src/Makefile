@@ -1,4 +1,4 @@
-# Makefile for installing LOSKI
+# Makefile for installing LOSI
 # See README.md for installation and customization instructions.
 
 include ../config

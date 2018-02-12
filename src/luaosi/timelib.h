@@ -7,15 +7,15 @@
 
 #include <lua.h> /* seconds is a lua_Number */
 
-#ifndef LOSKI_DISABLE_TIMEDRV
-LOSKIDRV_API loski_ErrorCode loskiT_initdrv (loski_TimeDriver *drv);
+#ifndef LOSI_DISABLE_TIMEDRV
+LOSIDRV_API losi_ErrorCode losiT_initdrv (losi_TimeDriver *drv);
 
-LOSKIDRV_API void loskiT_freedrv (loski_TimeDriver *drv);
+LOSIDRV_API void losiT_freedrv (losi_TimeDriver *drv);
 #endif
 
-LOSKIDRV_API lua_Number loskiT_now (loski_TimeDriver *drv);
+LOSIDRV_API lua_Number losiT_now (losi_TimeDriver *drv);
 
-LOSKIDRV_API void loskiT_wait (loski_TimeDriver *drv, lua_Number seconds);
+LOSIDRV_API void losiT_wait (losi_TimeDriver *drv, lua_Number seconds);
 
 
 #endif

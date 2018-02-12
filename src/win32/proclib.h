@@ -4,13 +4,13 @@
 
 #include <windows.h>
 
-typedef void loski_ProcDriver;
-typedef struct loski_Process {
+typedef void losi_ProcDriver;
+typedef struct losi_Process {
 	PROCESS_INFORMATION pi;
 	DWORD exitcode;
-} loski_Process;
-typedef int loski_ProcArgInfo;
-typedef size_t loski_ProcEnvInfo;
+} losi_Process;
+typedef int losi_ProcArgInfo;
+typedef size_t losi_ProcEnvInfo;
 
 #include "proclibapi.h"
 

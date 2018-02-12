@@ -8,46 +8,46 @@
 
 #include <lua.h>
 
-#ifndef LOSKI_EVTFLAGS_CUSTOM
-typedef unsigned int loski_EventFlags;
-#define LOSKI_EVTFLAGS_NONE	0x00
-#define LOSKI_EVTFLAGS_INPUT	0x01
-#define LOSKI_EVTFLAGS_OUTPUT	0x02
+#ifndef LOSI_EVTFLAGS_CUSTOM
+typedef unsigned int losi_EventFlags;
+#define LOSI_EVTFLAGS_NONE	0x00
+#define LOSI_EVTFLAGS_INPUT	0x01
+#define LOSI_EVTFLAGS_OUTPUT	0x02
 #endif
 
-#ifndef LOSKI_DISABLE_EVENTDRV
-LOSKIDRV_API loski_ErrorCode loskiE_initdrv (loski_EventDriver *drv);
+#ifndef LOSI_DISABLE_EVENTDRV
+LOSIDRV_API losi_ErrorCode losiE_initdrv (losi_EventDriver *drv);
 
-LOSKIDRV_API void loskiE_freedrv (loski_EventDriver *drv);
+LOSIDRV_API void losiE_freedrv (losi_EventDriver *drv);
 #endif
 
-LOSKIDRV_API loski_ErrorCode loskiE_initwatcher(loski_EventDriver *drv,
-                                                loski_EventWatcher *watcher);
+LOSIDRV_API losi_ErrorCode losiE_initwatcher(losi_EventDriver *drv,
+                                             losi_EventWatcher *watcher);
 
-LOSKIDRV_API loski_ErrorCode loskiE_endwatcher(loski_EventDriver *drv,
-                                               loski_EventWatcher *watcher);
+LOSIDRV_API losi_ErrorCode losiE_endwatcher(losi_EventDriver *drv,
+                                            losi_EventWatcher *watcher);
 
-LOSKIDRV_API loski_ErrorCode loskiE_setwatch(loski_EventDriver *drv,
-                                             loski_EventWatcher *watcher,
-                                             loski_EventSource *src,
-                                             loski_EventFlags events);
+LOSIDRV_API losi_ErrorCode losiE_setwatch(losi_EventDriver *drv,
+                                          losi_EventWatcher *watcher,
+                                          losi_EventSource *src,
+                                          losi_EventFlags events);
 
-LOSKIDRV_API loski_IntUniqueId loskiE_getsourceid(loski_EventDriver *drv,
-                                                  loski_EventSource *src);
+LOSIDRV_API losi_IntUniqueId losiE_getsourceid(losi_EventDriver *drv,
+                                               losi_EventSource *src);
 
-LOSKIDRV_API loski_ErrorCode loskiE_waitevent(loski_EventDriver *drv,
-                                              loski_EventWatcher *watcher,
-                                              lua_Number timeout);
+LOSIDRV_API losi_ErrorCode losiE_waitevent(losi_EventDriver *drv,
+                                           losi_EventWatcher *watcher,
+                                           lua_Number timeout);
 
-LOSKIDRV_API void loskiE_inititerator(loski_EventDriver *drv,
-                                      loski_EventWatcher *watcher,
-                                      loski_EventIterator *i);
+LOSIDRV_API void losiE_inititerator(losi_EventDriver *drv,
+                                    losi_EventWatcher *watcher,
+                                    losi_EventIterator *i);
 
-LOSKIDRV_API int loskiE_nextevent(loski_EventDriver *drv,
-                                  loski_EventWatcher *watcher,
-                                  loski_EventIterator *i,
-                                  loski_EventSource *src,
-                                  loski_EventFlags *events);
+LOSIDRV_API int losiE_nextevent(losi_EventDriver *drv,
+                                losi_EventWatcher *watcher,
+                                losi_EventIterator *i,
+                                losi_EventSource *src,
+                                losi_EventFlags *events);
 
 
 #endif

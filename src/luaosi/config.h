@@ -3,22 +3,22 @@
 
 #include <luaconf.h>
 
-#ifndef LOSKILIB_API
-#define LOSKILIB_API LUALIB_API
+#ifndef LOSILIB_API
+#define LOSILIB_API LUALIB_API
 #endif
 
-#ifndef LOSKIDRV_API
-#define LOSKIDRV_API
+#ifndef LOSIDRV_API
+#define LOSIDRV_API
 #endif
 
-#ifndef LOSKI_VALUEID
-#define LOSKI_VALUEID LUA_INTEGER
+#ifndef LOSI_VALUEID
+#define LOSI_VALUEID LUA_INTEGER
 #endif
 
-#define LOSKI_PREFIX "loski:"
+#define LOSI_PREFIX "losi:"
 
-typedef LOSKI_VALUEID loski_IntUniqueId;
-typedef void * (*loski_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
+typedef LOSI_VALUEID losi_IntUniqueId;
+typedef void * (*losi_Alloc) (void *ud, void *ptr, size_t osize, size_t nsize);
 
 
 #endif

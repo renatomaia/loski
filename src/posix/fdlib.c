@@ -3,30 +3,30 @@
 #include <errno.h>
 #include <fcntl.h>
 
-static loski_ErrorCode geterrcode ()
+static losi_ErrorCode geterrcode ()
 {
 	switch (errno) {
-		case EBADF: return LOSKI_ERRCLOSED;
-		case EINVAL: return LOSKI_ERRINVALID;
+		case EBADF: return LOSI_ERRCLOSED;
+		case EINVAL: return LOSI_ERRINVALID;
 		case EACCES:
 		case EAGAIN:
 		case EINTR:
 		case EMFILE:
 		case ENOLCK:
-		case EOVERFLOW: return LOSKI_ERRUNEXPECTED;
+		case EOVERFLOW: return LOSI_ERRUNEXPECTED;
 	}
-	return LOSKI_ERRUNSPECIFIED;
+	return LOSI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API loski_ErrorCode loskiFD_getnonblock (int fd, int *value)
+LOSIDRV_API losi_ErrorCode losiFD_getnonblock (int fd, int *value)
 {
 	int res = fcntl(fd, F_GETFL, 0);
 	if (res == -1) return geterrcode();
 	*value = !(res & O_NONBLOCK);
-	return LOSKI_ERRNONE;
+	return LOSI_ERRNONE;
 }
 
-LOSKIDRV_API loski_ErrorCode loskiFD_setnonblock (int fd, int value)
+LOSIDRV_API losi_ErrorCode losiFD_setnonblock (int fd, int value)
 {
 	int res = fcntl(fd, F_GETFL, 0);
 	if (res >= 0) {
@@ -34,5 +34,5 @@ LOSKIDRV_API loski_ErrorCode loskiFD_setnonblock (int fd, int value)
 		if (value != res) res = fcntl(fd, F_SETFL, value);
 	}
 	if (res == -1) return geterrcode();
-	return LOSKI_ERRNONE;
+	return LOSI_ERRNONE;
 }

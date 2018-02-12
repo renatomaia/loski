@@ -36,8 +36,8 @@ LUALIB_API void *luaL_getclassdata (lua_State *L, int idx,
 #include "luaosi/errors.h"
 
 
-LOSKILIB_API void loskiL_pusherrmsg(lua_State *L, loski_ErrorCode err);
-LOSKILIB_API int loskiL_doresults(lua_State *L, int nres, loski_ErrorCode err);
+LOSILIB_API void losiL_pusherrmsg(lua_State *L, losi_ErrorCode err);
+LOSILIB_API int losiL_doresults(lua_State *L, int nres, losi_ErrorCode err);
 
 
 #endif

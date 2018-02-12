@@ -21,7 +21,7 @@ static void *defallocf (void *ud, void *ptr, size_t osize, size_t nsize) {
 
 
 static volatile char initialized = 0;
-static loski_ProcTable proctab;
+static losi_ProcTable proctab;
 static struct sigaction childact;
 static sigset_t childmsk;
 
@@ -39,9 +39,9 @@ static void childhandler (int signo)
 		} else if (pid == 0) {
 			break; /* process information not available anymore */
 		} else if (initialized) {
-			loski_Process *proc = loskiP_findproctab(&proctab, pid);
+			losi_Process *proc = losiP_findproctab(&proctab, pid);
 			if (proc) {
-				loskiP_delproctab(&proctab, proc);
+				losiP_delproctab(&proctab, proc);
 				proc->pid = 0;
 				proc->status = status;
 				if (proc->pipe[0] != -1) {
@@ -54,12 +54,12 @@ static void childhandler (int signo)
 }
 
 
-int loskiP_initprocmgr (loski_Alloc allocf, void *allocud)
+int losiP_initprocmgr (losi_Alloc allocf, void *allocud)
 {
 	if (!initialized) {
 		initialized = 1;
 		/* setup process table */
-		loskiP_initproctab(&proctab, allocf ? allocf : defallocf,
+		losiP_initproctab(&proctab, allocf ? allocf : defallocf,
 		                             allocf ? allocud : NULL);
 		/* setup signal action */
 		childact.sa_handler = SIG_DFL;
@@ -73,16 +73,16 @@ int loskiP_initprocmgr (loski_Alloc allocf, void *allocud)
 	return 0;
 }
 
-void loskiP_lockprocmgr ()
+void losiP_lockprocmgr ()
 {
-	if (!loskiP_emptyproctab(&proctab))
+	if (!losiP_emptyproctab(&proctab))
 		sigprocmask(SIG_BLOCK, &childmsk, NULL);
 }
 
-void loskiP_unlockprocmgr ()
+void losiP_unlockprocmgr ()
 {
 	void (*handler)(int);
-	if (loskiP_emptyproctab(&proctab)) handler = SIG_DFL;
+	if (losiP_emptyproctab(&proctab)) handler = SIG_DFL;
 	else handler = childhandler;
 	if (handler != childact.sa_handler) {
 		childact.sa_handler = handler;
@@ -93,17 +93,17 @@ void loskiP_unlockprocmgr ()
 	}
 }
 
-int loskiP_incprocmgr ()
+int losiP_incprocmgr ()
 {
-	return loskiP_incproctab(&proctab);
+	return losiP_incproctab(&proctab);
 }
 
-void loskiP_putprocmgr (loski_Process *proc)
+void losiP_putprocmgr (losi_Process *proc)
 {
-	loskiP_putproctab(&proctab, proc);
+	losiP_putproctab(&proctab, proc);
 }
 
-void loskiP_delprocmgr (loski_Process *proc)
+void losiP_delprocmgr (losi_Process *proc)
 {
-	loskiP_delproctab(&proctab, proc);
+	losiP_delproctab(&proctab, proc);
 }

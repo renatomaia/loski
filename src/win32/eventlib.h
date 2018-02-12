@@ -5,14 +5,14 @@
 #include <winsock.h>
 #include <string.h>
 
-typedef void loski_EventDriver;
-typedef struct loski_EventWatcher {
+typedef void losi_EventDriver;
+typedef struct losi_EventWatcher {
 	int maxfd;
 	fd_set sets[2];
-} loski_EventWatcher;
-typedef int loski_WatchableFile;
-typedef int loski_WatchableSocket;
-typedef int loski_WatchableProcess;
+} losi_EventWatcher;
+typedef int losi_WatchableFile;
+typedef int losi_WatchableSocket;
+typedef int losi_WatchableProcess;
 
 
 #include "eventlibapi.h"

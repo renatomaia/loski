@@ -597,10 +597,10 @@ Moreover, any operation shall raise the following errors:
 :	operation is not supported in the current system.
 
 `"unexpected error"`
-:	underlying system raised an unexpected error, usually due to poor LOSKI support for the particular platform.
+:	underlying system raised an unexpected error, usually due to poor LOSI support for the particular platform.
 
 `"unspecified error"`
 :	underlying system raised a non-conforming error, usually due to platform's poor adherence to standards.
 
 `"unknown error (<number>)"`
-:	underlying system raised an illegal error value (indicated in the message) due to wrong LOSKI implementation or build.
+:	underlying system raised an illegal error value (indicated in the message) due to wrong LOSI implementation or build.

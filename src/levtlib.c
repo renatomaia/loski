@@ -1,17 +1,17 @@
 #include "luaosi/levtlib.h"
 
 
-#define tolwatcher(L,i)	((LuaWatcher *)luaL_testudata(L, i, LOSKI_WATCHERCLS))
+#define tolwatcher(L,i)	((LuaWatcher *)luaL_testudata(L, i, LOSI_WATCHERCLS))
 
-LOSKILIB_API loski_EventWatcher *loski_newwatcher (lua_State *L)
+LOSILIB_API losi_EventWatcher *losi_newwatcher (lua_State *L)
 {
 	LuaWatcher *lw = (LuaWatcher *)lua_newuserdata(L, sizeof(LuaWatcher));
 	lw->refs = 0;
-	luaL_setmetatable(L, LOSKI_WATCHERCLS);
+	luaL_setmetatable(L, LOSI_WATCHERCLS);
 	return &lw->watcher;
 }
 
-LOSKILIB_API void loski_enablewatcher (lua_State *L)
+LOSILIB_API void losi_enablewatcher (lua_State *L)
 {
 	LuaWatcher *lw = tolwatcher(L, -1);
 	if (lw) {
@@ -24,42 +24,42 @@ LOSKILIB_API void loski_enablewatcher (lua_State *L)
 	}
 }
 
-LOSKILIB_API loski_EventWatcher *loski_towatcher (lua_State *L, int idx)
+LOSILIB_API losi_EventWatcher *losi_towatcher (lua_State *L, int idx)
 {
 	LuaWatcher *lw = tolwatcher(L, idx);
 	if (!lw || lw->refs == 0) return NULL;
 	return &lw->watcher;
 }
 
-LOSKILIB_API void loski_defgetevtsrc (lua_State *L,
-                                      const char *cls,
-                                      loski_GetEventSource get)
+LOSILIB_API void losi_defgetevtsrc (lua_State *L,
+                                    const char *cls,
+                                    losi_GetEventSource get)
 {
 	luaL_setclassdata(L, cls, "getevtsrc", get);
 }
 
-LOSKILIB_API loski_ErrorCode loski_getevtsrc (lua_State *L, int idx, int newref,
-                                              loski_EventSource *src,
-                                              loski_EventFlags evtflags)
+LOSILIB_API losi_ErrorCode losi_getevtsrc (lua_State *L, int idx, int newref,
+                                           losi_EventSource *src,
+                                           losi_EventFlags evtflags)
 {
 	void *udata;
-	loski_GetEventSource get = (loski_GetEventSource)
+	losi_GetEventSource get = (losi_GetEventSource)
 	                           luaL_getclassdata(L, idx, "getevtsrc", &udata);
 	if (get) return get(udata, newref, src, evtflags);
-	return LOSKI_ERRINVALID;
+	return LOSI_ERRINVALID;
 }
 
-LOSKILIB_API void loski_deffreeevtsrc (lua_State *L,
-                                       const char *cls,
-                                       loski_FreeEventSource free)
+LOSILIB_API void losi_deffreeevtsrc (lua_State *L,
+                                     const char *cls,
+                                     losi_FreeEventSource free)
 {
 	luaL_setclassdata(L, cls, "freeevtsrc", free);
 }
 
-LOSKILIB_API void loski_freeevtsrc (lua_State *L, int idx)
+LOSILIB_API void losi_freeevtsrc (lua_State *L, int idx)
 {
 	void *udata;
-	loski_FreeEventSource free = (loski_FreeEventSource)
+	losi_FreeEventSource free = (losi_FreeEventSource)
 	                             luaL_getclassdata(L, idx, "freeevtsrc", &udata);
 	if (free) free(udata);
 }

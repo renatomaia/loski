@@ -5,31 +5,31 @@
 
 
 #define tolsock(L,i,c)	((LuaSocket *)luaL_testinstance(L, i, \
-                                                        loski_SocketClasses[c]))
+                                                        losi_SocketClasses[c]))
 
-LOSKILIB_API loski_Address *loski_newaddress (lua_State *L)
+LOSILIB_API losi_Address *losi_newaddress (lua_State *L)
 {
-	loski_Address *na = (loski_Address *)lua_newuserdata(L,sizeof(loski_Address));
-	luaL_setmetatable(L, LOSKI_NETADDRCLS);
+	losi_Address *na = (losi_Address *)lua_newuserdata(L,sizeof(losi_Address));
+	luaL_setmetatable(L, LOSI_NETADDRCLS);
 	return na;
 }
 
 
-LOSKILIB_API loski_Socket *loski_newsocket (lua_State *L, int cls)
+LOSILIB_API losi_Socket *losi_newsocket (lua_State *L, int cls)
 {
 	LuaSocket *ls = (LuaSocket *)lua_newuserdata(L, sizeof(LuaSocket));
 	ls->refs = 0;
-	luaL_setmetatable(L, loski_SocketClasses[cls]);
+	luaL_setmetatable(L, losi_SocketClasses[cls]);
 	return &ls->socket;
 }
 
-LOSKILIB_API void loski_enablesocket (lua_State *L, int idx)
+LOSILIB_API void losi_enablesocket (lua_State *L, int idx)
 {
-	LuaSocket *ls = tolsock(L, idx, LOSKI_SOCKTYPE_SOCK);
+	LuaSocket *ls = tolsock(L, idx, LOSI_SOCKTYPE_SOCK);
 	if (ls) ++(ls->refs);
 }
 
-LOSKILIB_API loski_Socket *loski_tosocket (lua_State *L, int idx, int cls)
+LOSILIB_API losi_Socket *losi_tosocket (lua_State *L, int idx, int cls)
 {
 	LuaSocket *ls = tolsock(L, idx, cls);
 	if (!ls || ls->refs == 0) return NULL;

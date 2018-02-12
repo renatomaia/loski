@@ -9,40 +9,40 @@
 #include <lauxlib.h>
 
 
-#define LOSKI_NETADDRCLS LOSKI_PREFIX"NetworkAddress"
+#define LOSI_NETADDRCLS LOSI_PREFIX"NetworkAddress"
 
-#define loski_toaddress(L,i)	((loski_Address *) \
-                               luaL_testudata(L, i, LOSKI_NETADDRCLS))
+#define losi_toaddress(L,i)	((losi_Address *) \
+                            luaL_testudata(L, i, LOSI_NETADDRCLS))
 
-#define loski_isaddress(L,i)	(loski_toaddress(L, i) != NULL)
+#define losi_isaddress(L,i)	(losi_toaddress(L, i) != NULL)
 
-LOSKILIB_API loski_Address *loski_newaddress (lua_State *L);
+LOSILIB_API losi_Address *losi_newaddress (lua_State *L);
 
 
 /* superclasses used only in Lua */
-#define LOSKI_SOCKTYPE_STRM 3
-#define LOSKI_SOCKTYPE_SOCK 4
+#define LOSI_SOCKTYPE_STRM 3
+#define LOSI_SOCKTYPE_SOCK 4
 
-static const char *const loski_SocketClasses[] = {
-	LOSKI_PREFIX"ListenSocket",
-	LOSKI_PREFIX"ConnectionSocket",
-	LOSKI_PREFIX"DatagramSocket",
-	LOSKI_PREFIX"StreamSocket",
-	LOSKI_PREFIX"NetworkSocket"
+static const char *const losi_SocketClasses[] = {
+	LOSI_PREFIX"ListenSocket",
+	LOSI_PREFIX"ConnectionSocket",
+	LOSI_PREFIX"DatagramSocket",
+	LOSI_PREFIX"StreamSocket",
+	LOSI_PREFIX"NetworkSocket"
 };
 
 typedef struct LuaSocket {
-	loski_Socket socket;
+	losi_Socket socket;
 	size_t refs;
 } LuaSocket;
 
-LOSKILIB_API loski_Socket *loski_newsocket (lua_State *L, int cls);
+LOSILIB_API losi_Socket *losi_newsocket (lua_State *L, int cls);
 
-LOSKILIB_API void loski_enablesocket (lua_State *L, int idx);
+LOSILIB_API void losi_enablesocket (lua_State *L, int idx);
 
-LOSKILIB_API loski_Socket *loski_tosocket (lua_State *L, int idx, int cls);
+LOSILIB_API losi_Socket *losi_tosocket (lua_State *L, int idx, int cls);
 
-#define loski_issocket(L,i,c)	(loski_tosocket(L, i, c) != NULL)
+#define losi_issocket(L,i,c)	(losi_tosocket(L, i, c) != NULL)
 
 
 #endif
