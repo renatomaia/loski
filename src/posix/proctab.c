@@ -10,25 +10,25 @@
 #define RATIO_BASE 4
 
 
-#define calcsize(C)	(C*sizeof(loski_Process *))
+#define calcsize(C)	(C*sizeof(losi_Process *))
 #define calchash(P,C) ((P)%(C))
 
 
-static void addentry(loski_Process **table,
+static void addentry(losi_Process **table,
                      size_t pos,
-                     loski_Process *proc)
+                     losi_Process *proc)
 {
-	loski_Process **place = table+pos;
+	losi_Process **place = table+pos;
 	for (; *place; place=&((*place)->next));
 	*place = proc;
 	proc->next = NULL;
 }
 
-static loski_Process *removeentry(loski_Process **table,
-                                  size_t pos,
-                                  loski_Process *proc)
+static losi_Process *removeentry(losi_Process **table,
+                                 size_t pos,
+                                 losi_Process *proc)
 {
-	loski_Process **place = table+pos;
+	losi_Process **place = table+pos;
 	for (; *place; place=&((*place)->next)) if (*place == proc) {
 		*place = proc->next;
 		proc->next = NULL;
@@ -37,16 +37,16 @@ static loski_Process *removeentry(loski_Process **table,
 	return NULL;
 }
 
-static void rehashtable(loski_ProcTable *tab, size_t capacity)
+static void rehashtable(losi_ProcTable *tab, size_t capacity)
 {
 	size_t i;
 	for (i = tab->capacity; i < capacity; ++i) tab->table[i] = NULL;
 	for (i = 0; i < tab->capacity; ++i) {
-		loski_Process *proc = tab->table[i];
+		losi_Process *proc = tab->table[i];
 		while (proc) {
 			size_t pos = calchash(proc->pid, capacity);
 			if (pos != i) {
-				loski_Process *next = removeentry(tab->table, i, proc);
+				losi_Process *next = removeentry(tab->table, i, proc);
 				addentry(tab->table, pos, proc);
 				proc = next;
 			}
@@ -57,22 +57,22 @@ static void rehashtable(loski_ProcTable *tab, size_t capacity)
 }
 
 
-void loskiP_initproctab(loski_ProcTable *tab, loski_Alloc af, void *aud)
+void losiP_initproctab(losi_ProcTable *tab, losi_Alloc af, void *aud)
 {
 	size_t i;
 	tab->allocf = af;
 	tab->allocud = aud;
 	tab->count = 0;
-	tab->capacity = LOSKI_PROCTABMINSZ;
+	tab->capacity = LOSI_PROCTABMINSZ;
 	tab->table = tab->mintab;
 	for (i=0; i<tab->capacity; ++i) tab->table[i] = NULL;
 }
 
-int loskiP_incproctab(loski_ProcTable *tab)
+int losiP_incproctab(losi_ProcTable *tab)
 {
 	size_t capacity = tab->capacity;
 	if (tab->count >= capacity*RATIO_FULL/RATIO_BASE) {
-		loski_Process **memo;
+		losi_Process **memo;
 		capacity *= RATIO_INC;
 		if (tab->table == tab->mintab) {
 			memo = tab->allocf(tab->allocud, NULL, 0, calcsize(capacity));
@@ -90,10 +90,10 @@ int loskiP_incproctab(loski_ProcTable *tab)
 	           tab->count < capacity*RATIO_EMPTY/RATIO_BASE) {
 		size_t newcapacity = capacity;
 		do { newcapacity /= RATIO_INC; }
-		while (newcapacity > LOSKI_PROCTABMINSZ &&
+		while (newcapacity > LOSI_PROCTABMINSZ &&
 		       tab->count < newcapacity*RATIO_EMPTY/RATIO_BASE);
 		rehashtable(tab, newcapacity);
-		if (tab->capacity <= LOSKI_PROCTABMINSZ) {
+		if (tab->capacity <= LOSI_PROCTABMINSZ) {
 			memcpy(tab->mintab, tab->table, calcsize(tab->capacity));
 			tab->allocf(tab->allocud, tab->table, calcsize(capacity), 0);
 			tab->table = tab->mintab;
@@ -106,26 +106,26 @@ int loskiP_incproctab(loski_ProcTable *tab)
 	return 1;
 }
 
-void loskiP_putproctab(loski_ProcTable *tab, loski_Process *proc)
+void losiP_putproctab(losi_ProcTable *tab, losi_Process *proc)
 {
 	addentry(tab->table, calchash(proc->pid, tab->capacity), proc);
 	++(tab->count);
 }
 
-void loskiP_delproctab(loski_ProcTable *tab, loski_Process *proc)
+void losiP_delproctab(losi_ProcTable *tab, losi_Process *proc)
 {
 	removeentry(tab->table, calchash(proc->pid, tab->capacity), proc);
 	--(tab->count);
 }
 
-loski_Process *loskiP_findproctab(loski_ProcTable *tab, pid_t pid)
+losi_Process *losiP_findproctab(losi_ProcTable *tab, pid_t pid)
 {
-	loski_Process *proc = tab->table[calchash(pid, tab->capacity)];
+	losi_Process *proc = tab->table[calchash(pid, tab->capacity)];
 	for (; proc; proc=proc->next) if (proc->pid==pid) break;
 	return proc;
 }
 
-int loskiP_emptyproctab(loski_ProcTable *tab)
+int losiP_emptyproctab(losi_ProcTable *tab)
 {
 	return tab->count == 0;
 }

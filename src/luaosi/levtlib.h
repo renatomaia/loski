@@ -6,39 +6,39 @@
 #include "luaosi/lauxlib.h"
 
 
-#define LOSKI_WATCHERCLS LOSKI_PREFIX"EventWatcher"
+#define LOSI_WATCHERCLS LOSI_PREFIX"EventWatcher"
 
 typedef struct LuaWatcher {
-	loski_EventWatcher watcher;
+	losi_EventWatcher watcher;
 	size_t refs;
 } LuaWatcher;
 
-LOSKILIB_API loski_EventWatcher *loski_newwatcher (lua_State *L);
+LOSILIB_API losi_EventWatcher *losi_newwatcher (lua_State *L);
 
-LOSKILIB_API void loski_enablewatcher (lua_State *L);
+LOSILIB_API void losi_enablewatcher (lua_State *L);
 
-LOSKILIB_API loski_EventWatcher *loski_towatcher (lua_State *L, int idx);
+LOSILIB_API losi_EventWatcher *losi_towatcher (lua_State *L, int idx);
 
-#define loski_iswatcher(L,i)	(loski_towatcher(L, i) != NULL)
+#define losi_iswatcher(L,i)	(losi_towatcher(L, i) != NULL)
 
 
-typedef loski_ErrorCode (*loski_GetEventSource)(void *udata, int newref, 
-                                                loski_EventSource *src,
-                                                loski_EventFlags evtflags);
+typedef losi_ErrorCode (*losi_GetEventSource)(void *udata, int newref, 
+                                              losi_EventSource *src,
+                                              losi_EventFlags evtflags);
 
-LOSKILIB_API void loski_defgetevtsrc (lua_State *L,
-                                      const char *cls,
-                                      loski_GetEventSource get);
-LOSKILIB_API loski_ErrorCode loski_getevtsrc (lua_State *L, int idx, int newref,
-                                              loski_EventSource *src,
-                                              loski_EventFlags evtflags);
+LOSILIB_API void losi_defgetevtsrc (lua_State *L,
+                                    const char *cls,
+                                    losi_GetEventSource get);
+LOSILIB_API losi_ErrorCode losi_getevtsrc (lua_State *L, int idx, int newref,
+                                           losi_EventSource *src,
+                                           losi_EventFlags evtflags);
 
-typedef void (*loski_FreeEventSource)(void *udata);
+typedef void (*losi_FreeEventSource)(void *udata);
 
-LOSKILIB_API void loski_deffreeevtsrc (lua_State *L,
-                                       const char *cls,
-                                       loski_FreeEventSource free);
-LOSKILIB_API void loski_freeevtsrc (lua_State *L, int idx);
+LOSILIB_API void losi_deffreeevtsrc (lua_State *L,
+                                     const char *cls,
+                                     losi_FreeEventSource free);
+LOSILIB_API void losi_freeevtsrc (lua_State *L, int idx);
 
 
 #endif

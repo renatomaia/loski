@@ -7,18 +7,18 @@
 #include <netinet/in.h>  /* network addresses */
 #include <arpa/inet.h>  /* IP addresses */
 
-typedef void loski_NetDriver;
+typedef void losi_NetDriver;
 
-typedef struct sockaddr_storage loski_Address;
+typedef struct sockaddr_storage losi_Address;
 
-typedef in_port_t loski_AddressPort;
+typedef in_port_t losi_AddressPort;
 
-typedef int loski_AddressType;
-#define LOSKI_ADDRTYPE_IPV4	AF_INET
-#define LOSKI_ADDRTYPE_IPV6	AF_INET6
-#define LOSKI_ADDRTYPE_CUSTOM
+typedef int losi_AddressType;
+#define LOSI_ADDRTYPE_IPV4	AF_INET
+#define LOSI_ADDRTYPE_IPV6	AF_INET6
+#define LOSI_ADDRTYPE_CUSTOM
 
-#define LOSKI_ADDRMAXLITERAL  (INET6_ADDRSTRLEN+1)
+#define LOSI_ADDRMAXLITERAL  (INET6_ADDRSTRLEN+1)
 
 
 /* Sockets */
@@ -27,40 +27,40 @@ typedef int loski_AddressType;
 
 #include <sys/socket.h>
 
-typedef int loski_Socket;
+typedef int losi_Socket;
 
-typedef int loski_SocketRecvFlag;
-#define LOSKI_SOCKRCV_PEEKONLY	MSG_PEEK
-#define LOSKI_SOCKRCV_WAITALL	MSG_WAITALL
-#define LOSKI_SOCKRCV_CUSTOM
+typedef int losi_SocketRecvFlag;
+#define LOSI_SOCKRCV_PEEKONLY	MSG_PEEK
+#define LOSI_SOCKRCV_WAITALL	MSG_WAITALL
+#define LOSI_SOCKRCV_CUSTOM
 
-typedef int loski_SocketWay;
-#define LOSKI_SOCKWAY_IN	SHUT_RD;
-#define LOSKI_SOCKWAY_OUT	SHUT_WR;
-#define LOSKI_SOCKWAY_BOTH	SHUT_RDWR;
-#define LOSKI_SOCKWAY_CUSTOM
+typedef int losi_SocketWay;
+#define LOSI_SOCKWAY_IN	SHUT_RD;
+#define LOSI_SOCKWAY_OUT	SHUT_WR;
+#define LOSI_SOCKWAY_BOTH	SHUT_RDWR;
+#define LOSI_SOCKWAY_CUSTOM
 
-#define LOSKI_ENABLE_SOCKETEVENTS
+#define LOSI_ENABLE_SOCKETEVENTS
 
-LOSKIDRV_API loski_ErrorCode loskiN_getsockevtsrc (void *udata, int newref,
-                                                   loski_EventSource *src,
-                                                   loski_EventFlags evtflags);
-LOSKIDRV_API void loskiN_freesockevtsrc (void *udata);
+LOSIDRV_API losi_ErrorCode losiN_getsockevtsrc (void *udata, int newref,
+                                                losi_EventSource *src,
+                                                losi_EventFlags evtflags);
+LOSIDRV_API void losiN_freesockevtsrc (void *udata);
 
 
 /* Names */
 
 #include <netdb.h>
 
-typedef struct loski_AddressFound {
+typedef struct losi_AddressFound {
 	struct addrinfo *results;
 	struct addrinfo *next;
 	int nexttype;
-} loski_AddressFound;
+} losi_AddressFound;
 
-typedef int loski_AddressNameFlag;
-#define LOSKI_ADDRNAME_LOCAL	NI_NOFQDN
-#define LOSKI_ADDRNAME_DGRM	NI_DGRAM
+typedef int losi_AddressNameFlag;
+#define LOSI_ADDRNAME_LOCAL	NI_NOFQDN
+#define LOSI_ADDRNAME_DGRM	NI_DGRAM
 #define LOKSI_ADDRNAME_CUSTOM
 
 

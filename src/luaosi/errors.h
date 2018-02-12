@@ -2,30 +2,30 @@
 #define luaosi_errors_h
 
 
-typedef enum loski_ErrorCode {
-	LOSKI_ERRNONE = 0, /* no error */
-	LOSKI_ERRCLOSED, /* resource closed */
-	LOSKI_ERRINUSE, /* resource in use */
-	LOSKI_ERRNOTFOUND, /* resource not found */
-	LOSKI_ERRUNAVAILABLE, /* resource unavailable */
-	LOSKI_ERRUNREACHABLE, /* resource unreachable */
-	LOSKI_ERRNORESOURCES, /* resource exhausted */
-	LOSKI_ERRTOOMUCH, /* resource overflow */
-	LOSKI_ERRNOMEMORY, /* insufficient memory */
-	LOSKI_ERRUNFULFILLED, /* operation unfulfilled */
-	LOSKI_ERRABORTED, /* operation forcibly aborted */
-	LOSKI_ERRREFUSED, /* operation refused */
-	LOSKI_ERRDENIED, /* operation denied */
-	LOSKI_ERRTIMEOUT, /* operation timeout */
-	LOSKI_ERRSYSTEMRESET, /* system reset */
-	LOSKI_ERRSYSTEMDOWN, /* system down */
-	LOSKI_ERRSYSTEMFAIL, /* system error */
+typedef enum losi_ErrorCode {
+	LOSI_ERRNONE = 0, /* no error */
+	LOSI_ERRCLOSED, /* resource closed */
+	LOSI_ERRINUSE, /* resource in use */
+	LOSI_ERRNOTFOUND, /* resource not found */
+	LOSI_ERRUNAVAILABLE, /* resource unavailable */
+	LOSI_ERRUNREACHABLE, /* resource unreachable */
+	LOSI_ERRNORESOURCES, /* resource exhausted */
+	LOSI_ERRTOOMUCH, /* resource overflow */
+	LOSI_ERRNOMEMORY, /* insufficient memory */
+	LOSI_ERRUNFULFILLED, /* operation unfulfilled */
+	LOSI_ERRABORTED, /* operation forcibly aborted */
+	LOSI_ERRREFUSED, /* operation refused */
+	LOSI_ERRDENIED, /* operation denied */
+	LOSI_ERRTIMEOUT, /* operation timeout */
+	LOSI_ERRSYSTEMRESET, /* system reset */
+	LOSI_ERRSYSTEMDOWN, /* system down */
+	LOSI_ERRSYSTEMFAIL, /* system error */
 	/* unrecoverable */
-	LOSKI_ERRINVALID, /* invalid operation */
-	LOSKI_ERRUNSUPPORTED, /* unsupported operation */
-	LOSKI_ERRUNEXPECTED, /* unexpected error */
-	LOSKI_ERRUNSPECIFIED /* unspecified error */
-} loski_ErrorCode;
+	LOSI_ERRINVALID, /* invalid operation */
+	LOSI_ERRUNSUPPORTED, /* unsupported operation */
+	LOSI_ERRUNEXPECTED, /* unexpected error */
+	LOSI_ERRUNSPECIFIED /* unspecified error */
+} losi_ErrorCode;
 
 
 #endif

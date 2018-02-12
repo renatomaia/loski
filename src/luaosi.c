@@ -39,7 +39,7 @@ static const luaL_Reg preloadedlibs[] = {
 };
 
 
-LOSKILIB_API void loski_openlibs (lua_State *L) {
+LOSILIB_API void losi_openlibs (lua_State *L) {
   const luaL_Reg *lib;
   /* call open functions from 'loadedlibs' and set results to global table */
   for (lib = loadedlibs; lib->func; lib++) {

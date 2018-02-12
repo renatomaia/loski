@@ -7,7 +7,7 @@
 #include <lua.h> /* seconds is a lua_Number */
 #include <sys/time.h>
 
-LOSKILIB_API void loski_seconds2timeval(lua_Number s, struct timeval *t);
+LOSILIB_API void losi_seconds2timeval(lua_Number s, struct timeval *t);
 
 
 #endif

@@ -4,17 +4,17 @@
 
 #include "luaosi/proclib.h"
 
-int loskiP_initprocmgr (loski_Alloc allocf, void *allocud);
+int losiP_initprocmgr (losi_Alloc allocf, void *allocud);
 
-void loskiP_lockprocmgr ();
+void losiP_lockprocmgr ();
 
-void loskiP_unlockprocmgr ();
+void losiP_unlockprocmgr ();
 
-int loskiP_incprocmgr ();
+int losiP_incprocmgr ();
 
-void loskiP_putprocmgr (loski_Process *proc);
+void losiP_putprocmgr (losi_Process *proc);
 
-void loskiP_delprocmgr (loski_Process *proc);
+void losiP_delprocmgr (losi_Process *proc);
 
 
 #endif

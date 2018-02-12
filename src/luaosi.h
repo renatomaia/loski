@@ -24,7 +24,7 @@ LUAMOD_API int (luaopen_filesys) (lua_State *L);
 
 
 /* open all previous libraries */
-LOSKILIB_API void (loski_openlibs) (lua_State *L);
+LOSILIB_API void (losi_openlibs) (lua_State *L);
 
 
 #endif

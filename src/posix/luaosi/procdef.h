@@ -8,31 +8,31 @@
 
 #include <sys/types.h>
 
-typedef void loski_ProcDriver;
+typedef void losi_ProcDriver;
 
-typedef struct loski_Process {
+typedef struct losi_Process {
 	pid_t pid;
 	int status;
 	int pipe[2];  /* pipe for notification of child proc termination */
 	size_t piperefs;
-	struct loski_Process *next;
-} loski_Process;
+	struct losi_Process *next;
+} losi_Process;
 
-typedef char loski_ProcArgInfo;
+typedef char losi_ProcArgInfo;
 
-typedef int loski_ProcEnvInfo;
+typedef int losi_ProcEnvInfo;
 
-typedef int loski_ProcStream;  /* file descriptor */
+typedef int losi_ProcStream;  /* file descriptor */
 
-#define LOSKI_ENABLE_LUAFILEPROCSTREAM
+#define LOSI_ENABLE_LUAFILEPROCSTREAM
 
-LOSKIDRV_API int loskiP_getluafileprocstrm (void *udata, loski_ProcStream *fd);
+LOSIDRV_API int losiP_getluafileprocstrm (void *udata, losi_ProcStream *fd);
 
-#define LOSKI_ENABLE_PROCESSEVENTS
+#define LOSI_ENABLE_PROCESSEVENTS
 
-LOSKIDRV_API loski_ErrorCode loskiP_getprocevtsrc (void *udata, int newref,
-                                                   loski_EventSource *src,
-                                                   loski_EventFlags evtflags);
-LOSKIDRV_API void loskiP_freeprocevtsrc (void *udata);
+LOSIDRV_API losi_ErrorCode losiP_getprocevtsrc (void *udata, int newref,
+                                                losi_EventSource *src,
+                                                losi_EventFlags evtflags);
+LOSIDRV_API void losiP_freeprocevtsrc (void *udata);
 
 #endif
