@@ -33,7 +33,7 @@ static const char *const loski_SocketClasses[] = {
 
 typedef struct LuaSocket {
 	loski_Socket socket;
-	int closed;
+	size_t refs;
 } LuaSocket;
 
 LOSKILIB_API loski_Socket *loski_newsocket (lua_State *L, int cls);

@@ -5,6 +5,11 @@ local testutils = require "test.utils"
 
 do
 	local watcher = assert(event.watcher())
+	testutils.testerror("invalid operation", watcher.wait, watcher)
+end
+
+do
+	local watcher = assert(event.watcher())
 	assert(watcher:close())
 	testutils.testerror("attempt to use a closed event watcher",
 	                    watcher.set, watcher, io.stdin, "r")
@@ -32,14 +37,16 @@ do
 		testutils.testerror("invalid watchable object",
 		                    watcher.set, watcher, value, "r")
 	end
-	assert(watcher:set(io.stdin, "r"))
-	assert(watcher:set(io.stdout, "w"))
-	assert(watcher:set(io.stderr, "wr"))
+	local dgm = assert(network.socket("datagram"))
+	local con = assert(network.socket("connection"))
+	local lst = assert(network.socket("listen"))
+	assert(watcher:set(dgm, "r"))
+	assert(watcher:set(con, "w"))
+	assert(watcher:set(lst, "wr"))
 
 	local dgm = assert(network.socket("datagram"))
 	assert(dgm:close())
-	testutils.testerror("invalid watchable object",
-	                    watcher.set, watcher, dgm, "r")
+	testutils.testerrmsg("closed", watcher:set(dgm, "r"))
 end
 
 do

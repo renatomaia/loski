@@ -23,6 +23,14 @@ LUALIB_API void *luaL_checkinstance(lua_State *L, int idx, const char *cls);
 
 LUALIB_API void luaL_printstack(lua_State *L);
 
+LUALIB_API void luaL_setclassdata (lua_State *L,
+                                   const char *cls,
+                                   const char *field,
+                                   void *data);
+LUALIB_API void *luaL_getclassdata (lua_State *L, int idx,
+                                    const char *field,
+                                    void **udata);
+
 
 #include "luaosi/config.h"
 #include "luaosi/errors.h"
@@ -30,12 +38,6 @@ LUALIB_API void luaL_printstack(lua_State *L);
 
 LOSKILIB_API void loskiL_pusherrmsg(lua_State *L, loski_ErrorCode err);
 LOSKILIB_API int loskiL_doresults(lua_State *L, int nres, loski_ErrorCode err);
-
-LOSKILIB_API int loskiL_setclassop (lua_State *L,
-                                    const char *opid,
-                                    const char *cls,
-                                    void *func);
-LOSKILIB_API void *loskiL_getvalueop (lua_State *L, const char *opid);
 
 
 #endif

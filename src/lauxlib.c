@@ -136,6 +136,44 @@ LUALIB_API void luaL_printstack(lua_State *L)
 	printf("\n");
 }
 
+LUALIB_API void luaL_setclassdata (lua_State *L,
+                                   const char *cls,
+                                   const char *field,
+                                   void *data)
+{
+	luaL_newmetatable(L, cls);
+	lua_pushvalue(L, -1);  /* copy to be left at top */
+	if (lua_gettable(L, LUA_REGISTRYINDEX) != LUA_TTABLE) {
+		lua_pop(L, 1);  /* remove previous result */
+		lua_newtable(L);  /* create metatable */
+		lua_pushvalue(L, -2);  /* copy metatable */
+		lua_pushvalue(L, -2);  /* copy op table */
+		lua_settable(L, LUA_REGISTRYINDEX);  /* save op table */
+	}
+	if (data == NULL) lua_pushnil(L);
+	else lua_pushlightuserdata(L, data);
+	lua_setfield(L, -2, field);  /* save operation */
+	lua_pop(L, 2);  /* removes metatable and op table */
+}
+
+LUALIB_API void *luaL_getclassdata (lua_State *L, int idx,
+                                    const char *field,
+                                    void **udata)
+{
+	*udata = lua_touserdata(L, idx);
+	if (*udata != NULL && lua_getmetatable(L, idx)) {  /* udata with metatable? */
+		void *func = NULL;
+		if (lua_gettable(L, LUA_REGISTRYINDEX) == LUA_TTABLE) {
+			if (lua_getfield(L, -1, field) == LUA_TLIGHTUSERDATA)
+				func = lua_touserdata(L, -1);
+			lua_pop(L, 1);  /* remove op table field */
+		}
+		lua_pop(L, 1);  /* remove table */
+		return func;
+	}
+	return NULL;
+}
+
 
 LOSKILIB_API void loskiL_pusherrmsg(lua_State *L, loski_ErrorCode err)
 {
@@ -176,34 +214,4 @@ LOSKILIB_API int loskiL_doresults(lua_State *L, int nres, loski_ErrorCode err)
 		nres = 1;
 	}
 	return nres;
-}
-
-
-LOSKILIB_API int loskiL_setclassop (lua_State *L,
-                                    const char *opid,
-                                    const char *cls,
-                                    void *func)
-{
-	luaL_getsubtable(L, LUA_REGISTRYINDEX, opid);
-	if (luaL_getmetatable(L, cls) == LUA_TTABLE) {
-		if (func == NULL) lua_pushnil(L);
-		else lua_pushlightuserdata(L, func);
-		lua_settable(L, -3);
-		lua_pop(L, 1);
-		return 1;
-	}
-	lua_pop(L, 2);
-	return 0;
-}
-
-LOSKILIB_API void *loskiL_getvalueop (lua_State *L, const char *opid)
-{
-	void *func = NULL;
-	int idx = lua_gettop(L);
-	if ((lua_getfield(L, LUA_REGISTRYINDEX, opid) == LUA_TTABLE) &&
-	    (lua_getmetatable(L, idx)) &&
-	    (lua_gettable(L, -2) == LUA_TLIGHTUSERDATA))
-		func = lua_touserdata(L, -1);
-	lua_settop(L, idx);
-	return func;
 }

@@ -1,10 +1,3 @@
-/*
-** $Id: lualib.h,v 1.43 2011/12/08 12:11:37 roberto Exp $
-** Lua operating system specific libraries
-** See Copyright Notice in lua.h
-*/
-
-
 #ifndef luaosi_h
 #define luaosi_h
 

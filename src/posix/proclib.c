@@ -223,6 +223,9 @@ LOSKIDRV_API loski_ErrorCode loskiP_initproc (loski_ProcDriver *drv,
 	loskiP_lockprocmgr();
 	proc->pid = fork();
 	proc->status = 0;
+	proc->pipe[0] = -1;
+	proc->pipe[1] = -1;
+	proc->piperefs = 0;
 	if (proc->pid == -1) {
 		switch (errno) {
 			case EAGAIN: err = LOSKI_ERRNORESOURCES; break;
@@ -253,9 +256,9 @@ LOSKIDRV_API loski_ErrorCode loskiP_getprocstat (loski_ProcDriver *drv,
                                                  loski_ProcStatus *status)
 {
 	int err = 0;
+	loskiP_lockprocmgr();
 	if (proc->pid != 0) {
 		pid_t waitres;
-		loskiP_lockprocmgr();
 		waitres = waitpid(proc->pid, &proc->status, WNOHANG|WCONTINUED|WUNTRACED);
 		if (waitres != -1) {
 			if (proc->status == 0) {
@@ -281,9 +284,9 @@ LOSKIDRV_API loski_ErrorCode loskiP_getprocstat (loski_ProcDriver *drv,
 			case EINVAL: err = LOSKI_ERRUNEXPECTED; break;
 			default: err = LOSKI_ERRUNSPECIFIED;
 		}
-		loskiP_unlockprocmgr();
 	}
 	else *status = LOSKI_PROCSTAT_DEAD;
+	loskiP_unlockprocmgr();
 	return err;
 }
 
@@ -305,31 +308,68 @@ LOSKIDRV_API loski_ErrorCode loskiP_getprocexit (loski_ProcDriver *drv,
 LOSKIDRV_API loski_ErrorCode loskiP_killproc (loski_ProcDriver *drv,
                                               loski_Process *proc)
 {
+	loski_ErrorCode err = LOSKI_ERRNONE;
+	loskiP_lockprocmgr();
 	if (proc->pid != 0) if (kill(proc->pid, SIGKILL) == -1) switch (errno) {
-		case EPERM: return LOSKI_ERRDENIED;
+		case EPERM: err = LOSKI_ERRDENIED; break;
 		case ESRCH:
-		case EINVAL: return LOSKI_ERRUNEXPECTED;
-		default: return LOSKI_ERRUNSPECIFIED;
+		case EINVAL: err = LOSKI_ERRUNEXPECTED; break;
+		default: err = LOSKI_ERRUNSPECIFIED; break;
 	}
-	return LOSKI_ERRNONE;
+	loskiP_unlockprocmgr();
+	return err;
 }
 
 LOSKIDRV_API void loskiP_freeproc (loski_ProcDriver *drv,
                                    loski_Process *proc)
 {
-	if (proc->pid > 0) {
-		loskiP_lockprocmgr();
+	loskiP_lockprocmgr();
+	if (proc->pid != 0) {
 		loskiP_delprocmgr(proc);
-		loskiP_unlockprocmgr();
 		proc->pid = 0;
 	}
+	loskiP_unlockprocmgr();
 }
 
-LOSKIDRV_API int loskiP_luafile2stream (lua_State *L, int idx,
-                                        loski_ProcStream *fd)
+LOSKIDRV_API int loskiP_getluafileprocstrm (void *udata, loski_ProcStream *fd)
 {
-	FILE **fp = (FILE **)luaL_testudata(L, idx, LUA_FILEHANDLE);
-	if (*fp == NULL) return LOSKI_ERRNONE;
+	FILE **fp = (FILE **)udata;
+	if (*fp == NULL) return 0;
 	*fd = fileno(*fp);
 	return 1;
+}
+
+LOSKIDRV_API loski_ErrorCode loskiP_getprocevtsrc (void *udata, int newref,
+                                                   loski_EventSource *src,
+                                                   loski_EventFlags evtflags)
+{
+	loski_ErrorCode err = LOSKI_ERRNONE;
+	loski_Process *proc = (loski_Process *)udata;
+	if (evtflags & LOSKI_EVTFLAGS_OUTPUT) return LOSKI_ERRUNSUPPORTED;
+	loskiP_lockprocmgr();
+	if (proc->pipe[1] != -1 || (proc->pid && newref && pipe(proc->pipe) == 0)) {
+		if (newref) ++(proc->piperefs);
+		*src = proc->pipe[1];
+	} else {
+		err = LOSKI_ERRCLOSED;
+	}
+	loskiP_unlockprocmgr();
+	return err;
+}
+
+#define closefd(F)	while (close(F) != 0 && errno == EINTR)
+
+LOSKIDRV_API void loskiP_freeprocevtsrc (void *udata)
+{
+	loski_Process *proc = (loski_Process *)udata;
+	if (--(proc->piperefs) == 0) {
+		loskiP_lockprocmgr();
+		if (proc->pipe[0] != -1) {
+			closefd(proc->pipe[0]);
+			proc->pipe[0] = -1;
+		}
+		loskiP_unlockprocmgr();
+		closefd(proc->pipe[1]);
+		proc->pipe[1] = -1;
+	}
 }

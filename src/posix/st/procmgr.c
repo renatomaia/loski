@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <wait.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 
 static void *defallocf (void *ud, void *ptr, size_t osize, size_t nsize) {
@@ -25,6 +26,8 @@ static struct sigaction childact;
 static sigset_t childmsk;
 
 
+#define whileintr(C)	while ((C) == -1 && errno == EINTR)
+
 static void childhandler (int signo)
 {
 	pid_t pid;
@@ -41,6 +44,10 @@ static void childhandler (int signo)
 				loskiP_delproctab(&proctab, proc);
 				proc->pid = 0;
 				proc->status = status;
+				if (proc->pipe[0] != -1) {
+					whileintr(write(proc->pipe[0], &proc, sizeof(proc)));
+					whileintr(close(proc->pipe[0]));
+				}
 			}
 		}
 	}

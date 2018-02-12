@@ -6,12 +6,13 @@
  *****************************************************************************/
 
 
+#include <assert.h>
 #include <errno.h>
 #include <signal.h> /* sigpipe handling */
 
 LOSKIDRV_API loski_ErrorCode loskiN_initdrv (loski_NetDriver *drv)
 {
-	/* instals a handler to ignore sigpipe or it will crash us */
+	/* installs a handler to ignore sigpipe or it will crash us */
 	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) return LOSKI_ERRUNEXPECTED;
 	return LOSKI_ERRNONE;
 }
@@ -174,10 +175,10 @@ LOSKIDRV_API const char *loskiN_getaddrliteral (loski_NetDriver *drv,
 
 
 #include "luaosi/lnetlib.h"
+#include "luaosi/fdlib.h"
 
 #include <unistd.h>
 #include <netinet/tcp.h> /* TCP options (nagle algorithm disable) */
-#include <fcntl.h> /* fnctnl function and associated constants */
 
 LOSKIDRV_API loski_ErrorCode loskiN_initsock (loski_NetDriver *drv,
                                               loski_Socket *sock,
@@ -235,14 +236,7 @@ LOSKIDRV_API loski_ErrorCode loskiN_setsockopt (loski_NetDriver *drv,
 {
 	int err;
 	switch (option) {
-		case LOSKI_SOCKOPT_BLOCKING: {
-			err = fcntl(*sock, F_GETFL, 0);
-			if (err >= 0) {
-				value = value ? (err & (~(O_NONBLOCK))) : (err | O_NONBLOCK);
-				if (value != err) err = fcntl(*sock, F_SETFL, value);
-				if (err != -1) err = 0;
-			}
-		} break;
+		case LOSKI_SOCKOPT_BLOCKING: return loskiFD_setnonblock(*sock, value);
 		case LOSKI_SOCKOPT_LINGER: {
 			struct linger li;
 			if (value > 0) {
@@ -278,13 +272,7 @@ LOSKIDRV_API loski_ErrorCode loskiN_getsockopt (loski_NetDriver *drv,
 {
 	int err;
 	switch (option) {
-		case LOSKI_SOCKOPT_BLOCKING: {
-			err = fcntl(*sock, F_GETFL, 0);
-			if (err >= 0) {
-				*value = !(err & O_NONBLOCK);
-				err = 0;
-			}
-		} break;
+		case LOSKI_SOCKOPT_BLOCKING: return loskiFD_getnonblock(*sock, value);
 		case LOSKI_SOCKOPT_LINGER: {
 			struct linger li;
 			socklen_t sz = sizeof(li);
@@ -554,12 +542,22 @@ LOSKIDRV_API loski_ErrorCode loskiN_closesock (loski_NetDriver *drv,
 	return LOSKI_ERRUNSPECIFIED;
 }
 
-LOSKIDRV_API int loskiN_socket2evtsrc (lua_State *L, int idx,
-                                       loski_EventSource *fd)
+LOSKIDRV_API loski_ErrorCode loskiN_getsockevtsrc (void *udata, int newref,
+                                                   loski_EventSource *src,
+                                                   loski_EventFlags evtflags)
 {
-	loski_Socket *sock = loski_tosocket(L, idx, LOSKI_SOCKTYPE_SOCK);
-	if (sock) *fd = *sock;
-	return sock != NULL;
+	LuaSocket *ls = (LuaSocket *)udata;
+	if (ls->refs == 0) return LOSKI_ERRCLOSED;
+	if (newref) ++(ls->refs);
+	*src = ls->socket;
+	return LOSKI_ERRNONE;
+}
+
+LOSKIDRV_API void loskiN_freesockevtsrc (void *udata)
+{
+	LuaSocket *ls = (LuaSocket *)udata;
+	--(ls->refs);
+	assert(ls->refs > 0);
 }
 
 

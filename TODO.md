@@ -1,10 +1,7 @@
 TODO
 ====
 
-http://pauillac.inria.fr/~xleroy/linuxthreads/faq.html#J
-
 Not Priorized:
-- Add support to wait for child process termination in 'event' module.
 - Object to represent buffers (LuaMemory)
 - Support for (named) pipes
 - Support for async file operations

@@ -5,6 +5,7 @@
 #include "luaosi/evtdef.h"
 
 #include "luaosi/errors.h"
+
 #include <lua.h>
 
 #ifndef LOSKI_EVTFLAGS_CUSTOM
@@ -28,20 +29,24 @@ LOSKIDRV_API loski_ErrorCode loskiE_endwatcher(loski_EventDriver *drv,
 
 LOSKIDRV_API loski_ErrorCode loskiE_setwatch(loski_EventDriver *drv,
                                              loski_EventWatcher *watcher,
-                                             loski_EventSource *source,
+                                             loski_EventSource *src,
                                              loski_EventFlags events);
 
 LOSKIDRV_API loski_IntUniqueId loskiE_getsourceid(loski_EventDriver *drv,
-                                                  loski_EventSource *source);
+                                                  loski_EventSource *src);
 
 LOSKIDRV_API loski_ErrorCode loskiE_waitevent(loski_EventDriver *drv,
                                               loski_EventWatcher *watcher,
                                               lua_Number timeout);
 
+LOSKIDRV_API void loskiE_inititerator(loski_EventDriver *drv,
+                                      loski_EventWatcher *watcher,
+                                      loski_EventIterator *i);
+
 LOSKIDRV_API int loskiE_nextevent(loski_EventDriver *drv,
                                   loski_EventWatcher *watcher,
-                                  size_t *index,
-                                  loski_EventSource *source,
+                                  loski_EventIterator *i,
+                                  loski_EventSource *src,
                                   loski_EventFlags *events);
 
 

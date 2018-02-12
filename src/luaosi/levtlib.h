@@ -10,7 +10,7 @@
 
 typedef struct LuaWatcher {
 	loski_EventWatcher watcher;
-	int closed;
+	size_t refs;
 } LuaWatcher;
 
 LOSKILIB_API loski_EventWatcher *loski_newwatcher (lua_State *L);
@@ -22,16 +22,23 @@ LOSKILIB_API loski_EventWatcher *loski_towatcher (lua_State *L, int idx);
 #define loski_iswatcher(L,i)	(loski_towatcher(L, i) != NULL)
 
 
-#define LOSKI_EVENTSOURCECONV LOSKI_PREFIX"ToEventSourceOperation"
+typedef loski_ErrorCode (*loski_GetEventSource)(void *udata, int newref, 
+                                                loski_EventSource *src,
+                                                loski_EventFlags evtflags);
 
-typedef int (*loski_EventSourceConv)(lua_State *L, int idx, 
-                                     loski_EventSource *source);
+LOSKILIB_API void loski_defgetevtsrc (lua_State *L,
+                                      const char *cls,
+                                      loski_GetEventSource get);
+LOSKILIB_API loski_ErrorCode loski_getevtsrc (lua_State *L, int idx, int newref,
+                                              loski_EventSource *src,
+                                              loski_EventFlags evtflags);
 
-#define loski_seteventsourceconv(L, cls, func) \
-	loskiL_setclassop(L, LOSKI_EVENTSOURCECONV, cls, func)
+typedef void (*loski_FreeEventSource)(void *udata);
 
-#define loski_geteventsourceconv(L) \
-	loskiL_getvalueop(L, LOSKI_EVENTSOURCECONV)
+LOSKILIB_API void loski_deffreeevtsrc (lua_State *L,
+                                       const char *cls,
+                                       loski_FreeEventSource free);
+LOSKILIB_API void loski_freeevtsrc (lua_State *L, int idx);
 
 
 #endif
