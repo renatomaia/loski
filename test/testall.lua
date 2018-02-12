@@ -16,5 +16,6 @@ runtest("network/datagram")
 runtest("network/connection")
 runtest("event/watcher")
 runtest("event/network")
+runtest("event/process")
 
 print("OK")

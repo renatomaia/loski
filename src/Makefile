@@ -28,8 +28,10 @@ MYOBJS=
 # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
 
 RTL_O=	lauxlib.o \
+      	$(PLAT_DIR)/fdlib.o \
       	$(PLAT_DIR)/timelib.o $(PLAT_DIR)/ltimelib.o \
-      	$(PLAT_DIR)/proclib.o $(PLAT_DIR)/st/procmgr.o $(PLAT_DIR)/proctab.o \
+      	$(PLAT_DIR)/proclib.o lproclib.o \
+      	$(PLAT_DIR)/st/procmgr.o $(PLAT_DIR)/proctab.o \
       	$(PLAT_DIR)/netlib.o lnetlib.o \
       	$(PLAT_DIR)/evtlib.o levtlib.o
 LIB_O=	luaosi.o

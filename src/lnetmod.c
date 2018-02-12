@@ -4,6 +4,7 @@
 #include "luaosi/lauxlib.h"
 #include "luaosi/levtlib.h"
 
+#include <assert.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -281,7 +282,7 @@ static int sck_tostring (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
 	LuaSocket *ls = tolsock(L, LOSKI_SOCKTYPE_SOCK);
-	if (ls->closed)
+	if (ls->refs == 0)
 		lua_pushliteral(L, "socket (closed)");
 	else
 		lua_pushfstring(L, "socket (%d)", loskiN_getsockid(drv, &ls->socket));
@@ -292,7 +293,7 @@ static int sck_tostring (lua_State *L)
 static int endsock (loski_NetDriver *drv, lua_State *L, LuaSocket *ls)
 {
 	loski_ErrorCode err = loskiN_closesock(drv, &ls->socket);
-	if (!err) ls->closed = 1;  /* mark socket as closed */
+	if (!err) ls->refs = 0;  /* mark socket as closed */
 	return loskiL_doresults(L, 0, err);
 }
 
@@ -301,7 +302,7 @@ static int sck_gc (lua_State *L)
 {
 	loski_NetDriver *drv = todrv(L);
 	LuaSocket *ls = tolsock(L, LOSKI_SOCKTYPE_SOCK);
-	if (!ls->closed) endsock(drv, L, ls);
+	if (ls->refs != 0) endsock(drv, L, ls);
 	return 0;
 }
 
@@ -309,7 +310,7 @@ static int sck_gc (lua_State *L)
 static loski_Socket *tosock (lua_State *L, int cls)
 {
 	LuaSocket *ls = tolsock(L, cls);
-	if (ls->closed) luaL_error(L, "attempt to use a closed socket");
+	if (ls->refs == 0) luaL_error(L, "attempt to use a closed socket");
 	return &ls->socket;
 }
 
@@ -319,6 +320,7 @@ static int sck_close (lua_State *L)
 	loski_NetDriver *drv = todrv(L);
 	LuaSocket *ls = tolsock(L, LOSKI_SOCKTYPE_SOCK);
 	tosock(L, LOSKI_SOCKTYPE_SOCK);  /* make sure argument is an open socket */
+	if (ls->refs > 1) return loskiL_doresults(L, 0, LOSKI_ERRINUSE);
 	return endsock(drv, L, ls);
 }
 
@@ -892,12 +894,18 @@ LUAMOD_API int luaopen_network (lua_State *L)
 	luaL_setfuncs(L, lib, DRVUPV);
 
 #ifdef LOSKI_ENABLE_SOCKETEVENTS
-	loski_seteventsourceconv(L, loski_SocketClasses[LOSKI_SOCKTYPE_LSTN],
-	                            loskiN_socket2evtsrc);
-	loski_seteventsourceconv(L, loski_SocketClasses[LOSKI_SOCKTYPE_CONN],
-	                            loskiN_socket2evtsrc);
-	loski_seteventsourceconv(L, loski_SocketClasses[LOSKI_SOCKTYPE_DGRM],
-	                            loskiN_socket2evtsrc);
+	loski_defgetevtsrc(L, loski_SocketClasses[LOSKI_SOCKTYPE_LSTN],
+	                      loskiN_getsockevtsrc);
+	loski_deffreeevtsrc(L, loski_SocketClasses[LOSKI_SOCKTYPE_LSTN],
+	                       loskiN_freesockevtsrc);
+	loski_defgetevtsrc(L, loski_SocketClasses[LOSKI_SOCKTYPE_CONN],
+	                      loskiN_getsockevtsrc);
+	loski_deffreeevtsrc(L, loski_SocketClasses[LOSKI_SOCKTYPE_CONN],
+	                       loskiN_freesockevtsrc);
+	loski_defgetevtsrc(L, loski_SocketClasses[LOSKI_SOCKTYPE_DGRM],
+	                      loskiN_getsockevtsrc);
+	loski_deffreeevtsrc(L, loski_SocketClasses[LOSKI_SOCKTYPE_DGRM],
+	                       loskiN_freesockevtsrc);
 #endif
 	return 1;
 }

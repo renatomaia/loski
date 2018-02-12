@@ -3,10 +3,9 @@
 
 
 #include "luaosi/proclib.h"
-#include "luaosi/lauxlib.h"
 
 
-#define LOSKI_PROCESSCLS LOSKI_PREFIX"ChildProcess"
+#define LOSKI_PROCESSCLS LOSKI_PREFIX"Process"
 
 #define loski_toprocess(L,i)	((loski_Process *) \
                                luaL_testudata(L, i, LOSKI_PROCESSCLS))
@@ -14,16 +13,13 @@
 #define loski_isprocess(L,i)	(loski_toprocess(L, i) != NULL)
 
 
-#define LOSKI_PROCSTREAMCONV LOSKI_PREFIX"ToProcessStreamOperation"
+typedef int (*loski_GetProcStream)(void *udata, loski_ProcStream *stream);
 
-typedef int (*loski_ProcStreamConv)(lua_State *L, int idx, 
+LOSKILIB_API void loski_defgetprocstrm (lua_State *L,
+                                        const char *cls,
+                                        loski_GetProcStream get);
+LOSKILIB_API int loski_getprocstrm (lua_State *L, int idx,
                                     loski_ProcStream *stream);
-
-#define loski_setprocstreamconv(L, cls, func) \
-	loskiL_setclassop(L, LOSKI_PROCSTREAMCONV, cls, func)
-
-#define loski_getprocstreamconv(L) \
-	loskiL_getvalueop(L, LOSKI_PROCSTREAMCONV)
 
 
 #endif

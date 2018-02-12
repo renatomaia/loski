@@ -13,9 +13,9 @@ do
 	assert(lst:getaddress("this", adr))
 	assert(lst:listen())
 	assert(watcher:set(lst, "r"))
-	assert(next(watcher:wait(0)) == nil)
+	testutils.testerrmsg("unfulfilled", watcher:wait(0))
 	local start = time.now()
-	assert(next(watcher:wait(.5)) == nil)
+	testutils.testerrmsg("unfulfilled", watcher:wait(.5))
 	assert(time.now() - start > .5)
 
 	local cnt = assert(network.socket("connection"))
@@ -30,7 +30,7 @@ do
 	local srv = assert(lst:accept())
 	assert(srv:setoption("blocking", false))
 	assert(watcher:set(srv, "r"))
-	assert(next(watcher:wait(0)) == nil)
+	testutils.testerrmsg("unfulfilled", watcher:wait(0))
 
 	assert(cnt:send("Hello!"))
 	assert(srv:send("Hi!"))
@@ -40,7 +40,7 @@ do
 	assert(events[srv] == "r")
 	assert(cnt:receive(3) == "Hi!")
 	assert(srv:receive(6) == "Hello!")
-	assert(next(watcher:wait(0)) == nil)
+	testutils.testerrmsg("unfulfilled", watcher:wait(0))
 
 	assert(cnt:send("Hi there!"))
 	assert(srv:send("Hello back!"))
@@ -50,7 +50,7 @@ do
 	assert(events[srv] == "r")
 	assert(cnt:receive(11) == "Hello back!")
 	assert(srv:receive(9) == "Hi there!")
-	assert(next(watcher:wait(0)) == nil)
+	testutils.testerrmsg("unfulfilled", watcher:wait(0))
 
 	assert(watcher:set(cnt, "rw"))
 	assert(watcher:set(srv, "rw"))
@@ -68,16 +68,14 @@ do
 	assert(events[cnt] == "w")
 	assert(events[srv] == "w")
 
-	--TODO: avoid closing sources that are inserted in a watcher
+	testutils.testerrmsg("in use", lst:close())
+	testutils.testerrmsg("in use", cnt:close())
+	testutils.testerrmsg("in use", srv:close())
+
+	assert(watcher:close())
+	assert(lst:close())
 	assert(cnt:close())
 	assert(srv:close())
-	testutils.testerror("invalid operation", watcher.wait, watcher)
-	--assert(watcher:set(cnt, nil))
-	--assert(watcher:set(srv, nil))
-
-	--assert(next(watcher:wait(0)) == nil)
-	--assert(lst:close())
-	--testutils.testerror("invalid operation", watcher.wait, watcher)
 end
 
 do

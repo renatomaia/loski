@@ -1,6 +1,9 @@
+#include "luaosi/lauxlib.h"
 #include "luaosi/lproclib.h"
+#include "luaosi/levtlib.h"
 
 #include <string.h>
+#include <lauxlib.h>
 
 
 #ifdef LOSKI_DISABLE_PROCDRV
@@ -33,8 +36,7 @@ static int optstreamfield(lua_State *L,
 	int res = 0;
 	lua_getfield(L, 1, field);
 	if (!lua_isnil(L, -1)) {
-		loski_ProcStreamConv tostream = loski_getprocstreamconv(L);
-		if (tostream == NULL || !tostream(L, -1, stream))
+		if (!loski_getprocstrm(L, -1, stream))
 			luaL_error(L, "bad field "LUA_QS" (must be a stream)", field);
 		res = 1;
 	}
@@ -286,8 +288,12 @@ LUAMOD_API int luaopen_process(lua_State *L)
 	pushsentinel(L);
 	luaL_setfuncs(L, lib, DRVUPV);
 
-#ifdef LOSKI_ENABLE_PROCFILESTREAM
-	loski_setprocstreamconv(L, LUA_FILEHANDLE, loskiP_luafile2stream);
+#ifdef LOSKI_ENABLE_LUAFILEPROCSTREAM
+	loski_defgetprocstrm(L, LUA_FILEHANDLE, loskiP_getluafileprocstrm);
+#endif
+#ifdef LOSKI_ENABLE_PROCESSEVENTS
+	loski_defgetevtsrc(L, LOSKI_PROCESSCLS, loskiP_getprocevtsrc);
+	loski_deffreeevtsrc(L, LOSKI_PROCESSCLS, loskiP_freeprocevtsrc);
 #endif
 	return 1;
 }

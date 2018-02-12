@@ -18,7 +18,7 @@ LOSKILIB_API loski_Address *loski_newaddress (lua_State *L)
 LOSKILIB_API loski_Socket *loski_newsocket (lua_State *L, int cls)
 {
 	LuaSocket *ls = (LuaSocket *)lua_newuserdata(L, sizeof(LuaSocket));
-	ls->closed = 1;
+	ls->refs = 0;
 	luaL_setmetatable(L, loski_SocketClasses[cls]);
 	return &ls->socket;
 }
@@ -26,12 +26,12 @@ LOSKILIB_API loski_Socket *loski_newsocket (lua_State *L, int cls)
 LOSKILIB_API void loski_enablesocket (lua_State *L, int idx)
 {
 	LuaSocket *ls = tolsock(L, idx, LOSKI_SOCKTYPE_SOCK);
-	if (ls) ls->closed = 0;
+	if (ls) ++(ls->refs);
 }
 
 LOSKILIB_API loski_Socket *loski_tosocket (lua_State *L, int idx, int cls)
 {
 	LuaSocket *ls = tolsock(L, idx, cls);
-	if (!ls || ls->closed) return NULL;
+	if (!ls || ls->refs == 0) return NULL;
 	return &ls->socket;
 }
