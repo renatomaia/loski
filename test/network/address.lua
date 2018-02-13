@@ -13,7 +13,7 @@ do
 	assert(network.type(io.stdout) == nil)
 	assert(network.type(network.address()) == "address")
 	assert(network.type(network.socket("listen")) == "socket")
-	assert(network.type(network.socket("connection")) == "socket")
+	assert(network.type(network.socket("stream")) == "socket")
 	assert(network.type(network.socket("datagram")) == "socket")
 end
 

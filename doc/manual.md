@@ -113,7 +113,7 @@ It can be contain any of the following characters:
 - `6`: for IPv6 addresses.
 - `m`: for IPv4-mapped addresses.
 - `d`: for addresses for `datagram` sockets.
-- `s`: for addresses for `connection` or `listen` sockets (stream).
+- `s`: for addresses for `stream` or `listen` sockets.
 
 When neither `4` nor `6` are provided, the search only includes addresses of the same type configured in the local machine.
 When neither `d` nor `s` are provided, the search behaves as if both `d` and `s` were provided.
@@ -172,11 +172,11 @@ The `type` string can be any of the following:
 `"datagram"`
 :	datagram socket (UDP).
 
-`"connection"`
-:	stream socket to initiate connections (TCP).
+`"stream"`
+:	stream socket (TCP).
 
 `"listen"`
-:	stream socket to accept connections (TCP).
+:	socket to accept stream socket connections (TCP).
 
 The `domain` string defines the socket's address domain (or family) and can be any of the following:
 
@@ -200,7 +200,7 @@ Returns the string `"address"` if `value` is an address structure, or `"socket"`
 
 ### `type = socket.type`
 
-The type of `socket`, which can be: `"datagram"` `"connection"`, `"listen"`.
+The type of `socket`, which can be: `"datagram"` `"stream"`, `"listen"`.
 This field is read-only.
 
 ### `success [, errmsg] = socket:close ()`
@@ -258,7 +258,7 @@ There available options are:
 - `"reuseaddr"`: is `true` when address reuse is allowed for `socket`, or `false`otherwise.
 - `"dontroute"`: is `true` when routing facilities are disabled for `socket`, or `false` otherwise.
 
-Sockets of type `"connection"` accept the additional options:
+Sockets of type `"stream"` accept the additional options:
 
 - `"linger"`: is the number of seconds that `socket:close` can be delayed when there is pending data to be sent.
 - `"keepalive"`: is `true` when periodic transmission of messages is enabled for `socket`, or `false` otherwise.
@@ -309,7 +309,7 @@ An address structure can be provided as `address` to be filled with the address 
 
 This operation is only available for `listen` sockets.
 
-In case of success, this function returns a new `connection` socket for the accepted connection.
+In case of success, this function returns a new `stream` socket for the accepted connection.
 Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#error-mesages).
@@ -370,7 +370,7 @@ Receives up to `size` bytes from socket `socket`, using the mode specified in th
 The mode string can be contain any of the following characters:
 
 - `p`: only peeks at an incoming message, leaving the returned data as unread in `socket`.
-- `a`: only returns successfully when all the `size` bytes were received (only for `connection` sockets).
+- `a`: only returns successfully when all the `size` bytes were received (only for `stream` sockets).
 
 By default, `mode` is the empty string, which disables all options.
 
@@ -403,7 +403,7 @@ The mode string can be any of the following:
 - `receive`: disables further receive operations.
 - `both`: disables both send and receive operations. (the default)
 
-This operation is only available for `connection` sockets.
+This operation is only available for `stream` sockets.
 
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.

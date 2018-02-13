@@ -101,7 +101,7 @@ do
 			linger = true,
 			broadcast = true,
 		},
-		connection = {
+		stream = {
 			broadcast = true,
 		},
 		datagram = {

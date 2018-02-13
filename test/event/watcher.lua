@@ -38,7 +38,7 @@ do
 		                    watcher.set, watcher, value, "r")
 	end
 	local dgm = assert(network.socket("datagram"))
-	local con = assert(network.socket("connection"))
+	local con = assert(network.socket("stream"))
 	local lst = assert(network.socket("listen"))
 	assert(watcher:set(dgm, "r"))
 	assert(watcher:set(con, "w"))
@@ -52,8 +52,8 @@ end
 do
 	local watcher = assert(event.watcher())
 	local weak = setmetatable({}, { __mode = "v" })
-	weak.s1 = assert(network.socket("connection"))
-	weak.s2 = assert(network.socket("connection"))
+	weak.s1 = assert(network.socket("stream"))
+	weak.s2 = assert(network.socket("stream"))
 	assert(watcher:set(weak.s1, "rw"))
 	assert(watcher:set(weak.s2, "wr"))
 	collectgarbage()

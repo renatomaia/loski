@@ -83,7 +83,7 @@ LOSIDRV_API const char *losiN_getaddrliteral (losi_NetDriver *drv,
 
 typedef enum losi_SocketType {
 	LOSI_SOCKTYPE_LSTN,
-	LOSI_SOCKTYPE_CONN,
+	LOSI_SOCKTYPE_STRM,
 	LOSI_SOCKTYPE_DGRM
 } losi_SocketType;
 

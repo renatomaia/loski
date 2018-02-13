@@ -42,7 +42,7 @@ do
 	tests.newprocess(remotecode)
 	time.sleep(1)
 
-	local socket = tests.testcreatesocket("connection")
+	local socket = tests.testcreatesocket("stream")
 
 	assert(socket:connect(tests.LocalAddress) == true)
 	for i = 1, 3 do
@@ -62,7 +62,7 @@ do
 	tests.newprocess(remotecode)
 	time.sleep(1)
 
-	local socket = tests.testcreatesocket("connection")
+	local socket = tests.testcreatesocket("stream")
 	assert(socket:setoption("blocking", false) == true)
 
 	tests.tcall(true, socket.connect, socket, tests.LocalAddress)

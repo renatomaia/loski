@@ -22,7 +22,7 @@ local servs = {
 }
 local scktypes = {
 	datagram = true,
-	connection = true,
+	stream = true,
 	listen = true,
 }
 local addr = network.address()
