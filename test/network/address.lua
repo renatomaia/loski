@@ -111,31 +111,31 @@ do
 end
 
 do
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got boolean)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got boolean)",
 		network.address, true)
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got boolean)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got boolean)",
 		network.address, true, 8080)
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got boolean)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got boolean)",
 		network.address, true, 8080, "t")
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got boolean)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got boolean)",
 		network.address, true, 8080, "b")
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil)
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil, nil)
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil, nil, nil)
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil, 8080)
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil, 8080, "t")
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil, 8080, "b")
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil, nil)
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil, nil, "t")
-	utils.testerror("bad argument #1 to 'network.address' (string expected, got nil)",
+	utils.testerror("bad argument #1 to 'network.address' (string or memory expected, got nil)",
 		network.address, nil, nil, "b")
 	utils.testerror("bad argument #2 to 'network.address' (number expected, got nil)",
 		network.address, "192.168.0.1:8080", nil)

@@ -2,7 +2,7 @@ TODO
 ====
 
 Not Priorized:
-- Object to represent buffers (LuaMemory)
+- Support for UNIX domain sockets
 - Support for (named) pipes
 - Support for async file operations
 - Support for file system operations (Lua File System)

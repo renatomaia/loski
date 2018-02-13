@@ -8,6 +8,11 @@
 #include <string.h>
 #include <ctype.h>
 
+#ifndef LOSI_DISABLE_LUAMEMORY
+#include <lmemlib.h>
+#else
+#define luamem_checkstring luaL_checklstring
+#endif
 
 #ifdef LOSI_DISABLE_NETDRV
 #define DRVUPV	0
@@ -24,17 +29,18 @@
  *****************************************************************************/
 
 
-static const char *str2port (const char *s, losi_AddressPort *pn)
+static int mem2port (const char *s, const char *e, losi_AddressPort *pn)
 {
 	lua_Unsigned n = 0;
-	if (!isdigit((unsigned char)*s)) return NULL;  /* no digit? */
+	if (s == e) return 0;  /* no digit? */
 	do {
-		n = n * 10 + (*s - '0');
-		if (n > LOSI_ADDRMAXPORT) return NULL;  /* value too large */
-		++s;
-	} while (isdigit((unsigned char)*s));
-	*pn = (losi_AddressPort)n;
-	return s;
+		char d = *s - '0';
+		if (d < 0 || d > 9) return 0;  /* invalid digit */
+		n = n * 10 + d;
+		if (n > LOSI_ADDRMAXPORT) return 0;  /* value too large */
+	} while (++s < e);
+	*pn = n;
+	return 1;
 }
 
 static losi_AddressPort int2port (lua_State *L, lua_Integer n, int idx)
@@ -68,24 +74,24 @@ static int net_address (lua_State *L)
 	int bin = 0, n = lua_gettop(L);
 	if (n > 0) {
 		size_t sz;
-		data = luaL_checklstring(L, 1, &sz);
+		data = luamem_checkstring(L, 1, &sz);
 		if (n == 1) {  /* URI format */
 			char literal[LOSI_ADDRMAXLITERAL];
 			const char *c, *e = data + sz;
 			if (data[0] == '[') {
-				c = strchr(++data, ']');
-				luaL_argcheck(L, c && c[1] == ':', 1, "invalid URI format");
+				c = memchr(++data, ']', sz-1);
+				luaL_argcheck(L, c && c+1 < e && c[1] == ':', 1, "invalid URI format");
 				sz = c - data;
 				type = LOSI_ADDRTYPE_IPV6;
 				++c;
 			} else {
-				c = strchr(data, ':');
+				c = memchr(data, ':', sz);
 				luaL_argcheck(L, c, 1, "invalid URI format");
 				sz = c - data;
 				type = LOSI_ADDRTYPE_IPV4;
 			}
 			luaL_argcheck(L, sz < LOSI_ADDRMAXLITERAL, 1, "invalid URI format");
-			luaL_argcheck(L, str2port(c+1, &port) == e, 1, "invalid port");
+			luaL_argcheck(L, mem2port(c+1, e, &port), 1, "invalid port");
 			memcpy(literal, data, sz);
 			literal[sz] = '\0';
 			return pushnewaddr(L, type, port, literal, 0);
@@ -214,7 +220,7 @@ static int addr_newindex (lua_State *L)
 		} break;
 		case 1: {  /* binary */
 			size_t sz, esz = 0;
-			const char *data = luaL_checklstring(L, 3, &sz);
+			const char *data = luamem_checkstring(L, 3, &sz);
 			losi_AddressType type = losiN_getaddrtype(drv, na);
 			switch (type) {
 				case LOSI_ADDRTYPE_IPV4: esz = LOSI_ADDRSIZE_IPV4; break;
@@ -493,7 +499,7 @@ static int senddata(lua_State *L, int cls, const losi_Address *addr)
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, cls);
 	size_t sz, sent;
-	const char *data = luaL_checklstring(L, 2, &sz);
+	const char *data = luamem_checkstring(L, 2, &sz);
 	size_t start = posrelat(luaL_optinteger(L, 3, 1), sz);
 	size_t end = posrelat(luaL_optinteger(L, 4, -1), sz);
 	losi_ErrorCode err;
@@ -523,23 +529,33 @@ static int recvdata(lua_State *L, int cls, losi_Address *addr)
 {
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, cls);
-	size_t len, sz = (size_t)luaL_checkinteger(L, 2);
 	const char *mode = luaL_optstring(L, 3, "");
-	losi_SocketRecvFlag flags = 0;
-	luaL_Buffer lbuf;
 	char *buf;
+	size_t len, sz;
 	losi_ErrorCode err;
+	losi_SocketRecvFlag flags = 0;
 	for (; *mode; ++mode) switch (*mode) {
 		case 'p': flags |= LOSI_SOCKRCV_PEEKONLY; break;
 		case 'a': flags |= LOSI_SOCKRCV_WAITALL; break;
 		default: return luaL_error(L, "unknown mode char (got '%c')", *mode);
 	}
-	luaL_buffinit(L, &lbuf);
-	buf = luaL_prepbuffsize(&lbuf, sz);  /* prepare buffer to read whole block */
-	err = losiN_recvfromsock(drv, socket, flags, buf, sz, &len, addr);
-	if (!err) {
-		luaL_addsize(&lbuf, len);
-		luaL_pushresult(&lbuf);  /* close buffer */
+#ifndef LOSI_DISABLE_LUAMEMORY
+	buf = luamem_tomemory(L, 2, &sz);
+	if (buf != NULL) {
+		err = losiN_recvfromsock(drv, socket, flags, buf, sz, &len, addr);
+		if (!err) lua_pushinteger(L, len);
+	} else
+#endif
+	{
+		luaL_Buffer lbuf;
+		sz = (size_t)luaL_checkinteger(L, 2);
+		luaL_buffinit(L, &lbuf);
+		buf = luaL_prepbuffsize(&lbuf, sz);  /* prepare buffer to read all */
+		err = losiN_recvfromsock(drv, socket, flags, buf, sz, &len, addr);
+		if (!err) {
+			luaL_addsize(&lbuf, len);
+			luaL_pushresult(&lbuf);  /* close buffer */
+		}
 	}
 	return losiL_doresults(L, 1, err);
 }
