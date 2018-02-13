@@ -8,6 +8,10 @@ LUA_INC= $(LUA_HOME)/include
 LUA_BIN= $(LUA_HOME)/bin
 LUA_VER= 5.3
 
+LUAMEM_HOME= $(LUA_HOME)
+LUAMEM_INC= $(LUAMEM_HOME)/include
+LUAMEM_LIB= $(LUAMEM_HOME)/lib
+
 LIB_NAME= luaosi
 
 TIM_M=	time.so

@@ -5,18 +5,16 @@ Contents
 2. [Process Facilities](#process-facilities)
 3. [Network Facilities](#network-facilities)
 3. [Event Facilities](#event-facilities)
-4. [Error Messages](#error-mesages)
+4. [Error Messages](#error-messages)
 
 Index
 =====
 
-- [`event`](#event-facilities)
 - [`event.watcher`](#watcher--errmsg--eventwatcher-)
 - [`watcher:set`](#succ--errmsg--watcherset-source--events)
 - [`watcher:wait`](#map--errmsg--watcherwait-timeout)
 - [`watcher:close`](#succ--errmsg--watcherclose-)
 
-- [`network`](#network-facilities)
 - [`network.address`](#address--networkaddress-data--port--mode)
 - [`network.getname`](#name--service--networkgetname-address--mode)
 - [`network.resolve`](#next--errmsg--networkresolve-name--service--mode)
@@ -35,13 +33,11 @@ Index
 - [`socket:shutdown`](#success--errmsg--socketshutdown-mode)
 - [`socket.type`](#type--sockettype)
 
-- [`process`](#process-facilities)
 - [`process.create`](#proc--processcreate-cmd--)
 - [`process.exitval`](#number--errmsg--processexitval-proc)
 - [`process.kill`](#succ--errmsg--processkill-proc)
 - [`process.status`](#status--processstatus-proc)
 
-- [`time`](#time-facilities)
 - [`time.now`](#seconds--timenow-)
 - [`time.sleep`](#timesleep-delay)
 
@@ -109,7 +105,7 @@ Each time the iterator function is called, returns one address found for node wi
 If an address structure is provided as `address`, it is used to store the result; otherwise a new address structure is created.
 
 `service` indicates the port number or service name to be used to resolve the port number of the resulting addresses.
-When `servname` is absent, the port zero is used in the results.
+When `service` is absent, the port zero is used in the results.
 The string `mode` defines the search domain. 
 It can be contain any of the following characters:
 
@@ -354,6 +350,8 @@ For disconnected datagram sockets, it is necessary to provide `address` with the
 In case of success, this function returns the number of bytes from `data` effectivelly sent through `socket`.
 Otherwise it returns `nil` plus an error message.
 
+__Note__: if `data` is a [memory](https://github.com/renatomaia/lua-memory), it is not converted to a Lua string prior to have its specified contents transfered.
+
 The current standard implementation of this operation may return the following [error messages](#error-mesages).
 
 - `"unfulfilled"`
@@ -381,6 +379,9 @@ For disconnected datagram sockets, it is possible to provide `address` with an a
 
 In case of success, this function returns the `data` effectivelly received from `socket`.
 Otherwise it returns `nil` plus an error message.
+
+__Note__: if `size` is not a number of bytes but a [memory](https://github.com/renatomaia/lua-memory), the size of the memory is used as `size`.
+Moreover, in case of success, the number of bytes actually received are returned instead of a string with the data.
 
 The current standard implementation of this operation may return the following [error messages](#error-mesages).
 

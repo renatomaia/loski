@@ -8,8 +8,9 @@ include ../config
 PLAT_DIR= posix
 CC= gcc -std=gnu99
 LD= ld
-CFLAGS= -O2 -Wall -I. -I$(LUA_INC) -I$(PLAT_DIR) $(SYSCFLAGS) $(MYCFLAGS)
-LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
+CFLAGS= -O2 -Wall -I. -I$(LUA_INC) -I$(LUAMEM_INC) -I$(PLAT_DIR) \
+        $(SYSCFLAGS) $(MYCFLAGS)
+LDFLAGS= -L$(LUAMEM_LIB) -lluamemlib $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= $(SYSLIBS) $(MYLIBS)
 
 AR= ar rcu
