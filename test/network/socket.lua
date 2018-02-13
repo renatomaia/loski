@@ -1,7 +1,7 @@
 local network = require "network"
 local tests = require "test.network.utils"
 
-for _, kind in ipairs{"datagram", "connection", "listen"} do
+for _, kind in ipairs{"datagram", "stream", "listen"} do
 	local cases = {
 		["unreachable"] = tests.RemoteTCP
 	}
@@ -23,7 +23,7 @@ for _, kind in ipairs{"datagram", "connection", "listen"} do
 	end
 end
 
-for _, kind in ipairs{"datagram", "connection", "listen"} do
+for _, kind in ipairs{"datagram", "stream", "listen"} do
 	local socket = tests.testcreatesocket(kind)
 	tests.testoptions(socket, kind)
 
@@ -53,7 +53,7 @@ end
 -- TODO: Find out the correct way to test if 'reuseaddr' works.
 --       The following only works is UsedAddress.port is binded using different
 --       hosts.
---for _, kind in ipairs{"datagram", "connection", "listen"} do
+--for _, kind in ipairs{"datagram", "stream", "listen"} do
 --	local socket = tests.testcreatesocket(kind)
 --	assert(socket:setoption("reuseaddr", true) == true)
 --	assert(socket:bind(tests.UsedAddress) == true)

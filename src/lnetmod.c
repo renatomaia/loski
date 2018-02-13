@@ -255,13 +255,13 @@ static int addr_newindex (lua_State *L)
 
 static const char *const SockTypeName[] = {
 	"listen",
-	"connection",
+	"stream",
 	"datagram",
 	NULL
 };
 static const losi_SocketType SockTypeId[] = {
 	LOSI_SOCKTYPE_LSTN,
-	LOSI_SOCKTYPE_CONN,
+	LOSI_SOCKTYPE_STRM,
 	LOSI_SOCKTYPE_DGRM
 };
 
@@ -420,7 +420,7 @@ static int lst_getoption (lua_State *L)
 static int cnt_getoption (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
-	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_CONN);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
 	losi_SocketOption opt = checksockopt(L, 2, cnt_opts);
 	int val;
 	losi_ErrorCode err = losiN_getsockopt(drv, socket, opt, &val);
@@ -457,7 +457,7 @@ static int lst_setoption (lua_State *L)
 static int cnt_setoption (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
-	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_CONN);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
 	losi_SocketOption opt = checksockopt(L, 2, cnt_opts);
 	int val = (opt == LOSI_SOCKOPT_LINGER) ? luaL_checkinteger(L, 3)
 	                                       : lua_toboolean(L, 3);
@@ -480,7 +480,7 @@ static int dgm_setoption (lua_State *L)
 static int str_connect (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
-	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_DATA);
 	const losi_Address *addr = toaddr(L, 2);
 	losi_ErrorCode err = losiN_connectsock(drv, socket, addr);
 	return losiL_doresults(L, 0, err);
@@ -515,7 +515,7 @@ static int senddata(lua_State *L, int cls, const losi_Address *addr)
 /* sent [, errmsg] = socket:send(data [, i [, j]]) */
 static int cnt_send (lua_State *L)
 {
-	return senddata(L, LOSI_SOCKTYPE_CONN, NULL);
+	return senddata(L, LOSI_SOCKTYPE_STRM, NULL);
 }
 
 /* sent [, errmsg] = socket:send(data [, i [, j [, address]]]) */
@@ -563,7 +563,7 @@ static int recvdata(lua_State *L, int cls, losi_Address *addr)
 /* data [, errmsg] = socket:receive(size [, mode]) */
 static int cnt_receive (lua_State *L)
 {
-	return recvdata(L, LOSI_SOCKTYPE_CONN, NULL);
+	return recvdata(L, LOSI_SOCKTYPE_STRM, NULL);
 }
 
 /* data [, errmsg] = socket:receive(size [, mode [, address]]) */
@@ -578,7 +578,7 @@ static int cnt_shutdown (lua_State *L)
 {
 	static const char *const waynames[] = {"send", "receive", "both", NULL};
 	losi_NetDriver *drv = todrv(L);
-	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_CONN);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
 	int way = luaL_checkoption(L, 2, "both", waynames);
 	losi_ErrorCode err = losiN_shutdownsock(drv, socket, way);
 	return losiL_doresults(L, 0, err);
@@ -591,7 +591,7 @@ static int lst_accept (lua_State *L)
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_LSTN);
 	losi_Address *addr = losi_toaddress(L, 2);
-	losi_Socket *conn = losi_newsocket(L, LOSI_SOCKTYPE_CONN);
+	losi_Socket *conn = losi_newsocket(L, LOSI_SOCKTYPE_STRM);
 	losi_ErrorCode err = losiN_acceptsock(drv, socket, conn, addr);
 	if (!err) losi_enablesocket(L, -1);
 	return losiL_doresults(L, 1, err);
@@ -878,29 +878,29 @@ LUAMOD_API int luaopen_network (lua_State *L)
 	pushsentinel(L);
 	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_SOCK], NULL, sck, DRVUPV);
 	lua_pop(L, 1);  /* remove new class */
-	/* create TCP listening socket class */
+	/* create listening socket class */
 	pushsentinel(L);
 	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_LSTN],
 	                 losi_SocketClasses[LOSI_SOCKTYPE_SOCK], lst, DRVUPV);
 	lua_pushliteral(L, "listen");
 	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
-	/* create streaming socket class */
+	/* create data transfer socket class */
 	pushsentinel(L);
-	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_STRM],
+	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_DATA],
 	                 losi_SocketClasses[LOSI_SOCKTYPE_SOCK], str, DRVUPV);
 	lua_pop(L, 1);  /* remove new class */
-	/* create TCP connection socket class */
+	/* create stream socket class */
 	pushsentinel(L);
-	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_CONN],
-	                 losi_SocketClasses[LOSI_SOCKTYPE_STRM], cnt, DRVUPV);
-	lua_pushliteral(L, "connection");
+	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_STRM],
+	                 losi_SocketClasses[LOSI_SOCKTYPE_DATA], cnt, DRVUPV);
+	lua_pushliteral(L, "stream");
 	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
-	/* create UDP socket class */
+	/* create datagram socket class */
 	pushsentinel(L);
 	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_DGRM],
-	                 losi_SocketClasses[LOSI_SOCKTYPE_STRM], dgm, DRVUPV);
+	                 losi_SocketClasses[LOSI_SOCKTYPE_DATA], dgm, DRVUPV);
 	lua_pushliteral(L, "datagram");
 	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
@@ -914,9 +914,9 @@ LUAMOD_API int luaopen_network (lua_State *L)
 	                     losiN_getsockevtsrc);
 	losi_deffreeevtsrc(L, losi_SocketClasses[LOSI_SOCKTYPE_LSTN],
 	                      losiN_freesockevtsrc);
-	losi_defgetevtsrc(L, losi_SocketClasses[LOSI_SOCKTYPE_CONN],
+	losi_defgetevtsrc(L, losi_SocketClasses[LOSI_SOCKTYPE_STRM],
 	                     losiN_getsockevtsrc);
-	losi_deffreeevtsrc(L, losi_SocketClasses[LOSI_SOCKTYPE_CONN],
+	losi_deffreeevtsrc(L, losi_SocketClasses[LOSI_SOCKTYPE_STRM],
 	                      losiN_freesockevtsrc);
 	losi_defgetevtsrc(L, losi_SocketClasses[LOSI_SOCKTYPE_DGRM],
 	                     losiN_getsockevtsrc);

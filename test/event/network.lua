@@ -18,7 +18,7 @@ do
 	testutils.testerrmsg("unfulfilled", watcher:wait(.5))
 	assert(time.now() - start > .5)
 
-	local cnt = assert(network.socket("connection"))
+	local cnt = assert(network.socket("stream"))
 	assert(cnt:setoption("blocking", false))
 	testutils.testerrmsg("unfulfilled", cnt.connect(cnt, adr))
 	assert(watcher:set(cnt, "w"))
@@ -140,7 +140,7 @@ do
 	local conns = {}
 	local addr = assert(network.resolve("localhost", port)())
 	for i = 1, 3 do
-		conns[i] = assert(network.socket("connection"))
+		conns[i] = assert(network.socket("stream"))
 		assert(conns[i]:connect(addr))
 	end
 

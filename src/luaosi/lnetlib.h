@@ -20,7 +20,7 @@ LOSILIB_API losi_Address *losi_newaddress (lua_State *L);
 
 
 /* superclasses used only in Lua */
-#define LOSI_SOCKTYPE_STRM 3
+#define LOSI_SOCKTYPE_DATA 3
 #define LOSI_SOCKTYPE_SOCK 4
 
 static const char *const losi_SocketClasses[] = {

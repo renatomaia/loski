@@ -3,12 +3,12 @@ local network = require "network"
 local tests = require "test.network.utils"
 
 local addr = network.address("0.0.0.0", 80)
-for _, kind in ipairs{"datagram", "connection"} do
+for _, kind in ipairs{"datagram", "stream"} do
 	local socket = tests.testcreatesocket(kind)
 
 	if tests.IsWindows then
 		tests.testerrmsg("unavailable", socket:connect(addr))
-	elseif kind == "connection" then
+	elseif kind == "stream" then
 		tests.testerrmsg("refused", socket:connect(addr))
 	else
 		assert(socket:connect(addr) == true)
@@ -17,7 +17,7 @@ for _, kind in ipairs{"datagram", "connection"} do
 	tests.testclose(socket)
 end
 
-for _, kind in ipairs{"datagram", "connection"} do
+for _, kind in ipairs{"datagram", "stream"} do
 	local socket = tests.testcreatesocket(kind)
 
 	assert(socket:connect(tests.RemoteTCP) == true)
@@ -34,14 +34,14 @@ for _, kind in ipairs{"datagram", "connection"} do
 	tests.testclose(socket)
 end
 
-for _, kind in ipairs{"datagram", "connection"} do
+for _, kind in ipairs{"datagram", "stream"} do
 	local socket = tests.testcreatesocket(kind)
 	tests.testerror("unknown mode char (got 'l')",
 	                socket.receive, socket, 5, "all")
 	tests.testclose(socket)
 end
 
-for _, kind in ipairs{"datagram", "connection"} do
+for _, kind in ipairs{"datagram", "stream"} do
 	local socket = tests.testcreatesocket(kind)
 	assert(socket:setoption("blocking", false) == true)
 

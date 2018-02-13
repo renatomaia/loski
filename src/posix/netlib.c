@@ -188,7 +188,7 @@ LOSIDRV_API losi_ErrorCode losiN_initsock (losi_NetDriver *drv,
 	int kind;
 	switch (type) {
 		case LOSI_SOCKTYPE_LSTN:
-		case LOSI_SOCKTYPE_CONN: kind = SOCK_STREAM; break;
+		case LOSI_SOCKTYPE_STRM: kind = SOCK_STREAM; break;
 		case LOSI_SOCKTYPE_DGRM: kind = SOCK_DGRAM; break;
 		default: return LOSI_ERRUNSUPPORTED;
 	}
@@ -658,7 +658,7 @@ LOSIDRV_API losi_ErrorCode losiN_getaddrfound (losi_NetDriver *drv,
 {
 	memcpy(address, found->next->ai_addr, found->next->ai_addrlen);
 	*type = (found->nexttype & DGRMFLAG ? LOSI_SOCKTYPE_DGRM :
-	        (found->nexttype & LSTNFLAG ? LOSI_SOCKTYPE_LSTN : LOSI_SOCKTYPE_CONN));
+	        (found->nexttype & LSTNFLAG ? LOSI_SOCKTYPE_LSTN : LOSI_SOCKTYPE_STRM));
 	found->next = found->next->ai_next;
 	return hasnext(found);
 }
