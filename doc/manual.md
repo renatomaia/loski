@@ -107,7 +107,7 @@ If an address structure is provided as `address`, it is used to store the result
 `service` indicates the port number or service name to be used to resolve the port number of the resulting addresses.
 When `service` is absent, the port zero is used in the results.
 The string `mode` defines the search domain. 
-It can be contain any of the following characters:
+It can contain any of the following characters:
 
 - `4`: for IPv4 addresses.
 - `6`: for IPv6 addresses.
@@ -119,7 +119,7 @@ When neither `4` nor `6` are provided, the search only includes addresses of the
 When neither `d` nor `s` are provided, the search behaves as if both `d` and `s` were provided.
 By default, `mode` is the empty string.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"not found"`
 - `"no system memory"`
@@ -155,9 +155,18 @@ If `address` is an address structure, it returns a host name and a port service 
 If `address` is a number, it returns the service name for that port number.
 If `address` is a string, it returns a canonical name for that network name.
 
+The string `mode` can contain any of the following characters:
+
+- `l`: for local names instead of _Fully Qualified Domain Names_ (FQDN).
+- `d`: for names of datagram services instead of stream services.
+
+When neither `4` nor `6` are provided, the search only includes addresses of the same type configured in the local machine.
+When neither `d` nor `s` are provided, the search behaves as if both `d` and `s` were provided.
+By default, `mode` is the empty string.
+
 In case of errors, it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"not found"`
 - `"no system memory"`
@@ -188,7 +197,7 @@ The `domain` string defines the socket's address domain (or family) and can be a
 
 It returns a new socket handle, or, in case of errors, `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"no resources"` (no descriptors available)
 - `"access denied"`
@@ -211,7 +220,7 @@ Note that sockets are automatically closed when their handles are garbage collec
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"` (interrupted by signal)
 - `"system error"`
@@ -223,7 +232,7 @@ Binds `socket` to the local address provided as `address`.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"in use"` (socket is connected)
 - `"unavailable"` (address is in use)
@@ -244,7 +253,7 @@ If `address` is provided, it is the address structure used to store the result.
 
 In case of errors, it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"closed"` (socket is not connected)
 - `"no system memory"`
@@ -268,7 +277,7 @@ Sockets type `"datagram"` accept the additional option:
 
 - `"broadcast"`: is `true` when sending of broadcast messages are permited for `socket`, or `false` otherwise.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"access denied"`
 - `"no system memory"`
@@ -281,7 +290,7 @@ The available options are the same as defined in operation [`socket:getoption`](
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"in use"` (socket is connected)
 - `"too much"` (value too large for option)
@@ -297,7 +306,7 @@ This operation is only available for `listen` sockets.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"access denied"`
 - `"no resources"`
@@ -312,7 +321,7 @@ This operation is only available for `listen` sockets.
 In case of success, this function returns a new `stream` socket for the accepted connection.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"`
 - `"aborted"` (a connection has been aborted)
@@ -327,7 +336,7 @@ This operation is not available for `listen` sockets.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"`
 - `"in use"` (socket is connected or address in use)
@@ -352,7 +361,7 @@ Otherwise it returns `nil` plus an error message.
 
 __Note__: if `data` is a [memory](https://github.com/renatomaia/lua-memory), it is not converted to a Lua string prior to have its specified contents transfered.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"`
 - `"too much"` (message too large)
@@ -367,7 +376,7 @@ The current standard implementation of this operation may return the following [
 ### `data [, errmsg] = socket:receive (size [, mode [, address]])`
 
 Receives up to `size` bytes from socket `socket`, using the mode specified in the string `mode`.
-The mode string can be contain any of the following characters:
+The mode string can contain any of the following characters:
 
 - `p`: only peeks at an incoming message, leaving the returned data as unread in `socket`.
 - `a`: only returns successfully when all the `size` bytes were received (only for `stream` sockets).
@@ -380,10 +389,10 @@ For disconnected datagram sockets, it is possible to provide `address` with an a
 In case of success, this function returns the `data` effectivelly received from `socket`.
 Otherwise it returns `nil` plus an error message.
 
-__Note__: if `size` is not a number of bytes but a [memory](https://github.com/renatomaia/lua-memory), the size of the memory is used as `size`.
-Moreover, in case of success, the number of bytes actually received are returned instead of a string with the data.
+__Note__: if `size` is not a number of bytes but a [memory](https://github.com/renatomaia/lua-memory), the size of the memory is used as `size` and any data received is stored in the memory.
+Moreover, in case of success, the number of bytes actually received are returned instead of a string with the received data.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"`
 - `"timeout"`
@@ -408,7 +417,7 @@ This operation is only available for `stream` sockets.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"closed"` (socket is not connected)
 - `"no resources"`
@@ -450,7 +459,7 @@ Unless stated otherwise, when one of these field are not defined in table `cmd`,
 
 It returns a handle for the new process, or, in case of errors, `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"access denied"`
 - `"too much"`
@@ -469,7 +478,7 @@ In the last case, operation [`process.exitval`]{#process.exitval} can be used to
 
 Returns the exit value of process `proc` as a number in the range [0; 255], or, in case of errors, `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"` (process has not terminated yet)
 - `"aborted"` (process terminated before completion)
@@ -480,7 +489,7 @@ Forces the termination of process `proc`.
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"access denied"`
 
@@ -522,7 +531,7 @@ If no `timeout` is provided, the call waits indefinetaly for one of the wached e
 It returns a table mapping sources to a string indicating the events that happened, like the parameter `events` of ([`watcher:set`](#succ--errmsg--watcherset-source--events)).
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"` (interrupted by signal)
 
@@ -534,7 +543,7 @@ Note that watchers are automatically closed when their handles are garbage colle
 In case of success, this function returns `true`.
 Otherwise it returns `nil` plus an error message.
 
-The current standard implementation of this operation may return the following [error messages](#error-mesages).
+The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"` (interrupted by signal)
 - `"system error"`
