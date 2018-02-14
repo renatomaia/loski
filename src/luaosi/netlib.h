@@ -36,6 +36,11 @@ typedef enum losi_AddressType {
 #define LOSI_ADDRBINSZ_IPV6 (16*sizeof(char))
 #endif
 
+#ifndef LOSI_ADDRBINSZ_FILE
+#define LOSI_ADDRBINSZ_FILE (LOSI_ADDRSIZE_FILE - \
+                             offsetof(struct sockaddr_un, sun_path) - 1)
+#endif
+
 #ifndef LOSI_ADDRMAXPORT
 #define LOSI_ADDRMAXPORT 65535
 #endif

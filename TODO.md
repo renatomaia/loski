@@ -2,7 +2,6 @@ TODO
 ====
 
 Not Priorized:
-- Support for UNIX domain sockets
 - Support for (named) pipes
 - Support for async file operations
 - Support for file system operations (Lua File System)

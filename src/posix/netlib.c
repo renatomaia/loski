@@ -32,11 +32,21 @@ LOSIDRV_API void losiN_freedrv (losi_NetDriver *drv)
 
 /* TODO: ASSERT(LOSI_ADDRBINSZ_IPV4 == sizeof(in_addr_t)) */
 
+static size_t addrtypesz (const losi_AddressType type)
+{
+	switch (type) {
+		case LOSI_ADDRTYPE_IPV4: return LOSI_ADDRSIZE_IPV4;
+		case LOSI_ADDRTYPE_IPV6: return LOSI_ADDRSIZE_IPV6;
+		case LOSI_ADDRTYPE_FILE: return LOSI_ADDRSIZE_FILE;
+	}
+	return sizeof(struct sockaddr_storage);
+}
+
 LOSIDRV_API losi_ErrorCode losiN_initaddr (losi_NetDriver *drv,
                                            losi_Address *address,
                                            losi_AddressType type)
 {
-	memset(address, 0, sizeof(losi_Address));
+	memset(address, 0, addrtypesz(type));
 	address->sa_family = type;
 	return LOSI_ERRNONE;
 }
@@ -72,6 +82,11 @@ LOSIDRV_API losi_ErrorCode losiN_setaddrbytes (losi_NetDriver *drv,
 			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
 			memcpy(&addr->sin6_addr, data, LOSI_ADDRBINSZ_IPV6);
 		} break;
+		case AF_UNIX: {
+			struct sockaddr_un *addr = (struct sockaddr_un *)address;
+			memcpy(&addr->sun_path, data, LOSI_ADDRBINSZ_FILE);
+			addr->sun_path[LOSI_ADDRBINSZ_FILE] = '\0';
+		} break;
 		default: return LOSI_ERRUNSUPPORTED;
 	}
 	return LOSI_ERRNONE;
@@ -81,24 +96,34 @@ LOSIDRV_API losi_ErrorCode losiN_setaddrliteral (losi_NetDriver *drv,
                                                  losi_Address *address,
                                                  const char *data)
 {
-	int err;
-	void *bytes;
-	switch (address->sa_family) {
-		case AF_INET: {
-			struct sockaddr_in *addr = (struct sockaddr_in *)address;
-			bytes = (void *)&(addr->sin_addr.s_addr);
-		} break;
-		case AF_INET6: {
-			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
-			bytes = (void *)&addr->sin6_addr;
-		} break;
-		default: return LOSI_ERRUNSUPPORTED;
+	if (address->sa_family == AF_UNIX) {
+		struct sockaddr_un *addr = (struct sockaddr_un *)address;
+		char *e = stpncpy(addr->sun_path, data, LOSI_ADDRBINSZ_FILE);
+		if (e == (addr->sun_path + LOSI_ADDRBINSZ_FILE)) {
+			if (data[LOSI_ADDRBINSZ_FILE]) return LOSI_ERRTOOMUCH;
+			*e = '\0';
+		}
+		return LOSI_ERRNONE;
+	} else {
+		int err;
+		void *bytes;
+		switch (address->sa_family) {
+			case AF_INET: {
+				struct sockaddr_in *addr = (struct sockaddr_in *)address;
+				bytes = (void *)&(addr->sin_addr.s_addr);
+			} break;
+			case AF_INET6: {
+				struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
+				bytes = (void *)&addr->sin6_addr;
+			} break;
+			default: return LOSI_ERRUNSUPPORTED;
+		}
+		err = inet_pton(address->sa_family, data, bytes);
+		if (err == 1) return LOSI_ERRNONE;
+		if (err == 0) return LOSI_ERRINVALID;
+		if (errno == EAFNOSUPPORT) return LOSI_ERRUNSUPPORTED;
+		return LOSI_ERRUNSPECIFIED;
 	}
-	err = inet_pton(address->sa_family, data, bytes);
-	if (err == 1) return LOSI_ERRNONE;
-	if (err == 0) return LOSI_ERRINVALID;
-	if (errno == EAFNOSUPPORT) return LOSI_ERRUNSUPPORTED;
-	return LOSI_ERRUNSPECIFIED;
 }
 
 LOSIDRV_API losi_AddressType losiN_getaddrtype (losi_NetDriver *drv,
@@ -138,6 +163,11 @@ LOSIDRV_API const char *losiN_getaddrbytes (losi_NetDriver *drv,
 			if (sz) *sz = LOSI_ADDRBINSZ_IPV6;
 			return (const void *)&addr->sin6_addr;
 		} break;
+		case AF_UNIX: {
+			struct sockaddr_un *addr = (struct sockaddr_un *)address;
+			if (sz) *sz = LOSI_ADDRBINSZ_FILE;
+			return addr->sun_path;
+		} break;
 	}
 	if (sz) *sz = 0;
 	return NULL;
@@ -157,22 +187,17 @@ LOSIDRV_API const char *losiN_getaddrliteral (losi_NetDriver *drv,
 			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
 			bytes = (const void *)&addr->sin6_addr;
 		} break;
+		case AF_UNIX: {
+			struct sockaddr_un *addr = (struct sockaddr_un *)address;
+			return addr->sun_path;
+		} break;
 		default: return NULL;
 	}
 	return inet_ntop(address->sa_family, bytes, data, LOSI_ADDRMAXLITERAL);
 }
 
-#define toaddr(A)	((struct sockaddr *)A)
-
-static size_t addrsz (const losi_Address *address)
-{
-	switch (address->sa_family) {
-		case LOSI_ADDRTYPE_IPV4: return LOSI_ADDRSIZE_IPV4;
-		case LOSI_ADDRTYPE_IPV6: return LOSI_ADDRSIZE_IPV6;
-		case LOSI_ADDRTYPE_FILE: return LOSI_ADDRSIZE_FILE;
-	}
-	return sizeof(struct sockaddr_storage);
-}
+#define toaddr(A) ((struct sockaddr *)A)
+#define addrsz(A) (addrtypesz(A->sa_family))
 
 /*****************************************************************************
  * Sockets *******************************************************************
@@ -327,7 +352,6 @@ LOSIDRV_API losi_ErrorCode losiN_bindsock (losi_NetDriver *drv,
 		case EINVAL: return LOSI_ERRINVALID;
 		case EBADF:
 		case ENOTSOCK: return LOSI_ERRUNEXPECTED;
-#if 0
 		/* only for AF_UNIX sockets */
 		case ENOENT: return LOSI_ERRNOTFOUND;
 		case ENOTDIR: return LOSI_ERRUNAVAILABLE;
@@ -337,7 +361,6 @@ LOSIDRV_API losi_ErrorCode losiN_bindsock (losi_NetDriver *drv,
 		case ELOOP:
 		case ENAMETOOLONG: return LOSI_ERRTOOMUCH;
 		case EDESTADDRREQ: return LOSI_ERRUNEXPECTED;
-#endif
 	}
 	return LOSI_ERRUNSPECIFIED;
 }
@@ -389,7 +412,6 @@ LOSIDRV_API losi_ErrorCode losiN_connectsock (losi_NetDriver *drv,
 		case EINVAL: return LOSI_ERRUNSUPPORTED;
 		case EBADF:
 		case ENOTSOCK: return LOSI_ERRUNEXPECTED;
-#if 0
 		/* only for AF_UNIX sockets */
 		case EACCES: return LOSI_ERRDENIED;
 		case ENOENT: return LOSI_ERRNOTFOUND;
@@ -397,7 +419,6 @@ LOSIDRV_API losi_ErrorCode losiN_connectsock (losi_NetDriver *drv,
 		case EIO: return LOSI_ERRSYSTEMFAIL;
 		case ELOOP:
 		case ENAMETOOLONG: return LOSI_ERRTOOMUCH;
-#endif
 	}
 	return LOSI_ERRUNSPECIFIED;
 }
@@ -411,9 +432,8 @@ LOSIDRV_API losi_ErrorCode losiN_sendtosock (losi_NetDriver *drv,
 {
 	ssize_t err;
 	if (!address) err = send(sock->fd, data, size, 0);
-	else          err = sendto(sock->fd, data, size, 0,
-	                           toaddr(address),
-	                           addrsz(address));
+	else          err = sendto(sock->fd, data, size, 0, toaddr(address),
+	                                                    addrsz(address));
 	if (err >= 0) {
 		*bytes = (size_t)err;
 		return LOSI_ERRNONE;

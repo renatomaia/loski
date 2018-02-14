@@ -143,11 +143,15 @@ static int addr_tostring (lua_State *L)
 	losi_NetDriver *drv = todrv(L);
 	losi_Address *na = toaddr(L, 1);
 	losi_AddressType type = losiN_getaddrtype(drv, na);
-	losi_AddressPort port = losiN_getaddrport(drv, na);
 	char b[LOSI_ADDRMAXLITERAL];
 	const char *s = losiN_getaddrliteral(drv, na, b);
-	if (s) lua_pushfstring(L, type==LOSI_ADDRTYPE_IPV6?"[%s]:%d":"%s:%d",s,port);
-	else lua_pushfstring(L, "invalid address type (%d)", type);
+	if (type == LOSI_ADDRTYPE_FILE) {
+		lua_pushstring(L, s);
+	} else {
+		losi_AddressPort port = losiN_getaddrport(drv, na);
+		if (s) lua_pushfstring(L, type==LOSI_ADDRTYPE_IPV6?"[%s]:%d":"%s:%d",s,port);
+		else lua_pushfstring(L, "invalid address type (%d)", type);
+	}
 	return 1;
 }
 
@@ -184,7 +188,8 @@ static int addr_index (lua_State *L)
 	int field = luaL_checkoption(L, 2, NULL, fields);
 	switch (field) {
 		case 0: {  /* port */
-			lua_pushinteger(L, losiN_getaddrport(drv, na));
+			if (losiN_getaddrtype(drv, na) == LOSI_ADDRTYPE_FILE) lua_pushnil(L);
+			else lua_pushinteger(L, losiN_getaddrport(drv, na));
 		} break;
 		case 1: {  /* binary */
 			size_t sz;
@@ -219,6 +224,8 @@ static int addr_newindex (lua_State *L)
 	losi_ErrorCode err = 0;
 	switch (field) {
 		case 0: {  /* port */
+			luaL_argcheck(L, losiN_getaddrtype(drv, na) != LOSI_ADDRTYPE_FILE, 2,
+			                 "invalid option 'port'");
 			err = losiN_setaddrport(drv, na, int2port(L, luaL_checkinteger(L,3), 3));
 		} break;
 		case 1: {  /* binary */
@@ -228,6 +235,7 @@ static int addr_newindex (lua_State *L)
 			switch (type) {
 				case LOSI_ADDRTYPE_IPV4: esz = LOSI_ADDRBINSZ_IPV4; break;
 				case LOSI_ADDRTYPE_IPV6: esz = LOSI_ADDRBINSZ_IPV6; break;
+				case LOSI_ADDRTYPE_FILE: esz = LOSI_ADDRBINSZ_FILE; break;
 				default: return luaL_argerror(L, 1, "corrupted data");
 			}
 			luaL_argcheck(L, sz == esz, 3, "wrong byte size");

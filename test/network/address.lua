@@ -26,8 +26,36 @@ do
 	assert(a.type == "ipv4")
 	assert(a.port == 0)
 	assert(a.literal == "0.0.0.0")
-	assert(a.binary == "\000\000\000\000")
+	assert(a.binary == "\0\0\0\0")
 	assert(a == network.address("ipv4"))
+end
+
+do
+	local a = network.address("ipv6")
+
+	assert(tostring(a) == "[::]:0")
+	assert(a.type == "ipv6")
+	assert(a.port == 0)
+	assert(a.literal == "::")
+	assert(a.binary == string.rep("\0", 16))
+	assert(a == network.address("ipv6"))
+end
+
+do
+	local a = network.address("file")
+
+	assert(tostring(a) == "")
+	assert(a.type == "file")
+	assert(a.port == nil)
+	assert(a.literal == "")
+	assert(string.match(a.binary, "^\0+$") ~= nil)
+	assert(a == network.address("file"))
+end
+
+local addrpathsize = #network.address("file").binary
+local addrpathhuge = string.rep("x", addrpathsize)
+local function tofilebin(path)
+	return path..string.rep("\0", addrpathsize - #path)
 end
 
 local cases = {
@@ -61,6 +89,19 @@ local cases = {
 				"\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0\15",
 			["1:203:405:607:809:a0b:c0d:e0f"] =
 				"\0\1\2\3\4\5\6\7\8\9\10\11\12\13\14\15",
+		},
+	},
+	file = {
+		literal = "/tmp/lua.tmp",
+		binary = tofilebin("/tmp/lua.tmp"),
+		uri = "/tmp/lua.tmp",
+		changes = {
+			literal = "file.tmp",
+			binary = tofilebin("\0something"),
+		},
+		equivalents = {
+			one = tofilebin("one"),
+			[addrpathhuge] = addrpathhuge,
 		},
 	},
 }
@@ -101,13 +142,19 @@ for type, case in pairs(cases) do
 end
 
 do
-	local a = network.address("ipv4")
-	utils.testerror("bad argument #2 to '__index' (invalid option 'wrongfield')",
-		function () return a.wrongfield end)
-	utils.testerror("bad argument #2 to '__newindex' (invalid option 'wrongfield')",
-		function () a.wrongfield = true end)
-	utils.testerror("bad argument #2 to '__newindex' (invalid option 'type')",
-		function () a.type = true end)
+	for _, type in ipairs{ "ipv4", "ipv6", "file" } do
+		local a = network.address(type)
+		utils.testerror("bad argument #2 to '__index' (invalid option 'wrongfield')",
+			function () return a.wrongfield end)
+		utils.testerror("bad argument #2 to '__newindex' (invalid option 'wrongfield')",
+			function () a.wrongfield = true end)
+		utils.testerror("bad argument #2 to '__newindex' (invalid option 'type')",
+			function () a.type = true end)
+		if type == "file" then
+			utils.testerror("bad argument #2 to '__newindex' (invalid option 'port')",
+				function () a.port = 1234 end)
+		end
+	end
 end
 
 do
