@@ -15,7 +15,7 @@ Index
 - [`watcher:wait`](#map--errmsg--watcherwait-timeout)
 - [`watcher:close`](#succ--errmsg--watcherclose-)
 
-- [`network.address`](#address--networkaddress-data--port--mode)
+- [`network.address`](#address--networkaddress-type--data--port--mode)
 - [`network.getname`](#name--service--networkgetname-address--mode)
 - [`network.resolve`](#next--errmsg--networkresolve-name--service--mode)
 - [`network.socket`](#socket--errmsg--networksocket-type--domain)
@@ -58,26 +58,35 @@ Suspends the execution for `delay` seconds.
 Network Facilities
 ------------------
 
-### `address = network.address ([data [, port [, mode]]])`
+### `address = network.address (type [, data [, port [, mode]]])`
 
-Creates an address structure.
+Creates an address structure of the type defined by `type`, which can be any of the following:
 
-If no parameters are provided the structure created is initilized with address `0.0.0.0:0` (IPv4).
+`"ipv4"`
+:	IPv4 addresses.
 
-`data` is a string with the information to be stored in the structure created.
+`"ipv6"`
+:	IPv6 addresses.
 
-If only `data` is provided, it must be a literal address as formatted inside a URI, like `"192.0.2.128:80"` (IPv4) or `"[::ffff:c000:0280]:80"` (IPv6).
+`"file"`
+:	File path addresses (local access only).
 
-If `port` is provided, `data` is a host address and `port` is a port number to be used to initialize the address structure.
+If `data` is not provided the structure created is initilized with null data: `0.0.0.0:0` for `"ipv4"`, or `[::]:0` for `"ipv6"`, or `""` for `"file"`.
+Otherwise, `data` is a string with the information to be stored in the structure created.
+
+If `type` is `"file"` then `data` contains a file path and other parameters are ignored.
+
+For other values of `type`, if only `data` is provided, it must be a literal address as formatted inside a URI, like `"192.0.2.128:80"` (`type` is `"ipv4"`) or `"[::ffff:c000:0280]:80"` (`type` is `"ipv6"`).
+Moreover, if `port` is provided, `data` is a host address and `port` is a port number to be used to initialize the address structure.
 The string `mode` controls whether `data` is text (literal) or binary.
 It may be the string `"b"` (binary data) or `"t"` (text data).
 The default is `"t"`.
 
-Returns a structure that provides the following fields:
+In case of errors, returns `nil` plus an error message.
+Otherwise, returns a structure that provides the following fields:
 
 `type`
 :	is either the string `"ipv4"` or `"ipv6"` to indicate the address is a IPv4 or IPv6 address, respectively.
-	When the value of this field changes, the whole address data is set to null values: `0.0.0.0:0` for `"ipv4"`, or `[::]:0` for `"ipv6"`.
 
 `literal`
 :	is the text (literal) representation of the address, like `"192.0.2.128"` (IPv4) or `"::ffff:c000:0280"` (IPv6).
@@ -95,14 +104,6 @@ Moreover, you can pass the object to the standard function `tostring` to obtain 
 Searches for the addresses for a network node with name `name`.
 If `name` is `nil`, the loopback address is searched.
 If `name` is `"*"`, the wildcard address is searched.
-If some address is found, returns an iterator function with the following usage pattern:
-
-	[address, socktype, more =] next ([address])
-
-Otherwise, it returns `nil` plus an error message.
-
-Each time the iterator function is called, returns one address found for node with `name`, followed by the type of the socket to be used to connect to the address, and a boolean indicating if there is more results to be returned in future calls.
-If an address structure is provided as `address`, it is used to store the result; otherwise a new address structure is created.
 
 `service` indicates the port number or service name to be used to resolve the port number of the resulting addresses.
 When `service` is absent, the port zero is used in the results.
@@ -119,16 +120,26 @@ When neither `4` nor `6` are provided, the search only includes addresses of the
 When neither `d` nor `s` are provided, the search behaves as if both `d` and `s` were provided.
 By default, `mode` is the empty string.
 
+Returns `nil` plus an error message in case of errors.
+Otherwise, returns an iterator that have the following usage pattern:
+
+	[address, socktype =] next ([address])
+
+Each time the iterator is called, returns one address found for node with `name`, followed by the type of the socket to be used to connect to the address, and the type of the next address.
+If an address structure is provided as `address`, it is used to store the result; otherwise a new address structure is created.
+The iterator also provides field `domain` that informs the type of the next address.
+Therefore, `next.domain` is `"ipv4"` if the next address id a IPv4 address, or `"ipv6"` if the next address id a IPv6 address, or `nil` if the next call will return no address.
+
 The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"not found"`
 - `"no system memory"`
 - `"system error"`
 
-As an example, the following loop will iterate over all the addresses found for service named 'ssh' on node named `www.lua.org`, using the same address object:
+As an example, the following loop will iterate over all the addresses found for service named 'ssh' on node named `www.lua.org`, using the same IPv4 address object:
 
-	next = assert(network.resolve("www.lua.org", "ssh"))
-	for addr, scktype in next, address.create() do
+	next = assert(network.resolve("www.lua.org", "ssh", "4"))
+	for addr, scktype in next, address.create("ipv4") do
 		print(addr, scktype)
 	end
 
@@ -145,8 +156,11 @@ Yet another example that collects all address found in new address objects.
 
 Finally, an example that fills existing addreses objects with the results
 
-	next = network.resolve("www.lua.org", "http", "s")
-	repeat until not select(3, next(getSomeAddressObject()))
+	address = { ipv4 = network.address("ipv4"), ipv6 = network.address("ipv6") }
+	next = assert(network.resolve("www.lua.org", "http", "s"))
+	repeat
+		addr, scktype = next(address[next.domain])
+	until next.domain == nil
 
 ### `name [, service] = network.getname (address [, mode])`
 
@@ -179,13 +193,13 @@ Creates a socket, of the type specified in the string `type`.
 The `type` string can be any of the following:
 
 `"datagram"`
-:	datagram socket (UDP).
+:	datagram socket.
 
 `"stream"`
-:	stream socket (TCP).
+:	stream socket.
 
 `"listen"`
-:	socket to accept stream socket connections (TCP).
+:	socket to accept stream socket connections.
 
 The `domain` string defines the socket's address domain (or family) and can be any of the following:
 
@@ -194,6 +208,9 @@ The `domain` string defines the socket's address domain (or family) and can be a
 
 `"ipv6"`
 :	IPv6 addresses.
+
+`"file"`
+:	File path addresses (local access only).
 
 It returns a new socket handle, or, in case of errors, `nil` plus an error message.
 
@@ -211,6 +228,10 @@ Returns the string `"address"` if `value` is an address structure, or `"socket"`
 
 The type of `socket`, which can be: `"datagram"` `"stream"`, `"listen"`.
 This field is read-only.
+
+### `type = socket:getdomain()`
+
+Returns the address domain of `socket`, which can be: `"ipv4"` `"ipv6"`, or `"file"`.
 
 ### `success [, errmsg] = socket:close ()`
 

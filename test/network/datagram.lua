@@ -9,7 +9,7 @@ local remotecode = [[
 	local time = require "time"
 	local network = require "network"
 
-	local addr = network.address("0.0.0.0", ]]..tests.LocalAddress.port..[[)
+	local addr = network.address("ipv4", "0.0.0.0", ]]..tests.LocalAddress.port..[[)
 	local socket = assert(network.socket("datagram"))
 	assert(socket:setoption("reuseaddr", true) == true)
 	assert(socket:bind(addr) == true)
@@ -64,13 +64,13 @@ do
 	assert(socket:send(final, 1, -1, tests.LocalAddress) == packsize)
 	local remaining = 3*packsize
 	while remaining > 0 do
-		local addr = network.address()
+		local addr = network.address("ipv4")
 		local received = socket:receive(remaining, nil, addr)
 		assert(received == data)
 		assert(addr == tests.LocalAddress)
 		remaining = remaining - #data
 	end
-	local addr = network.address()
+	local addr = network.address("ipv4")
 	local received = socket:receive(packsize, nil, addr)
 	assert(received == final)
 	assert(addr == tests.LocalAddress)
@@ -92,7 +92,7 @@ do
 	end
 	tests.testerrmsg("unfulfilled", socket:receive(packsize))
 	assert(socket:send(final) == packsize)
-	local addr = network.address()
+	local addr = network.address("ipv4")
 	local remaining = 3*packsize
 	while remaining > 0 do
 		local received = tests.tcall(true, socket.receive, socket, remaining, nil, addr)
