@@ -28,12 +28,12 @@ typedef enum losi_AddressType {
 } losi_AddressType;
 #endif
 
-#ifndef LOSI_ADDRSIZE_IPV4
-#define LOSI_ADDRSIZE_IPV4 (4*sizeof(char))
+#ifndef LOSI_ADDRBINSZ_IPV4
+#define LOSI_ADDRBINSZ_IPV4 (4*sizeof(char))
 #endif
 
-#ifndef LOSI_ADDRSIZE_IPV6
-#define LOSI_ADDRSIZE_IPV6 (16*sizeof(char))
+#ifndef LOSI_ADDRBINSZ_IPV6
+#define LOSI_ADDRBINSZ_IPV6 (16*sizeof(char))
 #endif
 
 #ifndef LOSI_ADDRMAXPORT
@@ -123,8 +123,11 @@ LOSIDRV_API losi_ErrorCode losiN_initsock (losi_NetDriver *drv,
                                            losi_SocketType type,
                                            losi_AddressType domain);
 
-LOSIDRV_API losi_ErrorCode losiN_getsockid (losi_NetDriver *drv,
-                                            losi_Socket *socket);
+LOSIDRV_API losi_AddressType losiN_getsockdomain (losi_NetDriver *drv,
+                                                  losi_Socket *socket);
+
+LOSIDRV_API losi_IntUniqueId losiN_getsockid (losi_NetDriver *drv,
+                                              losi_Socket *socket);
 
 LOSIDRV_API losi_ErrorCode losiN_setsockopt (losi_NetDriver *drv,
                                              losi_Socket *socket,
@@ -184,7 +187,7 @@ LOSIDRV_API losi_ErrorCode losiN_closesock (losi_NetDriver *drv,
  * Names
  */
 
-#ifndef LOKSI_ADDRFIND_CUSTOM
+#ifndef LOSI_ADDRFIND_CUSTOM
 typedef enum losi_AddressFindFlag {
 	LOSI_ADDRFIND_IPV4 = 0x01,
 	LOSI_ADDRFIND_IPV6 = 0x02,
@@ -195,7 +198,7 @@ typedef enum losi_AddressFindFlag {
 } losi_AddressFindFlag;
 #endif
 
-#ifndef LOKSI_ADDRNAME_CUSTOM
+#ifndef LOSI_ADDRNAME_CUSTOM
 typedef enum losi_AddressNameFlag {
 	LOSI_ADDRNAME_LOCAL = 0x01,
 	LOSI_ADDRNAME_DGRM = 0x02,
@@ -212,10 +215,14 @@ LOSIDRV_API losi_ErrorCode losiN_resolveaddr (losi_NetDriver *drv,
                                               const char *nodename,
                                               const char *servname);
 
-LOSIDRV_API losi_ErrorCode losiN_getaddrfound (losi_NetDriver *drv,
-                                               losi_AddressFound *found,
-                                               losi_Address *address,
-                                               losi_SocketType *type);
+LOSIDRV_API int losiN_getaddrtypefound (losi_NetDriver *drv,
+                                        losi_AddressFound *found,
+                                        losi_AddressType *type);
+
+LOSIDRV_API int losiN_getaddrfound (losi_NetDriver *drv,
+                                    losi_AddressFound *found,
+                                    losi_Address *address,
+                                    losi_SocketType *type);
 
 LOSIDRV_API void losiN_freeaddrfound (losi_NetDriver *drv,
                                       losi_AddressFound *found);

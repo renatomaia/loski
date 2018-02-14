@@ -2,7 +2,7 @@ local time = require "time"
 local network = require "network"
 local tests = require "test.network.utils"
 
-local addr = network.address("0.0.0.0", 80)
+local addr = network.address("ipv4", "0.0.0.0", 80)
 for _, kind in ipairs{"datagram", "stream"} do
 	local socket = tests.testcreatesocket(kind)
 

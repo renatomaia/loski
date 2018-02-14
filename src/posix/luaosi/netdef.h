@@ -6,16 +6,22 @@
 
 #include <netinet/in.h>  /* network addresses */
 #include <arpa/inet.h>  /* IP addresses */
+#include <sys/un.h>  /* UNIX domain addresses */
 
 typedef void losi_NetDriver;
 
-typedef struct sockaddr_storage losi_Address;
+typedef struct sockaddr losi_Address;
 
 typedef in_port_t losi_AddressPort;
+
+#define LOSI_ADDRSIZE_IPV4	sizeof(struct sockaddr_in)
+#define LOSI_ADDRSIZE_IPV6	sizeof(struct sockaddr_in6)
+#define LOSI_ADDRSIZE_FILE	sizeof(struct sockaddr_un)
 
 typedef int losi_AddressType;
 #define LOSI_ADDRTYPE_IPV4	AF_INET
 #define LOSI_ADDRTYPE_IPV6	AF_INET6
+#define LOSI_ADDRTYPE_FILE	AF_UNIX
 #define LOSI_ADDRTYPE_CUSTOM
 
 #define LOSI_ADDRMAXLITERAL  (INET6_ADDRSTRLEN+1)
@@ -27,7 +33,10 @@ typedef int losi_AddressType;
 
 #include <sys/socket.h>
 
-typedef int losi_Socket;
+typedef struct losi_Socket {
+	int fd;
+	int domain;
+} losi_Socket;
 
 typedef int losi_SocketRecvFlag;
 #define LOSI_SOCKRCV_PEEKONLY	MSG_PEEK
@@ -55,13 +64,13 @@ LOSIDRV_API void losiN_freesockevtsrc (void *udata);
 typedef struct losi_AddressFound {
 	struct addrinfo *results;
 	struct addrinfo *next;
-	int nexttype;
+	int passive;
 } losi_AddressFound;
 
 typedef int losi_AddressNameFlag;
 #define LOSI_ADDRNAME_LOCAL	NI_NOFQDN
 #define LOSI_ADDRNAME_DGRM	NI_DGRAM
-#define LOKSI_ADDRNAME_CUSTOM
+#define LOSI_ADDRNAME_CUSTOM
 
 
 

@@ -32,7 +32,6 @@
 static int mem2port (const char *s, const char *e, losi_AddressPort *pn)
 {
 	lua_Unsigned n = 0;
-	if (s == e) return 0;  /* no digit? */
 	do {
 		char d = *s - '0';
 		if (d < 0 || d > 9) return 0;  /* invalid digit */
@@ -49,70 +48,90 @@ static losi_AddressPort int2port (lua_State *L, lua_Integer n, int idx)
 	return (losi_AddressPort)n;
 }
 
-static int pushnewaddr (lua_State *L,
-                        losi_AddressType type,
-                        losi_AddressPort port,
-                        const char *data, int bin)
+static void pushaddrtype (lua_State *L, losi_AddressType type)
 {
-	losi_NetDriver *drv = todrv(L);
-	losi_Address *na = losi_newaddress(L);
-	losi_ErrorCode err = losiN_initaddr(drv, na, type);
-	if (!err && data) {
-		if (bin) err = losiN_setaddrbytes(drv, na, data);
-		else err = losiN_setaddrliteral(drv, na, data);
-		if (!err && port) err = losiN_setaddrport(drv, na, port);
+	switch (type) {
+		case LOSI_ADDRTYPE_IPV4: lua_pushliteral(L, "ipv4"); break;
+		case LOSI_ADDRTYPE_IPV6: lua_pushliteral(L, "ipv6"); break;
+		case LOSI_ADDRTYPE_FILE: lua_pushliteral(L, "file"); break;
+		default: lua_pushnil(L);
 	}
-	return losiL_doresults(L, 1, err);
 }
 
-/* address = network.address([data [, port [, format]]]) */
+static const char *const AddrTypeName[] = {
+	"ipv4",
+	"ipv6",
+	"file",
+	NULL
+};
+static const losi_AddressType AddrTypeId[] = {
+	LOSI_ADDRTYPE_IPV4,
+	LOSI_ADDRTYPE_IPV6,
+	LOSI_ADDRTYPE_FILE
+};
+
+/* address [, errmsg] = network.address(type, [data [, port [, format]]]) */
 static int net_address (lua_State *L)
 {
-	losi_AddressType type = LOSI_ADDRTYPE_IPV4;
-	losi_AddressPort port = 0;
-	const char *data = NULL;
-	int bin = 0, n = lua_gettop(L);
-	if (n > 0) {
+	losi_NetDriver *drv = todrv(L);
+	losi_AddressType type = AddrTypeId[luaL_checkoption(L, 1, NULL, AddrTypeName)];
+	int n = lua_gettop(L);
+	losi_Address *na;
+	losi_ErrorCode err;
+	lua_settop(L, 4);
+	na = losi_newaddress(L, type);
+	err = losiN_initaddr(drv, na, type);
+	if (!err && n > 1) {
 		size_t sz;
-		data = luamem_checkstring(L, 1, &sz);
-		if (n == 1) {  /* URI format */
+		const char *data = luamem_checkstring(L, 2, &sz);
+		if (type == LOSI_ADDRTYPE_FILE) {
+			err = losiN_setaddrliteral(drv, na, data);
+		} else if (n == 2) {  /* URI format */
 			char literal[LOSI_ADDRMAXLITERAL];
 			const char *c, *e = data + sz;
-			if (data[0] == '[') {
-				c = memchr(++data, ']', sz-1);
-				luaL_argcheck(L, c && c+1 < e && c[1] == ':', 1, "invalid URI format");
-				sz = c - data;
-				type = LOSI_ADDRTYPE_IPV6;
-				++c;
-			} else {
-				c = memchr(data, ':', sz);
-				luaL_argcheck(L, c, 1, "invalid URI format");
-				sz = c - data;
-				type = LOSI_ADDRTYPE_IPV4;
+			switch (type) {
+				case LOSI_ADDRTYPE_IPV4: {
+					c = memchr(data, ':', sz - 1);  /* at least one port digit */
+					luaL_argcheck(L, c, 2, "invalid URI format");
+					sz = c - data;
+				} break;
+				case LOSI_ADDRTYPE_IPV6: {
+					c = memchr(++data, ']', sz - 3);  /* intial '[' and final ':?' */
+					luaL_argcheck(L, c && c[1] == ':', 2, "invalid URI format");
+					sz = (c++) - data;
+				} break;
+				default: return losiL_doresults(L, 0, LOSI_ERRUNSUPPORTED);
 			}
-			luaL_argcheck(L, sz < LOSI_ADDRMAXLITERAL, 1, "invalid URI format");
-			luaL_argcheck(L, mem2port(c+1, e, &port), 1, "invalid port");
+			luaL_argcheck(L, sz < LOSI_ADDRMAXLITERAL, 2, "invalid URI format");
 			memcpy(literal, data, sz);
 			literal[sz] = '\0';
-			return pushnewaddr(L, type, port, literal, 0);
-		} else {
-			const char *mode = luaL_optstring(L, 3, "t");
-			port = int2port(L, luaL_checkinteger(L, 2), 2);
-			if (mode[0] == 'b' && mode[1] == '\0') {  /* binary format */
-				switch (sz) {
-					case LOSI_ADDRSIZE_IPV4: type = LOSI_ADDRTYPE_IPV4; break;
-					case LOSI_ADDRSIZE_IPV6: type = LOSI_ADDRTYPE_IPV6; break;
-					default: return luaL_argerror(L, 1, "invalid binary address");
-				}
-				bin = 1;
-			} else if (mode[0] == 't' && mode[1] == '\0') {  /* literal format */
-				type = strchr(data, ':') ? LOSI_ADDRTYPE_IPV6 : LOSI_ADDRTYPE_IPV4;
-			} else {
-				return luaL_argerror(L, 3, "invalid mode");
+			err = losiN_setaddrliteral(drv, na, literal);
+			if (!err) {
+				losi_AddressPort port = 0;
+				luaL_argcheck(L, mem2port(c+1, e, &port), 2, "invalid port");
+				err = losiN_setaddrport(drv, na, port);
 			}
+		} else {
+			losi_AddressPort port = int2port(L, luaL_checkinteger(L, 3), 3);
+			const char *mode = luaL_optstring(L, 4, "t");
+			if (mode[0] == 'b' && mode[1] == '\0') {  /* binary format */
+				size_t binsz;
+				switch (type) {
+					case LOSI_ADDRTYPE_IPV4: binsz = LOSI_ADDRBINSZ_IPV4; break;
+					case LOSI_ADDRTYPE_IPV6: binsz = LOSI_ADDRBINSZ_IPV6; break;
+					default: return losiL_doresults(L, 0, LOSI_ERRUNSUPPORTED);
+				}
+				luaL_argcheck(L, sz == binsz, 2, "invalid binary address");
+				err = losiN_setaddrbytes(drv, na, data);
+			} else if (mode[0] == 't' && mode[1] == '\0') {  /* literal format */
+				err = losiN_setaddrliteral(drv, na, data);
+			} else {
+				return luaL_argerror(L, 4, "invalid mode");
+			}
+			if (!err) err = losiN_setaddrport(drv, na, port);
 		}
 	}
-	return pushnewaddr(L, type, port, data, bin);
+	return losiL_doresults(L, 1, err);
 }
 
 
@@ -179,37 +198,21 @@ static int addr_index (lua_State *L)
 			lua_pushstring(L, s);
 		} break;
 		case 3: {  /* type */
-			losi_AddressType type = losiN_getaddrtype(drv, na);
-			switch (type) {
-				case LOSI_ADDRTYPE_IPV4: lua_pushliteral(L, "ipv4"); break;
-				case LOSI_ADDRTYPE_IPV6: lua_pushliteral(L, "ipv6"); break;
-				default: return luaL_argerror(L, 1, "corrupted data");
-			}
+			pushaddrtype(L, losiN_getaddrtype(drv, na));
 		} break;
 	}
 	return 1;
 }
 
 
-static const char *const AddrTypeName[] = {
-	"ipv4",
-	"ipv6",
-	NULL
-};
-static const losi_AddressType AddrTypeId[] = {
-	LOSI_ADDRTYPE_IPV4,
-	LOSI_ADDRTYPE_IPV6
-};
-
 /*
- * address.type = type
  * address.literal = literal
  * address.binary = binary
  * address.port = port
  */
 static int addr_newindex (lua_State *L)
 {
-	static const char *const fields[] = {"port","binary","literal","type",NULL};
+	static const char *const fields[] = {"port","binary","literal",NULL};
 	losi_NetDriver *drv = todrv(L);
 	losi_Address *na = toaddr(L, 1);
 	int field = luaL_checkoption(L, 2, NULL, fields);
@@ -223,8 +226,8 @@ static int addr_newindex (lua_State *L)
 			const char *data = luamem_checkstring(L, 3, &sz);
 			losi_AddressType type = losiN_getaddrtype(drv, na);
 			switch (type) {
-				case LOSI_ADDRTYPE_IPV4: esz = LOSI_ADDRSIZE_IPV4; break;
-				case LOSI_ADDRTYPE_IPV6: esz = LOSI_ADDRSIZE_IPV6; break;
+				case LOSI_ADDRTYPE_IPV4: esz = LOSI_ADDRBINSZ_IPV4; break;
+				case LOSI_ADDRTYPE_IPV6: esz = LOSI_ADDRBINSZ_IPV6; break;
 				default: return luaL_argerror(L, 1, "corrupted data");
 			}
 			luaL_argcheck(L, sz == esz, 3, "wrong byte size");
@@ -234,12 +237,6 @@ static int addr_newindex (lua_State *L)
 			size_t sz;
 			const char *data = luaL_checklstring(L, 3, &sz);
 			err = losiN_setaddrliteral(drv, na, data);
-		} break;
-		case 3: {  /* type */
-			int i = luaL_checkoption(L, 3, NULL, AddrTypeName);
-			losi_AddressType type = losiN_getaddrtype(drv, na);
-			losi_AddressType new = AddrTypeId[i];
-			if (new != type) err = losiN_initaddr(drv, na, new);
 		} break;
 	}
 	if (!err) return 0;
@@ -331,12 +328,45 @@ static int sck_close (lua_State *L)
 }
 
 
+/* domain = socket:getdomain() */
+static int sck_getdomain (lua_State *L)
+{
+	losi_NetDriver *drv = todrv(L);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_SOCK);
+	pushaddrtype(L, losiN_getsockdomain(drv, socket));
+	return 1;
+}
+
+
+#define chksckaddr(L,I,D,A,S) luaL_argcheck(L, losiN_getaddrtype(D, A) == S, \
+                                               I, "wrong domain")
+
+#define chkdomain(L,I,D,A,S) chksckaddr(L,I,D,A,losiN_getsockdomain(D,S))
+
+static const losi_Address *tosckaddr (lua_State *L, int idx,
+                                      losi_NetDriver *drv,
+                                      losi_Socket *socket)
+{
+	losi_Address *addr = toaddr(L, idx);
+	chkdomain(L, idx, drv, addr, socket);
+	return addr;
+}
+
+static losi_Address *optaddr (lua_State *L, int idx,
+                              losi_NetDriver *drv,
+                              losi_Socket *socket)
+{
+	losi_Address *addr = losi_toaddress(L, idx);
+	if (addr) chkdomain(L, idx, drv, addr, socket);
+	return addr;
+}
+
 /* succ [, errmsg] = socket:bind(address) */
 static int sck_bind (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_SOCK);
-	const losi_Address *addr = toaddr(L, 2);
+	const losi_Address *addr = tosckaddr(L, 2, drv, socket);
 	losi_ErrorCode err = losiN_bindsock(drv, socket, addr);
 	return losiL_doresults(L, 0, err);
 }
@@ -349,15 +379,17 @@ static int sck_getaddress (lua_State *L)
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_SOCK);
 	int peer = luaL_checkoption(L, 2, "this", sites);
+	losi_AddressType domain = losiN_getsockdomain(drv, socket);
 	losi_Address *addr = losi_toaddress(L, 3);
-	losi_ErrorCode err;
-	if (!addr) {
+	if (addr) {
+		lua_settop(L, 3);
+		chksckaddr(L, 3, drv, addr, domain);
+	} else {
 		lua_settop(L, 2);
-		addr = losi_newaddress(L);
+		addr = losi_newaddress(L, domain);
+		losiN_initaddr(drv, addr, domain);
 	}
-	else lua_settop(L, 3);
-	err = losiN_getsockaddr(drv, socket, addr, peer);
-	return losiL_doresults(L, 1, err);
+	return losiL_doresults(L, 1, losiN_getsockaddr(drv, socket, addr, peer));
 }
 
 
@@ -373,7 +405,7 @@ static struct SocketOptionInfo lst_opts[] = {
 	{NULL, 0}
 };
 
-static struct SocketOptionInfo cnt_opts[] = {
+static struct SocketOptionInfo stm_opts[] = {
 	{"blocking", LOSI_SOCKOPT_BLOCKING},
 	{"reuseaddr", LOSI_SOCKOPT_REUSEADDR},
 	{"dontroute", LOSI_SOCKOPT_DONTROUTE},
@@ -417,11 +449,11 @@ static int lst_getoption (lua_State *L)
 	return losiL_doresults(L, 1, err);
 }
 
-static int cnt_getoption (lua_State *L)
+static int stm_getoption (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
-	losi_SocketOption opt = checksockopt(L, 2, cnt_opts);
+	losi_SocketOption opt = checksockopt(L, 2, stm_opts);
 	int val;
 	losi_ErrorCode err = losiN_getsockopt(drv, socket, opt, &val);
 	if (err == 0) {
@@ -454,11 +486,11 @@ static int lst_setoption (lua_State *L)
 	return losiL_doresults(L, 0, err);
 }
 
-static int cnt_setoption (lua_State *L)
+static int stm_setoption (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
-	losi_SocketOption opt = checksockopt(L, 2, cnt_opts);
+	losi_SocketOption opt = checksockopt(L, 2, stm_opts);
 	int val = (opt == LOSI_SOCKOPT_LINGER) ? luaL_checkinteger(L, 3)
 	                                       : lua_toboolean(L, 3);
 	losi_ErrorCode err = losiN_setsockopt(drv, socket, opt, val);
@@ -477,11 +509,11 @@ static int dgm_setoption (lua_State *L)
 
 
 /* succ [, errmsg] = socket:connect(address) */
-static int str_connect (lua_State *L)
+static int trs_connect (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
-	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_DATA);
-	const losi_Address *addr = toaddr(L, 2);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_TRSP);
+	const losi_Address *addr = tosckaddr(L, 2, drv, socket);
 	losi_ErrorCode err = losiN_connectsock(drv, socket, addr);
 	return losiL_doresults(L, 0, err);
 }
@@ -494,10 +526,10 @@ static size_t posrelat (ptrdiff_t pos, size_t len)
 	else return len - ((size_t)-pos) + 1;
 }
 
-static int senddata(lua_State *L, int cls, const losi_Address *addr)
+static int senddata(lua_State *L, losi_NetDriver *drv,
+                                  losi_Socket *socket,
+                                  const losi_Address *addr)
 {
-	losi_NetDriver *drv = todrv(L);
-	losi_Socket *socket = tosock(L, cls);
 	size_t sz, sent;
 	const char *data = luamem_checkstring(L, 2, &sz);
 	size_t start = posrelat(luaL_optinteger(L, 3, 1), sz);
@@ -513,22 +545,26 @@ static int senddata(lua_State *L, int cls, const losi_Address *addr)
 }
 
 /* sent [, errmsg] = socket:send(data [, i [, j]]) */
-static int cnt_send (lua_State *L)
+static int stm_send (lua_State *L)
 {
-	return senddata(L, LOSI_SOCKTYPE_STRM, NULL);
+	losi_NetDriver *drv = todrv(L);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
+	return senddata(L, drv, socket, NULL);
 }
 
 /* sent [, errmsg] = socket:send(data [, i [, j [, address]]]) */
 static int dgm_send (lua_State *L)
 {
-	return senddata(L, LOSI_SOCKTYPE_DGRM, losi_toaddress(L, 5));
+	losi_NetDriver *drv = todrv(L);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_DGRM);
+	return senddata(L, drv, socket, optaddr(L, 5, drv, socket));
 }
 
 
-static int recvdata(lua_State *L, int cls, losi_Address *addr)
+static int recvdata(lua_State *L, losi_NetDriver *drv,
+                                  losi_Socket *socket,
+                                  losi_Address *addr)
 {
-	losi_NetDriver *drv = todrv(L);
-	losi_Socket *socket = tosock(L, cls);
 	const char *mode = luaL_optstring(L, 3, "");
 	char *buf;
 	size_t len, sz;
@@ -561,20 +597,24 @@ static int recvdata(lua_State *L, int cls, losi_Address *addr)
 }
 
 /* data [, errmsg] = socket:receive(size [, mode]) */
-static int cnt_receive (lua_State *L)
+static int stm_receive (lua_State *L)
 {
-	return recvdata(L, LOSI_SOCKTYPE_STRM, NULL);
+	losi_NetDriver *drv = todrv(L);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
+	return recvdata(L, drv, socket, NULL);
 }
 
 /* data [, errmsg] = socket:receive(size [, mode [, address]]) */
 static int dgm_receive (lua_State *L)
 {
-	return recvdata(L, LOSI_SOCKTYPE_DGRM, losi_toaddress(L, 4));
+	losi_NetDriver *drv = todrv(L);
+	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_DGRM);
+	return recvdata(L, drv, socket, optaddr(L, 4, drv, socket));
 }
 
 
 /* succ [, errmsg] = socket:shutdown([mode]) */
-static int cnt_shutdown (lua_State *L)
+static int stm_shutdown (lua_State *L)
 {
 	static const char *const waynames[] = {"send", "receive", "both", NULL};
 	losi_NetDriver *drv = todrv(L);
@@ -590,7 +630,7 @@ static int lst_accept (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_LSTN);
-	losi_Address *addr = losi_toaddress(L, 2);
+	losi_Address *addr = optaddr(L, 2, drv, socket);
 	losi_Socket *conn = losi_newsocket(L, LOSI_SOCKTYPE_STRM);
 	losi_ErrorCode err = losiN_acceptsock(drv, socket, conn, addr);
 	if (!err) losi_enablesocket(L, -1);
@@ -614,41 +654,60 @@ static int lst_listen (lua_State *L)
  *****************************************************************************/
 
 
-#define FOUNDUPV	DRVUPV+1
-#define tofound(L) \
-	((losi_AddressFound *)lua_touserdata(L, lua_upvalueindex(FOUNDUPV)))
+#define LOSI_NETADDRFOUNDCLS LOSI_PREFIX"FoundNetworkAddress"
+
+#define tofound(L) ((losi_AddressFound *)luaL_checkudata(L, 1, \
+                                         LOSI_NETADDRFOUNDCLS))
 
 /* [address, socktype, more =] next([address]) */
-static int net_nextfound (lua_State *L)
+static int fnd_next (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
 	losi_AddressFound *found = tofound(L);
-	if (found) {
-		int more, i;
-		losi_SocketType type;
-		losi_Address *addr = losi_toaddress(L, 1);
-		if (!addr) {
-			lua_settop(L, 0);
-			addr = losi_newaddress(L);
-		}
-		else lua_settop(L, 1);
-		more = losiN_getaddrfound(drv, found, addr, &type);
-		for (i = 0; SockTypeName[i] && SockTypeId[i] != type; ++i);
-		lua_pushstring(L, SockTypeName[i]);
-		lua_pushboolean(L, more);
-		if (!more) {  /* avoid further attempts to get more results */
-			lua_pushnil(L);
-			lua_replace(L, lua_upvalueindex(FOUNDUPV));
-		}
-		return 3;
+	losi_Address *addr = losi_toaddress(L, 2);
+	losi_AddressType domain;
+	losi_SocketType type;
+	int i;
+	if (addr) lua_settop(L, 2);
+	else if (!losiN_getaddrtypefound(drv, found, &domain)) return 0;
+	else {
+		lua_settop(L, 1);
+		addr = losi_newaddress(L, domain);
+		losiN_initaddr(drv, addr, domain);
 	}
-	return 0;
+	losiN_getaddrfound(drv, found, addr, &type);
+	for (i = 0; SockTypeName[i] && SockTypeId[i] != type; ++i);
+	lua_pushstring(L, SockTypeName[i]);
+	return 2;
 }
 
-static int net_freefound (lua_State *L)
+/* domain = next.domain */
+static int fnd_index (lua_State *L)
+{
+	static const char *const fields[] = {"domain",NULL};
+	losi_NetDriver *drv = todrv(L);
+	losi_AddressFound *found = tofound(L);
+	int field = luaL_checkoption(L, 2, NULL, fields);
+	switch (field) {
+		case 0: {  /* domain */
+			losi_AddressType type;
+			if (losiN_getaddrtypefound(drv, found, &type)) {
+				switch (type) {
+					case LOSI_ADDRTYPE_IPV4: lua_pushliteral(L, "ipv4"); break;
+					case LOSI_ADDRTYPE_IPV6: lua_pushliteral(L, "ipv6"); break;
+					default: lua_pushnil(L);
+				}
+			}
+			else lua_pushnil(L);
+		} break;
+	}
+	return 1;
+}
+
+static int fnd_gc (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
-	losi_AddressFound *found = (losi_AddressFound *)lua_touserdata(L, 1);
+	losi_AddressFound *found = tofound(L);
 	losiN_freeaddrfound(drv, found);
 	return 0;
 }
@@ -679,14 +738,9 @@ static int net_resolve (lua_State *L)
 		case 's': flags |= LOSI_ADDRFIND_STRM; break;
 		default: return luaL_error(L, "unknown mode char (got '%c')", *mode);
 	}
-#ifndef LOSI_DISABLE_NETDRV
-	lua_pushvalue(L, lua_upvalueindex(DRVUPV)); /* push library state */
-#endif
-	found = (losi_AddressFound *)luaL_newsentinel(L, sizeof(losi_AddressFound),
-	                                                 net_freefound);
+	found = (losi_AddressFound *)lua_newuserdata(L, sizeof(losi_AddressFound));
 	err = losiN_resolveaddr(drv, found, flags, nodename, servname);
-	if (err) luaL_cancelsentinel(L);
-	else lua_pushcclosure(L, net_nextfound, FOUNDUPV);
+	if (!err) luaL_setmetatable(L, LOSI_NETADDRFOUNDCLS);
 	return losiL_doresults(L, 1, err);
 }
 
@@ -729,7 +783,7 @@ static int net_getname (lua_State *L)
 		}
 		if (ltype == LUA_TNUMBER) {
 			losi_AddressPort port = int2port(L, luaL_checkinteger(L, 1), 1);
-			na = losi_newaddress(L);
+			na = losi_newaddress(L, LOSI_ADDRTYPE_IPV4);
 			if ( !(err = losiN_initaddr(drv, na, LOSI_ADDRTYPE_IPV4)) &&
 			     !(err = losiN_setaddrport(drv, na, port)) ) {
 				do {
@@ -793,12 +847,20 @@ static const luaL_Reg addr[] = {
 	{NULL, NULL}
 };
 
+static const luaL_Reg fnd[] = {
+	{"__gc", fnd_gc},
+	{"__call", fnd_next},
+	{"__index", fnd_index},
+	{NULL, NULL}
+};
+
 static const luaL_Reg sck[] = {
 	{"__tostring", sck_tostring},
 	{"__gc", sck_gc},
 	{"close", sck_close},
-	{"bind", sck_bind},
+	{"getdomain", sck_getdomain},
 	{"getaddress", sck_getaddress},
+	{"bind", sck_bind},
 	{NULL, NULL}
 };
 
@@ -810,17 +872,17 @@ static const luaL_Reg lst[] = {
 	{NULL, NULL}
 };
 
-static const luaL_Reg str[] = {
-	{"connect", str_connect},
+static const luaL_Reg trs[] = {
+	{"connect", trs_connect},
 	{NULL, NULL}
 };
 
-static const luaL_Reg cnt[] = {
-	{"getoption", cnt_getoption},
-	{"setoption", cnt_setoption},
-	{"send", cnt_send},
-	{"receive", cnt_receive},
-	{"shutdown", cnt_shutdown},
+static const luaL_Reg stm[] = {
+	{"getoption", stm_getoption},
+	{"setoption", stm_setoption},
+	{"send", stm_send},
+	{"receive", stm_receive},
+	{"shutdown", stm_shutdown},
 	{NULL, NULL}
 };
 
@@ -874,6 +936,10 @@ LUAMOD_API int luaopen_network (lua_State *L)
 	pushsentinel(L);
 	luaL_newclass(L, LOSI_NETADDRCLS, NULL, addr, DRVUPV);
 	lua_pop(L, 1);  /* remove new class */
+	/* create found address class */
+	pushsentinel(L);
+	luaL_newclass(L, LOSI_NETADDRFOUNDCLS, NULL, fnd, DRVUPV);
+	lua_pop(L, 1);  /* remove new class */
 	/* create abstract base socket class */
 	pushsentinel(L);
 	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_SOCK], NULL, sck, DRVUPV);
@@ -887,20 +953,20 @@ LUAMOD_API int luaopen_network (lua_State *L)
 	lua_pop(L, 1);  /* remove new class */
 	/* create data transfer socket class */
 	pushsentinel(L);
-	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_DATA],
-	                 losi_SocketClasses[LOSI_SOCKTYPE_SOCK], str, DRVUPV);
+	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_TRSP],
+	                 losi_SocketClasses[LOSI_SOCKTYPE_SOCK], trs, DRVUPV);
 	lua_pop(L, 1);  /* remove new class */
 	/* create stream socket class */
 	pushsentinel(L);
 	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_STRM],
-	                 losi_SocketClasses[LOSI_SOCKTYPE_DATA], cnt, DRVUPV);
+	                 losi_SocketClasses[LOSI_SOCKTYPE_TRSP], stm, DRVUPV);
 	lua_pushliteral(L, "stream");
 	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */
 	/* create datagram socket class */
 	pushsentinel(L);
 	luaL_newclass(L, losi_SocketClasses[LOSI_SOCKTYPE_DGRM],
-	                 losi_SocketClasses[LOSI_SOCKTYPE_DATA], dgm, DRVUPV);
+	                 losi_SocketClasses[LOSI_SOCKTYPE_TRSP], dgm, DRVUPV);
 	lua_pushliteral(L, "datagram");
 	lua_setfield(L, -2, "type");
 	lua_pop(L, 1);  /* remove new class */

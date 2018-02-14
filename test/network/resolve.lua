@@ -3,16 +3,16 @@ local utils = require "test.utils"
 
 local hosts = {
 	localhost = {
-		["::1"] = true,
-		["127.0.0.1"] = true,
+		["127.0.0.1"] = "ipv4",
+		["::1"] = "ipv6",
 	},
 	["*"] = {
-		["::"] = true,
-		["0.0.0.0"] = true,
+		["0.0.0.0"] = "ipv4",
+		["::"] = "ipv6",
 	},
 	[false] = {
-		["::1"] = true,
-		["127.0.0.1"] = true,
+		["127.0.0.1"] = "ipv4",
+		["::1"] = "ipv6",
 	},
 }
 local servs = {
@@ -25,23 +25,27 @@ local scktypes = {
 	stream = true,
 	listen = true,
 }
-local addr = network.address()
+local addrtypes = {
+	ipv4 = network.address("ipv4"),
+	ipv6 = network.address("ipv6"),
+}
 
 for hostname, ips in pairs(hosts) do
 	for servname, servport in pairs(servs) do
 		if servname or (hostname and hostname ~= "*") then
-			local last
 			local next = assert(network.resolve(hostname or nil, servname or nil))
-			for found, scktype, more in next, addr do
+			local last = next.domain
+			repeat
+				local addr = addrtypes[last]
+				assert(addr ~= nil)
+				local found, scktype = next(addr)
 				assert(rawequal(found, addr))
-				assert(last == nil or last == true)
-				assert(ips[found.literal] == true)
+				assert(ips[found.literal] == last)
 				assert(found.port == servport)
 				assert(scktypes[scktype] == true)
-				assert(type(more) == "boolean")
-				last = more
-			end
-			assert(last == false)
+				assert(next.domain == nil or addrtypes[next.domain] ~= nil)
+				last = next.domain
+			until last == nil
 		end
 	end
 end

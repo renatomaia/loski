@@ -16,18 +16,19 @@
 
 #define losi_isaddress(L,i)	(losi_toaddress(L, i) != NULL)
 
-LOSILIB_API losi_Address *losi_newaddress (lua_State *L);
+LOSILIB_API losi_Address *losi_newaddress (lua_State *L,
+                                           losi_AddressType type);
 
 
 /* superclasses used only in Lua */
-#define LOSI_SOCKTYPE_DATA 3
+#define LOSI_SOCKTYPE_TRSP 3
 #define LOSI_SOCKTYPE_SOCK 4
 
 static const char *const losi_SocketClasses[] = {
 	LOSI_PREFIX"ListenSocket",
-	LOSI_PREFIX"ConnectionSocket",
-	LOSI_PREFIX"DatagramSocket",
 	LOSI_PREFIX"StreamSocket",
+	LOSI_PREFIX"DatagramSocket",
+	LOSI_PREFIX"TransportSocket",
 	LOSI_PREFIX"NetworkSocket"
 };
 

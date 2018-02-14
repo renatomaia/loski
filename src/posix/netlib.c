@@ -30,16 +30,14 @@ LOSIDRV_API void losiN_freedrv (losi_NetDriver *drv)
 
 #include <string.h>
 
-/* TODO: ASSERT(LOSI_ADDRSIZE_IPV4 == sizeof(in_addr_t)) */
-
-#define MAXLITERAL	16
+/* TODO: ASSERT(LOSI_ADDRBINSZ_IPV4 == sizeof(in_addr_t)) */
 
 LOSIDRV_API losi_ErrorCode losiN_initaddr (losi_NetDriver *drv,
                                            losi_Address *address,
                                            losi_AddressType type)
 {
 	memset(address, 0, sizeof(losi_Address));
-	address->ss_family = type;
+	address->sa_family = type;
 	return LOSI_ERRNONE;
 }
 
@@ -47,7 +45,7 @@ LOSIDRV_API losi_ErrorCode losiN_setaddrport (losi_NetDriver *drv,
                                               losi_Address *address,
                                               losi_AddressPort port)
 {
-	switch (address->ss_family) {
+	switch (address->sa_family) {
 		case AF_INET: {
 			struct sockaddr_in *addr = (struct sockaddr_in *)address;
 			addr->sin_port = htons(port);
@@ -65,14 +63,14 @@ LOSIDRV_API losi_ErrorCode losiN_setaddrbytes (losi_NetDriver *drv,
                                                losi_Address *address,
                                                const char *data)
 {
-	switch (address->ss_family) {
+	switch (address->sa_family) {
 		case AF_INET: {
 			struct sockaddr_in *addr = (struct sockaddr_in *)address;
-			memcpy(&(addr->sin_addr.s_addr), data, LOSI_ADDRSIZE_IPV4);
+			memcpy(&(addr->sin_addr.s_addr), data, LOSI_ADDRBINSZ_IPV4);
 		} break;
 		case AF_INET6: {
 			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
-			memcpy(&addr->sin6_addr, data, LOSI_ADDRSIZE_IPV6);
+			memcpy(&addr->sin6_addr, data, LOSI_ADDRBINSZ_IPV6);
 		} break;
 		default: return LOSI_ERRUNSUPPORTED;
 	}
@@ -85,7 +83,7 @@ LOSIDRV_API losi_ErrorCode losiN_setaddrliteral (losi_NetDriver *drv,
 {
 	int err;
 	void *bytes;
-	switch (address->ss_family) {
+	switch (address->sa_family) {
 		case AF_INET: {
 			struct sockaddr_in *addr = (struct sockaddr_in *)address;
 			bytes = (void *)&(addr->sin_addr.s_addr);
@@ -96,7 +94,7 @@ LOSIDRV_API losi_ErrorCode losiN_setaddrliteral (losi_NetDriver *drv,
 		} break;
 		default: return LOSI_ERRUNSUPPORTED;
 	}
-	err = inet_pton(address->ss_family, data, bytes);
+	err = inet_pton(address->sa_family, data, bytes);
 	if (err == 1) return LOSI_ERRNONE;
 	if (err == 0) return LOSI_ERRINVALID;
 	if (errno == EAFNOSUPPORT) return LOSI_ERRUNSUPPORTED;
@@ -106,13 +104,13 @@ LOSIDRV_API losi_ErrorCode losiN_setaddrliteral (losi_NetDriver *drv,
 LOSIDRV_API losi_AddressType losiN_getaddrtype (losi_NetDriver *drv,
                                                 losi_Address *address)
 {
-	return address->ss_family;
+	return address->sa_family;
 }
 
 LOSIDRV_API losi_AddressPort losiN_getaddrport (losi_NetDriver *drv,
                                                 losi_Address *address)
 {
-	switch (address->ss_family) {
+	switch (address->sa_family) {
 		case AF_INET: {
 			struct sockaddr_in *addr = (struct sockaddr_in *)address;
 			return ntohs(addr->sin_port);
@@ -129,15 +127,15 @@ LOSIDRV_API const char *losiN_getaddrbytes (losi_NetDriver *drv,
                                             losi_Address *address,
                                             size_t *sz)
 {
-	switch (address->ss_family) {
+	switch (address->sa_family) {
 		case AF_INET: {
 			struct sockaddr_in *addr = (struct sockaddr_in *)address;
-			if (sz) *sz = LOSI_ADDRSIZE_IPV4;
+			if (sz) *sz = LOSI_ADDRBINSZ_IPV4;
 			return (const void *)&(addr->sin_addr.s_addr);
 		} break;
 		case AF_INET6: {
 			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)address;
-			if (sz) *sz = LOSI_ADDRSIZE_IPV6;
+			if (sz) *sz = LOSI_ADDRBINSZ_IPV6;
 			return (const void *)&addr->sin6_addr;
 		} break;
 	}
@@ -150,7 +148,7 @@ LOSIDRV_API const char *losiN_getaddrliteral (losi_NetDriver *drv,
                                               char *data)
 {
 	const void *bytes;
-	switch (address->ss_family) {
+	switch (address->sa_family) {
 		case AF_INET: {
 			struct sockaddr_in *addr = (struct sockaddr_in *)address;
 			bytes = (const void *)&(addr->sin_addr.s_addr);
@@ -161,13 +159,20 @@ LOSIDRV_API const char *losiN_getaddrliteral (losi_NetDriver *drv,
 		} break;
 		default: return NULL;
 	}
-	return inet_ntop(address->ss_family, bytes, data, LOSI_ADDRMAXLITERAL);
+	return inet_ntop(address->sa_family, bytes, data, LOSI_ADDRMAXLITERAL);
 }
 
 #define toaddr(A)	((struct sockaddr *)A)
-#define addrsz(A)	(A->ss_family==AF_INET ? sizeof(struct sockaddr_in) \
-                 	                       : sizeof(struct sockaddr_in6))
 
+static size_t addrsz (const losi_Address *address)
+{
+	switch (address->sa_family) {
+		case LOSI_ADDRTYPE_IPV4: return LOSI_ADDRSIZE_IPV4;
+		case LOSI_ADDRTYPE_IPV6: return LOSI_ADDRSIZE_IPV6;
+		case LOSI_ADDRTYPE_FILE: return LOSI_ADDRSIZE_FILE;
+	}
+	return sizeof(struct sockaddr_storage);
+}
 
 /*****************************************************************************
  * Sockets *******************************************************************
@@ -192,8 +197,9 @@ LOSIDRV_API losi_ErrorCode losiN_initsock (losi_NetDriver *drv,
 		case LOSI_SOCKTYPE_DGRM: kind = SOCK_DGRAM; break;
 		default: return LOSI_ERRUNSUPPORTED;
 	}
-	*sock = socket(domain, kind, 0);
-	if (*sock >= 0) return LOSI_ERRNONE;
+	sock->domain = domain;
+	sock->fd = socket(domain, kind, 0);
+	if (sock->fd >= 0) return LOSI_ERRNONE;
 	switch (errno) {
 		case EACCES: return LOSI_ERRDENIED;
 		case EMFILE:
@@ -207,9 +213,16 @@ LOSIDRV_API losi_ErrorCode losiN_initsock (losi_NetDriver *drv,
 	return LOSI_ERRUNSPECIFIED;
 }
 
-LOSIDRV_API losi_ErrorCode losiN_getsockid (losi_NetDriver *drv, losi_Socket *sock)
+LOSIDRV_API losi_IntUniqueId losiN_getsockid (losi_NetDriver *drv,
+                                              losi_Socket *sock)
 {
-	return *sock;
+	return sock->fd;
+}
+
+LOSIDRV_API losi_AddressType losiN_getsockdomain (losi_NetDriver *drv,
+                                                  losi_Socket *sock)
+{
+	return sock->domain;
 }
 
 struct OptionInfo {
@@ -236,7 +249,7 @@ LOSIDRV_API losi_ErrorCode losiN_setsockopt (losi_NetDriver *drv,
 {
 	int err;
 	switch (option) {
-		case LOSI_SOCKOPT_BLOCKING: return losiFD_setnonblock(*sock, value);
+		case LOSI_SOCKOPT_BLOCKING: return losiFD_setnonblock(sock->fd, value);
 		case LOSI_SOCKOPT_LINGER: {
 			struct linger li;
 			if (value > 0) {
@@ -246,10 +259,10 @@ LOSIDRV_API losi_ErrorCode losiN_setsockopt (losi_NetDriver *drv,
 				li.l_onoff = 0;
 				li.l_linger = 0;
 			}
-			err = setsockopt(*sock, SOL_SOCKET, SO_LINGER, &li, sizeof(li));
+			err = setsockopt(sock->fd, SOL_SOCKET, SO_LINGER, &li, sizeof(li));
 		} break;
 		default:
-			err = setsockopt(*sock, optinfo[option].level, optinfo[option].name,
+			err = setsockopt(sock->fd, optinfo[option].level, optinfo[option].name,
 			                 &value, sizeof(value));
 			break;
 	}
@@ -272,16 +285,16 @@ LOSIDRV_API losi_ErrorCode losiN_getsockopt (losi_NetDriver *drv,
 {
 	int err;
 	switch (option) {
-		case LOSI_SOCKOPT_BLOCKING: return losiFD_getnonblock(*sock, value);
+		case LOSI_SOCKOPT_BLOCKING: return losiFD_getnonblock(sock->fd, value);
 		case LOSI_SOCKOPT_LINGER: {
 			struct linger li;
 			socklen_t sz = sizeof(li);
-			err = getsockopt(*sock, SOL_SOCKET, SO_LINGER, &li, &sz);
+			err = getsockopt(sock->fd, SOL_SOCKET, SO_LINGER, &li, &sz);
 			if (err == 0) *value = li.l_onoff ? li.l_linger : 0;
 		} break;
 		default: {
 			socklen_t sz = sizeof(*value);
-			err = getsockopt(*sock, optinfo[option].level, optinfo[option].name,
+			err = getsockopt(sock->fd, optinfo[option].level, optinfo[option].name,
 			                 value, &sz);
 		} break;
 	}
@@ -301,7 +314,8 @@ LOSIDRV_API losi_ErrorCode losiN_bindsock (losi_NetDriver *drv,
                                            losi_Socket *sock,
                                            const losi_Address *address)
 {
-	if (bind(*sock, toaddr(address), addrsz(address)) == 0) return LOSI_ERRNONE; 
+	if (bind(sock->fd, toaddr(address), addrsz(address)) == 0)
+		return LOSI_ERRNONE; 
 	switch (errno) {
 		case EISCONN: return LOSI_ERRINUSE;
 		case EADDRINUSE: return LOSI_ERRUNAVAILABLE;
@@ -335,8 +349,8 @@ LOSIDRV_API losi_ErrorCode losiN_getsockaddr (losi_NetDriver *drv,
 {
 	int err;
 	socklen_t len = addrsz(address);
-	if (peer) err = getpeername(*sock, toaddr(address), &len);
-	else      err = getsockname(*sock, toaddr(address), &len);
+	if (peer) err = getpeername(sock->fd, toaddr(address), &len);
+	else      err = getsockname(sock->fd, toaddr(address), &len);
 	if (err == 0) return LOSI_ERRNONE;
 	switch (errno) {
 		case ENOBUFS: return LOSI_ERRNOMEMORY;
@@ -353,7 +367,7 @@ LOSIDRV_API losi_ErrorCode losiN_connectsock (losi_NetDriver *drv,
                                               losi_Socket *sock,
                                               const losi_Address *address)
 {
-	if (connect(*sock, toaddr(address), addrsz(address)) == 0)
+	if (connect(sock->fd, toaddr(address), addrsz(address)) == 0)
 		return LOSI_ERRNONE;
 	switch (errno) {
 		case EALREADY:
@@ -396,8 +410,10 @@ LOSIDRV_API losi_ErrorCode losiN_sendtosock (losi_NetDriver *drv,
                                              const losi_Address *address)
 {
 	ssize_t err;
-	if (!address) err = send(*sock,data,size,0);
-	else          err = sendto(*sock,data,size,0,toaddr(address),addrsz(address));
+	if (!address) err = send(sock->fd, data, size, 0);
+	else          err = sendto(sock->fd, data, size, 0,
+	                           toaddr(address),
+	                           addrsz(address));
 	if (err >= 0) {
 		*bytes = (size_t)err;
 		return LOSI_ERRNONE;
@@ -437,10 +453,9 @@ LOSIDRV_API losi_ErrorCode losiN_recvfromsock (losi_NetDriver *drv,
 	if (size == 0) return LOSI_ERRINVALID;
 	if (address) {
 		socklen_t len = addrsz(address);
-		memset(address, 0, len);
-		err = recvfrom(*sock, buffer, size, flags, toaddr(address), &len);
+		err = recvfrom(sock->fd, buffer, size, flags, toaddr(address), &len);
 	} else {
-		err = recv(*sock, buffer, size, flags);
+		err = recv(sock->fd, buffer, size, flags);
 	}
 	if (err > 0) {
 		*bytes = (size_t)err;
@@ -471,7 +486,7 @@ LOSIDRV_API losi_ErrorCode losiN_shutdownsock (losi_NetDriver *drv,
                                                losi_Socket *sock,
                                                losi_SocketWay ways)
 {
-	if (shutdown(*sock, ways) == 0) return LOSI_ERRNONE;
+	if (shutdown(sock->fd, ways) == 0) return LOSI_ERRNONE;
 	switch (errno) {
 		case ENOTCONN: return LOSI_ERRCLOSED;
 		case ENOBUFS: return LOSI_ERRNORESOURCES;
@@ -492,8 +507,8 @@ LOSIDRV_API losi_ErrorCode losiN_acceptsock (losi_NetDriver *drv,
 		len = addrsz(address);
 		memset(address, 0, len);
 	}
-	*accepted = accept(*sock, toaddr(address), &len);
-	if (*accepted >= 0) return LOSI_ERRNONE;
+	accepted->fd = accept(sock->fd, toaddr(address), &len);
+	if (accepted->fd >= 0) return LOSI_ERRNONE;
 	switch (errno) {
 #if EAGAIN != EWOULDBLOCK
 		case EAGAIN:
@@ -517,7 +532,7 @@ LOSIDRV_API losi_ErrorCode losiN_listensock (losi_NetDriver *drv,
                                              losi_Socket *sock,
                                              int backlog)
 {
-	if (listen(*sock, backlog) == 0) return LOSI_ERRNONE;
+	if (listen(sock->fd, backlog) == 0) return LOSI_ERRNONE;
 	switch (errno) {
 		case EACCES: return LOSI_ERRDENIED;
 		case ENOBUFS: return LOSI_ERRNORESOURCES;
@@ -533,7 +548,7 @@ LOSIDRV_API losi_ErrorCode losiN_listensock (losi_NetDriver *drv,
 LOSIDRV_API losi_ErrorCode losiN_closesock (losi_NetDriver *drv,
                                             losi_Socket *sock)
 {
-	if (close(*sock) == 0) return LOSI_ERRNONE;
+	if (close(sock->fd) == 0) return LOSI_ERRNONE;
 	switch (errno) {
 		case EINTR: return LOSI_ERRUNFULFILLED;
 		case EIO: return LOSI_ERRSYSTEMFAIL;
@@ -549,7 +564,7 @@ LOSIDRV_API losi_ErrorCode losiN_getsockevtsrc (void *udata, int newref,
 	LuaSocket *ls = (LuaSocket *)udata;
 	if (ls->refs == 0) return LOSI_ERRCLOSED;
 	if (newref) ++(ls->refs);
-	*src = ls->socket;
+	*src = ls->socket.fd;
 	return LOSI_ERRNONE;
 }
 
@@ -568,9 +583,6 @@ LOSIDRV_API void losiN_freesockevtsrc (void *udata)
 
 #include <netdb.h> /* gethostbyname and gethostbyaddr functions */
 
-#define DGRMFLAG	1
-#define LSTNFLAG	2
-
 LOSIDRV_API void losiN_freeaddrfound (losi_NetDriver *drv,
                                       losi_AddressFound *found)
 {
@@ -585,8 +597,8 @@ static int hasnext (losi_AddressFound *found)
 {
 	while (found->next) {
 		switch (found->next->ai_socktype) {
-			case SOCK_DGRAM: found->nexttype |= DGRMFLAG; return 1;
-			case SOCK_STREAM: found->nexttype &= ~DGRMFLAG; return 1;
+			case SOCK_DGRAM:
+			case SOCK_STREAM: return 1;
 		}
 		found->next = found->next->ai_next;
 	}
@@ -620,7 +632,7 @@ LOSIDRV_API losi_ErrorCode losiN_resolveaddr (losi_NetDriver *drv,
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_UNSPEC;
-	found->nexttype = 0;
+	found->passive = 0;
 	if (flags & (LOSI_ADDRFIND_IPV4|LOSI_ADDRFIND_IPV6)) {
 		if (flags & LOSI_ADDRFIND_IPV4) hints.ai_family = AF_INET;
 		if (flags & LOSI_ADDRFIND_IPV6)
@@ -633,7 +645,7 @@ LOSIDRV_API losi_ErrorCode losiN_resolveaddr (losi_NetDriver *drv,
 	if (flags & LOSI_ADDRFIND_STRM)
 		hints.ai_socktype = (hints.ai_socktype==SOCK_DGRAM) ? 0 : SOCK_STREAM;
 	if (flags & LOSI_ADDRFIND_LSTN) {
-		found->nexttype |= LSTNFLAG;
+		found->passive = 1;
 		hints.ai_flags |= AI_PASSIVE;
 	}
 	if (flags & LOSI_ADDRFIND_MAP4) {
@@ -651,14 +663,24 @@ LOSIDRV_API losi_ErrorCode losiN_resolveaddr (losi_NetDriver *drv,
 	return getaddrerr(err);
 }
 
-LOSIDRV_API losi_ErrorCode losiN_getaddrfound (losi_NetDriver *drv,
-                                               losi_AddressFound *found,
-                                               losi_Address *address,
-                                               losi_SocketType *type)
+LOSIDRV_API int losiN_getaddrtypefound (losi_NetDriver *drv,
+                                        losi_AddressFound *found,
+                                        losi_AddressType *type)
+{
+	if (found->next == NULL) return 0;
+	*type = found->next->ai_family;
+	return 1;
+}
+
+LOSIDRV_API int losiN_getaddrfound (losi_NetDriver *drv,
+                                    losi_AddressFound *found,
+                                    losi_Address *address,
+                                    losi_SocketType *type)
 {
 	memcpy(address, found->next->ai_addr, found->next->ai_addrlen);
-	*type = (found->nexttype & DGRMFLAG ? LOSI_SOCKTYPE_DGRM :
-	        (found->nexttype & LSTNFLAG ? LOSI_SOCKTYPE_LSTN : LOSI_SOCKTYPE_STRM));
+	*type = (found->next->ai_socktype == SOCK_DGRAM ? LOSI_SOCKTYPE_DGRM :
+	        (found->passive                         ? LOSI_SOCKTYPE_LSTN :
+	                                                  LOSI_SOCKTYPE_STRM));
 	found->next = found->next->ai_next;
 	return hasnext(found);
 }

@@ -2,7 +2,8 @@ local network = require "network"
 local utils = require "test.utils"
 
 local hosts = {
-	localhost = "127.0.0.1",
+	localhost = { ipv4 = "127.0.0.1" },
+	["ip6-localhost"] = { ipv6 = "::1" },
 }
 local servs = {
 	ssh = 22,
@@ -11,10 +12,13 @@ local servs = {
 
 for servname, port in pairs(servs) do
 	assert(network.getname(port) == servname)
-	for hostname, ip in pairs(hosts) do
-		local name, service = network.getname(network.address(ip, port))
-		assert(name == hostname)
-		assert(service == servname)
+	for hostname, ips in pairs(hosts) do
+		for domain, ip in pairs(ips) do
+			local addr = network.address(domain, ip, port)
+			local name, service = network.getname(addr)
+			assert(name == hostname)
+			assert(service == servname)
+		end
 	end
 end
 
