@@ -676,9 +676,11 @@ static int fnd_next (lua_State *L)
 	losi_AddressType domain;
 	losi_SocketType type;
 	int i;
-	if (addr) lua_settop(L, 2);
-	else if (!losiN_getaddrtypefound(drv, found, &domain)) return 0;
-	else {
+	if (!losiN_getaddrtypefound(drv, found, &domain)) return 0;
+	if (addr) {
+		chksckaddr(L, 2, drv, addr, domain);
+		lua_settop(L, 2);
+	} else {
 		lua_settop(L, 1);
 		addr = losi_newaddress(L, domain);
 		losiN_initaddr(drv, addr, domain);
