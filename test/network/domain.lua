@@ -19,7 +19,7 @@ for domain in pairs(address) do
 					tests.testerror("wrong domain", socket.connect, socket, addr)
 				elseif kind == "datagram" then
 					tests.testerror("wrong domain", socket.send, socket, "blah", 1, -1, addr)
-					tests.testerror("wrong domain", socket.receive, socket, 10, "", addr)
+					tests.testerror("wrong domain", socket.receive, socket, buffer, 1, -1, "", addr)
 				end
 			end
 		end

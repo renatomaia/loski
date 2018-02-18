@@ -1,13 +1,16 @@
 local time = require "time"
 local network = require "network"
+local memory = require "memory"
 local tests = require "test.network.utils"
 
 local packsize = 64
 local data = string.rep("X", packsize)
 local final = string.rep("X", packsize-1).."0"
+local buffer = memory.create(3*packsize)
 local remotecode = [[
 	local time = require "time"
 	local network = require "network"
+	local memory = require "memory"
 
 	local addr = network.address("ipv4", "0.0.0.0", ]]..tests.LocalAddress.port..[[)
 	local socket = assert(network.socket("datagram"))
@@ -15,16 +18,18 @@ local remotecode = [[
 	assert(socket:bind(addr) == true)
 	local packsize = ]]..packsize..[[
 	local all = {}
+	local size = {}
 	local i = 0
 	repeat
 		i = i+1
-		all[i] = assert(socket:receive(packsize, nil, addr))
+		all[i] = memory.create(packsize)
+		size[i] = assert(socket:receive(all[i], 1, -1, nil, addr))
 		assert(addr.literal == "]]..tests.FreeAddress.literal..[[")
 		assert(addr.port == ]]..tests.FreeAddress.port..[[)
-	until string.find(all[i], "0", nil, "noregex")
-	for _, data in ipairs(all) do
+	until all[i]:get(size[i]) == string.byte("0")
+	for index, data in ipairs(all) do
 		time.sleep(.9)
-		assert(socket:send(data, 1, -1, addr) == #data)
+		assert(socket:send(data, 1, size[index], addr) == size[index])
 	end
 	assert(socket:close())
 ]]
@@ -41,12 +46,14 @@ do
 		assert(socket:send(data) == packsize)
 	end
 	assert(socket:send(final) == packsize)
-	local remaining = 3*packsize
-	while remaining > 0 do
-		assert(socket:receive(remaining) == data)
-		remaining = remaining - #data
+	local index = 1
+	while index <= #buffer do
+		local size = assert(socket:receive(buffer, index))
+		assert(size == packsize)
+		assert(buffer:unpack(index, "c"..size) == data)
+		index = index + size
 	end
-	assert(socket:receive(packsize) == final)
+	tests.testreceive(socket, final)
 
 	tests.testclose(socket)
 end
@@ -62,17 +69,16 @@ do
 		assert(socket:send(data, 1, -1, tests.LocalAddress) == packsize)
 	end
 	assert(socket:send(final, 1, -1, tests.LocalAddress) == packsize)
-	local remaining = 3*packsize
-	while remaining > 0 do
+	local index = 1
+	while index <= #buffer do
 		local addr = network.address("ipv4")
-		local received = socket:receive(remaining, nil, addr)
-		assert(received == data)
-		assert(addr == tests.LocalAddress)
-		remaining = remaining - #data
+		local size = assert(socket:receive(buffer, index, -1, nil, addr))
+		assert(size == packsize)
+		assert(buffer:unpack(index, "c"..size) == data)
+		index = index + size
 	end
 	local addr = network.address("ipv4")
-	local received = socket:receive(packsize, nil, addr)
-	assert(received == final)
+	tests.testreceive(socket, final, nil, addr)
 	assert(addr == tests.LocalAddress)
 
 	tests.testclose(socket)
@@ -90,17 +96,19 @@ do
 	for i = 1, 3 do
 		assert(socket:send(data) == packsize)
 	end
-	tests.testerrmsg("unfulfilled", socket:receive(packsize))
+	tests.testerrmsg("unfulfilled", socket:receive(buffer))
 	assert(socket:send(final) == packsize)
 	local addr = network.address("ipv4")
-	local remaining = 3*packsize
-	while remaining > 0 do
-		local received = tests.tcall(true, socket.receive, socket, remaining, nil, addr)
-		assert(received == data)
+	local index = 1
+	while index <= #buffer do
+		local size = tests.tcall(true, socket.receive, socket, buffer, index, -1, nil, addr)
+		assert(size == packsize)
+		assert(buffer:unpack(index, "c"..size) == data)
 		assert(addr == tests.LocalAddress)
-		remaining = remaining - #data
+		index = index + size
 	end
-	assert(tests.tcall(true, socket.receive, socket, packsize) == final)
+	tests.tcall(true, socket.receive, socket, buffer, 1, packsize)
+	assert(memory.diff(buffer, final) == packsize+1)
 
 	tests.testclose(socket)
 end

@@ -1,6 +1,7 @@
 local event = require "event"
 local network = require "network"
 local time = require "time"
+local memory = require "memory"
 local testutils = require "test.utils"
 
 do
@@ -38,8 +39,8 @@ do
 	assert(events[lst] == nil)
 	assert(events[cnt] == "r")
 	assert(events[srv] == "r")
-	assert(cnt:receive(3) == "Hi!")
-	assert(srv:receive(6) == "Hello!")
+	testutils.testreceive(cnt, "Hi!")
+	testutils.testreceive(srv, "Hello!")
 	testutils.testerrmsg("unfulfilled", watcher:wait(0))
 
 	assert(cnt:send("Hi there!"))
@@ -48,8 +49,8 @@ do
 	assert(events[lst] == nil)
 	assert(events[cnt] == "r")
 	assert(events[srv] == "r")
-	assert(cnt:receive(11) == "Hello back!")
-	assert(srv:receive(9) == "Hi there!")
+	testutils.testreceive(cnt, "Hello back!")
+	testutils.testreceive(srv, "Hi there!")
 	testutils.testerrmsg("unfulfilled", watcher:wait(0))
 
 	assert(watcher:set(cnt, "rw"))
@@ -61,8 +62,8 @@ do
 	assert(events[lst] == nil)
 	assert(events[cnt] == "rw")
 	assert(events[srv] == "rw")
-	assert(cnt:receive(9) == "Good bye.")
-	assert(srv:receive(8) == "OK, bye.")
+	testutils.testreceive(cnt, "Good bye.")
+	testutils.testreceive(srv, "OK, bye.")
 	local events = assert(watcher:wait(0))
 	assert(events[lst] == nil)
 	assert(events[cnt] == "w")
@@ -82,8 +83,6 @@ do
 	local process = require "process"
 
 	local port = 54322
-	local szlen = 4
-	local msgfmt = "%"..szlen.."d%s"
 	local luabin = "lua"
 	do
 		local i = -1
@@ -96,8 +95,7 @@ do
 	local server = assert(process.create(luabin, "-e", [[
 	local event = require "event"
 	local network = require "network"
-
-	local msgfmt = ]]..string.format("%q", msgfmt)..[[
+	local memory = require "memory"
 
 	local addr = assert(network.resolve("localhost", ]]..port..[[)())
 	local port = assert(network.socket("listen"))
@@ -107,21 +105,19 @@ do
 	local watcher = assert(event.watcher())
 	assert(watcher:set(port, "r"))
 	local count = 0
+	local buffer = memory.create(64)
 	repeat
 		local events = assert(watcher:wait())
-		for socket in pairs(events) do
-			if socket == port then
-				local conn = assert(port:accept())
+		for conn in pairs(events) do
+			if conn == port then
+				conn = assert(port:accept())
 				assert(watcher:set(conn, "r"))
 				count = count+1
 			else
-				local conn = socket
-				local size = assert(tonumber(assert(conn:receive(]]..szlen..[[))))
-				if size > 0 then
-					local data = assert(conn:receive(size))
-					local result = assert(load(data))()
-					local msg = msgfmt:format(#result, result)
-					assert(assert(conn:send(msg)) == #msg)
+				local size = assert(conn:receive(buffer))
+				local result = assert(load(buffer:unpack(1, "c"..size)))()
+				if result ~= nil then
+					assert(assert(conn:send(result)) == #result)
 				else
 					assert(watcher:set(conn, nil))
 					assert(conn:close())
@@ -148,17 +144,14 @@ do
 	for i = 3, 1, -1 do
 		time.sleep(i)
 		local conn = conns[i]
-		local msg = msgfmt:format(#code, code)
-		assert(assert(conn:send(msg)) == #msg)
-		local size = assert(conn:receive(szlen))
-		local data = assert(conn:receive(size))
-		assert(data == _VERSION)
+		assert(assert(conn:send(code)) == #code)
+		testutils.testreceive(conn, _VERSION)
 	end
 
 	for i = 1, 3 do
 		time.sleep(i)
 		local conn = conns[i]
-		assert(conn:send(msgfmt:format(0, "")))
+		assert(conn:send("return"))
 		assert(conn:close())
 	end
 end
