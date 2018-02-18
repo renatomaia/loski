@@ -290,7 +290,9 @@ There available options are:
 
 Sockets of type `"stream"` accept the additional options:
 
-- `"linger"`: is the number of seconds that `socket:close` can be delayed when there is pending data to be sent.
+- `"linger"`: is the number of seconds that `socket:close` shall be delayed when there is pending data to be sent to indicate if the connection closes successfully;
+is zero when `close` shall abort the connection and return immediately without errors;
+is `nil` when this this option disabled and the connection terminations shall happen in backgroud after `close` returns without errors.
 - `"keepalive"`: is `true` when periodic transmission of messages is enabled for `socket`, or `false` otherwise.
 - `"nodelay"`: is `true` when coalescing of small segments shall be avoided in `socket`, or `false` otherwise.
 

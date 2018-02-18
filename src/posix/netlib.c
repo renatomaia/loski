@@ -277,7 +277,7 @@ LOSIDRV_API losi_ErrorCode losiN_setsockopt (losi_NetDriver *drv,
 		case LOSI_SOCKOPT_BLOCKING: return losiFD_setnonblock(sock->fd, value);
 		case LOSI_SOCKOPT_LINGER: {
 			struct linger li;
-			if (value > 0) {
+			if (value >= 0) {
 				li.l_onoff = 1;
 				li.l_linger = value;
 			} else {
@@ -315,7 +315,7 @@ LOSIDRV_API losi_ErrorCode losiN_getsockopt (losi_NetDriver *drv,
 			struct linger li;
 			socklen_t sz = sizeof(li);
 			err = getsockopt(sock->fd, SOL_SOCKET, SO_LINGER, &li, &sz);
-			if (err == 0) *value = li.l_onoff ? li.l_linger : 0;
+			if (err == 0) *value = li.l_onoff ? li.l_linger : -1;
 		} break;
 		default: {
 			socklen_t sz = sizeof(*value);
