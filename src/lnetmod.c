@@ -465,8 +465,9 @@ static int stm_getoption (lua_State *L)
 	int val;
 	losi_ErrorCode err = losiN_getsockopt(drv, socket, opt, &val);
 	if (err == 0) {
-		if (opt == LOSI_SOCKOPT_LINGER) lua_pushinteger(L, val);
-		else                            lua_pushboolean(L, val);
+		if (opt != LOSI_SOCKOPT_LINGER) lua_pushboolean(L, val);
+		else if (val >= 0)              lua_pushinteger(L, val);
+		else                            lua_pushnil(L);
 	}
 	return losiL_doresults(L, 1, err);
 }
@@ -499,8 +500,9 @@ static int stm_setoption (lua_State *L)
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_STRM);
 	losi_SocketOption opt = checksockopt(L, 2, stm_opts);
-	int val = (opt == LOSI_SOCKOPT_LINGER) ? luaL_checkinteger(L, 3)
-	                                       : lua_toboolean(L, 3);
+	int val = (opt != LOSI_SOCKOPT_LINGER) ? lua_toboolean(L, 3)
+	        : (!lua_isnil(L, 3)            ? luaL_checkinteger(L, 3)
+	                                       : -1);
 	losi_ErrorCode err = losiN_setsockopt(drv, socket, opt, val);
 	return losiL_doresults(L, 0, err);
 }

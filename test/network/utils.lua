@@ -72,7 +72,7 @@ do
 		dontroute = false,
 		nodelay = false,
 		keepalive = false,
-		linger = 0,
+		linger = 0, -- actually is 'nil'
 		broadcast = false,
 	}
 	local changed = {
@@ -105,10 +105,23 @@ do
 				local errmsg = "bad argument #2 to '?' (invalid option '"..name.."')"
 				tests.testerror(errmsg, socket.setoption, socket, name, changed[default])
 			else
-				assert(socket:getoption(name) == default)
-				assert(socket:setoption(name, changed[default]) == true)
-				assert(socket:getoption(name) == changed[default])
-				assert(socket:setoption(name, default) == true)
+				if name == "linger" then
+					assert(socket:getoption(name) == nil)
+					assert(socket:setoption(name, 0) == true)
+					assert(socket:getoption(name) == 0)
+					assert(socket:setoption(name, 10) == true)
+					assert(socket:getoption(name) == 10)
+					assert(socket:setoption(name, nil) == true)
+					local errmsg = "bad argument #3 to '?' (number expected, got boolean)"
+					tests.testerror(errmsg, socket.setoption, socket, name, false)
+					assert(socket:getoption(name) == nil)
+				else
+					assert(socket:getoption(name) == default)
+					assert(socket:setoption(name, changed[default]) == true)
+					assert(socket:getoption(name) == changed[default])
+					assert(socket:setoption(name, default) == true)
+					assert(socket:getoption(name) == default)
+				end
 			end
 		end
 	end
