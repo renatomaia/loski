@@ -16,13 +16,12 @@ do
 
 	assert(dgrm1:send("Hello", 1, -1, addr2))
 	local from = network.address("file")
-	local data = assert(dgrm2:receive(5, "", from))
-	assert(data == "Hello")
+	utils.testreceive(dgrm2, "Hello", "", from)
 	assert(from == addr1)
 
 	assert(dgrm2:connect(addr1))
 	assert(dgrm2:send("Hi"))
-	assert(dgrm1:receive(2) == "Hi")
+	utils.testreceive(dgrm1, "Hi")
 
 	assert(os.remove(file1))
 	assert(os.remove(file2))
@@ -43,11 +42,10 @@ do
 	local accepted = assert(server:accept())
 
 	assert(conn:send("Hello"))
-	local data = assert(accepted:receive(5))
-	assert(data == "Hello")
+	utils.testreceive(accepted, "Hello")
 
 	assert(accepted:send("Hi"))
-	assert(conn:receive(2) == "Hi")
+	utils.testreceive(conn, "Hi")
 
 	assert(os.remove(file))
 end

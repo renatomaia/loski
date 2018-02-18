@@ -573,9 +573,11 @@ static int recvdata(lua_State *L, losi_NetDriver *drv,
                                   losi_Socket *socket,
                                   losi_Address *addr)
 {
-	const char *mode = luaL_optstring(L, 3, "");
-	char *buf;
 	size_t len, sz;
+	char *buf = luamem_tomemory(L, 2, &sz);
+	size_t start = posrelat(luaL_optinteger(L, 3, 1), sz);
+	size_t end = posrelat(luaL_optinteger(L, 4, -1), sz);
+	const char *mode = luaL_optstring(L, 5, "");
 	losi_ErrorCode err;
 	losi_SocketRecvFlag flags = 0;
 	for (; *mode; ++mode) switch (*mode) {
@@ -583,24 +585,12 @@ static int recvdata(lua_State *L, losi_NetDriver *drv,
 		case 'a': flags |= LOSI_SOCKRCV_WAITALL; break;
 		default: return luaL_error(L, "unknown mode char (got '%c')", *mode);
 	}
-#ifndef LOSI_DISABLE_LUAMEMORY
-	buf = luamem_tomemory(L, 2, &sz);
-	if (buf != NULL) {
-		err = losiN_recvfromsock(drv, socket, flags, buf, sz, &len, addr);
-		if (!err) lua_pushinteger(L, len);
-	} else
-#endif
-	{
-		luaL_Buffer lbuf;
-		sz = (size_t)luaL_checkinteger(L, 2);
-		luaL_buffinit(L, &lbuf);
-		buf = luaL_prepbuffsize(&lbuf, sz);  /* prepare buffer to read all */
-		err = losiN_recvfromsock(drv, socket, flags, buf, sz, &len, addr);
-		if (!err) {
-			luaL_addsize(&lbuf, len);
-			luaL_pushresult(&lbuf);  /* close buffer */
-		}
-	}
+	if (start < 1) start = 1;
+	if (end > sz) end = sz;
+	sz = end - start + 1;
+	buf += start - 1;
+	err = losiN_recvfromsock(drv, socket, flags, buf, sz, &len, addr);
+	if (!err) lua_pushinteger(L, len);
 	return losiL_doresults(L, 1, err);
 }
 
@@ -617,7 +607,7 @@ static int dgm_receive (lua_State *L)
 {
 	losi_NetDriver *drv = todrv(L);
 	losi_Socket *socket = tosock(L, LOSI_SOCKTYPE_DGRM);
-	return recvdata(L, drv, socket, optaddr(L, 4, drv, socket));
+	return recvdata(L, drv, socket, optaddr(L, 6, drv, socket));
 }
 
 

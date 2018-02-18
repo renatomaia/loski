@@ -1,5 +1,6 @@
 local time = require "time"
 local network = require "network"
+local memory = require "memory"
 local tests = require "test.network.utils"
 
 local addr = network.address("ipv4", "0.0.0.0", 80)
@@ -37,7 +38,9 @@ end
 for _, kind in ipairs{"datagram", "stream"} do
 	local socket = tests.testcreatesocket(kind)
 	tests.testerror("unknown mode char (got 'l')",
-	                socket.receive, socket, 5, "all")
+	                socket.receive, socket,
+	                memory.create(10), 1, -1,
+	                "all")
 	tests.testclose(socket)
 end
 

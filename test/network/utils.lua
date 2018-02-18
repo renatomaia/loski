@@ -1,4 +1,5 @@
 local network = require "network"
+local memory = require "memory"
 
 local tests = require "test.utils"
 
@@ -52,21 +53,6 @@ do
 			time.sleep(.1)
 		end
 		error("non blocked call took more than 1 second to complete!")
-	end
-end
-
-do
-	function tests.testerror(expected, func, ...)
-		local ok, errmsg = pcall(func, ...)
-		assert(not ok)
-		assert(string.find(errmsg, expected, 1, true))
-	end
-end
-
-do
-	function tests.testerrmsg(expected, res, errmsg)
-		assert(res == nil)
-		assert(errmsg == expected)
 	end
 end
 
@@ -138,6 +124,13 @@ do
 			assert(errmsg == "attempt to use a closed socket")
 		end
 	end
+end
+
+function tests.testreceive(socket, expected, ...)
+	local size = #expected
+	local buf = memory.create(size)
+	assert(socket:receive(buf, 1, size, ...) == size)
+	assert(memory.diff(buf, expected) == nil)
 end
 
 return tests

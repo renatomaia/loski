@@ -1,5 +1,6 @@
 local time = require "time"
 local network = require "network"
+local memory = require "memory"
 local tests = require "test.network.utils"
 
 local packsize = 64
@@ -11,6 +12,7 @@ local replycount = 3
 local remotecode = [[
 	local time = require "time"
 	local network = require "network"
+	local memory = require "memory"
 
 	local addr = network.address("ipv4", "0.0.0.0", ]]..tests.LocalAddress.port..[[)
 	local port = assert(network.socket("listen"))
@@ -21,12 +23,14 @@ local remotecode = [[
 	assert(port:close())
 	local packsize = ]]..packsize..[[
 	local packdata = string.rep("\255", packsize)
+	local packbuffer = memory.create(packsize)
 	local count = 0
 	local data = ""
 	while true do
-		local message = conn:receive(packsize)
-		assert(#message <= packsize)
-		count = count + #message
+		local size = assert(conn:receive(packbuffer))
+		assert(size <= packsize)
+		count = count + size
+		local message = packbuffer:unpack(1, "c"..size)
 		data = data..(string.match(message, "[%S]+") or "")
 		if string.find(message, "\0", 1, true) ~= nil then break end
 	end
@@ -49,10 +53,12 @@ do
 		assert(socket:send(packdata) == packsize)
 	end
 	assert(socket:send(string.format(packfrmt, 3*packsize)) == packsize)
-	local remaining = replycount*packsize
-	while remaining > 0 do
-		assert(socket:receive(remaining) == packback)
-		remaining = remaining - packsize
+	local buffer = memory.create(replycount*packsize)
+	local index = 1
+	while index <= #buffer do
+		assert(socket:receive(buffer, index) == packsize)
+		assert(buffer:unpack(index, "c"..packsize) == packback)
+		index = index + packsize
 	end
 
 	tests.testclose(socket)
@@ -79,17 +85,19 @@ do
 			break
 		end
 	end
-	tests.testerrmsg("unfulfilled", socket:receive(packsize))
+	local buffer = memory.create(replycount*packsize)
+	local index = 1
+	tests.testerrmsg("unfulfilled", socket:receive(buffer))
 	assert(socket:send(string.format(packfrmt, sent)) == packsize)
-	local remaining = replycount*packsize
-	local count = 0
-	while count < remaining do
+	while index <= #buffer do
 		local received = assert(tests.tcall(count==0, socket.receive, socket,
-		                                    remaining-count))
-		assert(string.find(received, "[^\255]") == nil)
-		count = count + #received
+		                                    buffer, index))
+		for i = index, index+received-1 do
+			assert(buffer:get(i) == 255)
+		end
+		index = index + received
 	end
-	tests.testerrmsg("closed", tests.tcall(true, socket.receive, socket, 1))
+	tests.testerrmsg("closed", tests.tcall(true, socket.receive, socket, buffer, 1, 1))
 
 	tests.testclose(socket)
 end

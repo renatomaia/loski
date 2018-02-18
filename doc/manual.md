@@ -375,7 +375,7 @@ Sends the substring of `data` that starts at `i` and continues until `j`; `i` an
 If `j` is absent, then it is assumed to be equal to -1 (which is the same as the string length).
 
 This operation is not available for `listen` sockets.
-For disconnected datagram sockets, it is necessary to provide `address` with the peer address the data is destined.
+For datagram sockets, it is necessary to provide `address` with the peer address the data is destined.
 
 In case of success, this function returns the number of bytes from `data` effectivelly sent through `socket`.
 Otherwise it returns `nil` plus an error message.
@@ -394,10 +394,12 @@ The current standard implementation of this operation may return the following [
 - `"system down"`
 - `"system error"`
 
-### `data [, errmsg] = socket:receive (size [, mode [, address]])`
+### `bytes [, errmsg] = socket:receive (buffer [, i [, j [, mode [, address]]]])`
 
-Receives up to `size` bytes from socket `socket`, using the mode specified in the string `mode`.
-The mode string can contain any of the following characters:
+Receives from socket at most the number of bytes necessary to fill [memory](https://github.com/renatomaia/lua-memory) `buffer` from position `i` until `j`; `i` and `j` can be negative.
+If `j` is absent, then it is assumed to be equal to -1 (which is the same as the string length).
+
+The `mode` string can contain any of the following characters:
 
 - `p`: only peeks at an incoming message, leaving the returned data as unread in `socket`.
 - `a`: only returns successfully when all the `size` bytes were received (only for `stream` sockets).
@@ -405,13 +407,10 @@ The mode string can contain any of the following characters:
 By default, `mode` is the empty string, which disables all options.
 
 This operation is not available for `listen` sockets.
-For disconnected datagram sockets, it is possible to provide `address` with an address structure to be filled with the address of the peer socket from which the received data were originated.
+For datagram sockets, it is possible to provide `address` with an address structure to be filled with the address of the peer socket from which the received data were originated.
 
-In case of success, this function returns the `data` effectivelly received from `socket`.
+In case of success, this function returns the number of bytes actually received from `socket`.
 Otherwise it returns `nil` plus an error message.
-
-__Note__: if `size` is not a number of bytes but a [memory](https://github.com/renatomaia/lua-memory), the size of the memory is used as `size` and any data received is stored in the memory.
-Moreover, in case of success, the number of bytes actually received are returned instead of a string with the received data.
 
 The current standard implementation of this operation may return the following [error messages](#error-messages).
 
