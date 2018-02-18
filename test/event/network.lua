@@ -115,7 +115,7 @@ do
 				count = count+1
 			else
 				local size = assert(conn:receive(buffer))
-				local result = assert(load(buffer:unpack(1, "c"..size)))()
+				local result = assert(load(buffer:unpack("c"..size, 1)))()
 				if result ~= nil then
 					assert(assert(conn:send(result)) == #result)
 				else

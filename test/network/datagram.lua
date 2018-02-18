@@ -50,7 +50,7 @@ do
 	while index <= #buffer do
 		local size = assert(socket:receive(buffer, index))
 		assert(size == packsize)
-		assert(buffer:unpack(index, "c"..size) == data)
+		assert(buffer:unpack("c"..size, index) == data)
 		index = index + size
 	end
 	tests.testreceive(socket, final)
@@ -74,7 +74,7 @@ do
 		local addr = network.address("ipv4")
 		local size = assert(socket:receive(buffer, index, -1, nil, addr))
 		assert(size == packsize)
-		assert(buffer:unpack(index, "c"..size) == data)
+		assert(buffer:unpack("c"..size, index) == data)
 		index = index + size
 	end
 	local addr = network.address("ipv4")
@@ -103,7 +103,7 @@ do
 	while index <= #buffer do
 		local size = tests.tcall(true, socket.receive, socket, buffer, index, -1, nil, addr)
 		assert(size == packsize)
-		assert(buffer:unpack(index, "c"..size) == data)
+		assert(buffer:unpack("c"..size, index) == data)
 		assert(addr == tests.LocalAddress)
 		index = index + size
 	end

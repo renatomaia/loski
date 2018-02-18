@@ -30,7 +30,7 @@ local remotecode = [[
 		local size = assert(conn:receive(packbuffer))
 		assert(size <= packsize)
 		count = count + size
-		local message = packbuffer:unpack(1, "c"..size)
+		local message = packbuffer:unpack("c"..size, 1)
 		data = data..(string.match(message, "[%S]+") or "")
 		if string.find(message, "\0", 1, true) ~= nil then break end
 	end
@@ -57,7 +57,7 @@ do
 	local index = 1
 	while index <= #buffer do
 		assert(socket:receive(buffer, index) == packsize)
-		assert(buffer:unpack(index, "c"..packsize) == packback)
+		assert(buffer:unpack("c"..packsize, index) == packback)
 		index = index + packsize
 	end
 
