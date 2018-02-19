@@ -528,7 +528,10 @@ LOSIDRV_API losi_ErrorCode losiN_acceptsock (losi_NetDriver *drv,
 		memset(address, 0, len);
 	}
 	accepted->fd = accept(sock->fd, toaddr(address), &len);
-	if (accepted->fd >= 0) return LOSI_ERRNONE;
+	if (accepted->fd >= 0) {
+		accepted->domain = sock->domain;
+		return LOSI_ERRNONE;
+	}
 	switch (errno) {
 #if EAGAIN != EWOULDBLOCK
 		case EAGAIN:

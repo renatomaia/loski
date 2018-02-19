@@ -8,7 +8,7 @@ end
 
 for domain in pairs(address) do
 	for _, kind in ipairs{"datagram", "stream", "listen"} do
-		local socket = network.socket(kind, domain)
+		local socket = tests.testcreatesocket(kind, domain)
 		for other, addr in pairs(address) do
 			if other ~= domain then
 				tests.testerror("wrong domain", socket.bind, socket, addr)
