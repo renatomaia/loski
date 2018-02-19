@@ -57,9 +57,11 @@ do
 end
 
 do
-	function tests.testcreatesocket(kind)
-		local socket = network.socket(kind)
+	function tests.testcreatesocket(kind, domain)
+		local socket = assert(network.socket(kind, domain))
 		assert(type(socket) == "userdata")
+		assert(socket.type == kind)
+		assert(socket:getdomain() == domain or "ipv4")
 		assert(string.match(tostring(socket), "^socket %(.-%)$"))
 		return socket
 	end

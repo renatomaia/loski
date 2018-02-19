@@ -37,14 +37,14 @@ do
 		testutils.testerror("invalid watchable object",
 		                    watcher.set, watcher, value, "r")
 	end
-	local dgm = assert(network.socket("datagram"))
-	local con = assert(network.socket("stream"))
-	local lst = assert(network.socket("listen"))
+	local dgm = testutils.testcreatesocket("datagram")
+	local con = testutils.testcreatesocket("stream")
+	local lst = testutils.testcreatesocket("listen")
 	assert(watcher:set(dgm, "r"))
 	assert(watcher:set(con, "w"))
 	assert(watcher:set(lst, "wr"))
 
-	local dgm = assert(network.socket("datagram"))
+	local dgm = testutils.testcreatesocket("datagram")
 	assert(dgm:close())
 	testutils.testerrmsg("closed", watcher:set(dgm, "r"))
 end
@@ -52,8 +52,8 @@ end
 do
 	local watcher = assert(event.watcher())
 	local weak = setmetatable({}, { __mode = "v" })
-	weak.s1 = assert(network.socket("stream"))
-	weak.s2 = assert(network.socket("stream"))
+	weak.s1 = testutils.testcreatesocket("stream")
+	weak.s2 = testutils.testcreatesocket("stream")
 	assert(watcher:set(weak.s1, "rw"))
 	assert(watcher:set(weak.s2, "wr"))
 	collectgarbage()

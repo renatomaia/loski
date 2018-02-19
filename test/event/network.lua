@@ -8,7 +8,7 @@ do
 	local watcher = assert(event.watcher())
 	local adr = assert(network.resolve("localhost", 0)())
 
-	local lst = assert(network.socket("listen"))
+	local lst = assert(testutils.testcreatesocket("listen"))
 	assert(lst:setoption("blocking", false))
 	assert(lst:bind(adr))
 	assert(lst:getaddress("this", adr))
@@ -19,7 +19,7 @@ do
 	testutils.testerrmsg("unfulfilled", watcher:wait(.5))
 	assert(time.now() - start > .5)
 
-	local cnt = assert(network.socket("stream"))
+	local cnt = assert(testutils.testcreatesocket("stream"))
 	assert(cnt:setoption("blocking", false))
 	testutils.testerrmsg("unfulfilled", cnt.connect(cnt, adr))
 	assert(watcher:set(cnt, "w"))
@@ -29,6 +29,7 @@ do
 	assert(cnt:connect(adr))
 	assert(watcher:set(cnt, "r"))
 	local srv = assert(lst:accept())
+	assert(srv:getdomain() == lst:getdomain())
 	assert(srv:setoption("blocking", false))
 	assert(watcher:set(srv, "r"))
 	testutils.testerrmsg("unfulfilled", watcher:wait(0))

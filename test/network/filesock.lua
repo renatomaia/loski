@@ -1,5 +1,5 @@
 local network = require "network"
-local utils = require "test.utils"
+local utils = require "test.network.utils"
 
 do
 	local file1 = os.tmpname()
@@ -9,8 +9,8 @@ do
 
 	local addr1 = network.address("file", file1)
 	local addr2 = network.address("file", file2)
-	local dgrm1 = network.socket("datagram", "file")
-	local dgrm2 = network.socket("datagram", "file")
+	local dgrm1 = utils.testcreatesocket("datagram", "file")
+	local dgrm2 = utils.testcreatesocket("datagram", "file")
 	assert(dgrm1:bind(addr1))
 	assert(dgrm2:bind(addr2))
 
@@ -32,14 +32,15 @@ do
 	assert(os.remove(file))
 
 	local addr = network.address("file", file)
-	local server = network.socket("listen", "file")
+	local server = utils.testcreatesocket("listen", "file")
 	assert(server:bind(addr))
 	assert(server:listen())
 
-	local conn = network.socket("stream", "file")
+	local conn = utils.testcreatesocket("stream", "file")
 	assert(conn:connect(addr))
 
 	local accepted = assert(server:accept())
+	assert(accepted:getdomain() == server:getdomain())
 
 	assert(conn:send("Hello"))
 	utils.testreceive(accepted, "Hello")
