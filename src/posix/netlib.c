@@ -390,12 +390,13 @@ LOSIDRV_API losi_ErrorCode losiN_connectsock (losi_NetDriver *drv,
                                               losi_Socket *sock,
                                               const losi_Address *address)
 {
-	if (connect(sock->fd, toaddr(address), addrsz(address)) == 0)
-		return LOSI_ERRNONE;
+	do
+		if (connect(sock->fd, toaddr(address), addrsz(address)) == 0)
+			return LOSI_ERRNONE;
+	while (errno == EINTR);
 	switch (errno) {
 		case EALREADY:
-		case EINPROGRESS:
-		case EINTR: return LOSI_ERRUNFULFILLED;
+		case EINPROGRESS: return LOSI_ERRUNFULFILLED;
 		case ETIMEDOUT: return LOSI_ERRTIMEOUT;
 		case EISCONN:
 		case EADDRINUSE: return LOSI_ERRINUSE;
@@ -430,20 +431,21 @@ LOSIDRV_API losi_ErrorCode losiN_sendtosock (losi_NetDriver *drv,
                                              size_t *bytes,
                                              const losi_Address *address)
 {
-	ssize_t err;
-	if (!address) err = send(sock->fd, data, size, 0);
-	else          err = sendto(sock->fd, data, size, 0, toaddr(address),
-	                                                    addrsz(address));
-	if (err >= 0) {
-		*bytes = (size_t)err;
-		return LOSI_ERRNONE;
-	}
+	do {
+		ssize_t err;
+		if (!address) err = send(sock->fd, data, size, 0);
+		else          err = sendto(sock->fd, data, size, 0, toaddr(address),
+		                                                    addrsz(address));
+		if (err >= 0) {
+			*bytes = (size_t)err;
+			return LOSI_ERRNONE;
+		}
+	} while (errno == EINTR);
 	switch (errno) {
 #if EAGAIN != EWOULDBLOCK
 		case EAGAIN:
 #endif
-		case EWOULDBLOCK:
-		case EINTR: return LOSI_ERRUNFULFILLED;
+		case EWOULDBLOCK: return LOSI_ERRUNFULFILLED;
 		case EMSGSIZE: return LOSI_ERRTOOMUCH;
 		case ENOTCONN: return LOSI_ERRCLOSED;
 		case EPIPE:
@@ -469,25 +471,27 @@ LOSIDRV_API losi_ErrorCode losiN_recvfromsock (losi_NetDriver *drv,
                                                size_t *bytes,
                                                losi_Address *address)
 {
-	ssize_t err;
-	if (size == 0) return LOSI_ERRINVALID;
-	if (address) {
-		socklen_t len = addrsz(address);
-		err = recvfrom(sock->fd, buffer, size, flags, toaddr(address), &len);
-	} else {
-		err = recv(sock->fd, buffer, size, flags);
-	}
-	if (err > 0) {
-		*bytes = (size_t)err;
-		return LOSI_ERRNONE;
-	}
-	if (err == 0) return LOSI_ERRCLOSED;
+	do {
+		ssize_t err;
+		if (size == 0) return LOSI_ERRINVALID;
+		if (address) {
+			socklen_t len = addrsz(address);
+			err = recvfrom(sock->fd, buffer, size, flags, toaddr(address), &len);
+			assert(len <= addrsz(address));
+		} else {
+			err = recv(sock->fd, buffer, size, flags);
+		}
+		if (err > 0) {
+			*bytes = (size_t)err;
+			return LOSI_ERRNONE;
+		}
+		if (err == 0) return LOSI_ERRCLOSED;
+	} while (errno == EINTR);
 	switch (errno) {
 #if EAGAIN != EWOULDBLOCK
 		case EAGAIN:
 #endif
-		case EWOULDBLOCK:
-		case EINTR: return LOSI_ERRUNFULFILLED;
+		case EWOULDBLOCK: return LOSI_ERRUNFULFILLED;
 		case ETIMEDOUT: return LOSI_ERRTIMEOUT;
 		case ENOTCONN: return LOSI_ERRCLOSED;
 		case ECONNRESET: return LOSI_ERRABORTED;
@@ -522,22 +526,23 @@ LOSIDRV_API losi_ErrorCode losiN_acceptsock (losi_NetDriver *drv,
                                              losi_Socket *accepted,
                                              losi_Address *address)
 {
-	socklen_t len = 0;
-	if (address) {
-		len = addrsz(address);
-		memset(address, 0, len);
-	}
-	accepted->fd = accept(sock->fd, toaddr(address), &len);
-	if (accepted->fd >= 0) {
-		accepted->domain = sock->domain;
-		return LOSI_ERRNONE;
-	}
+	do {
+		socklen_t len = 0;
+		if (address) {
+			len = addrsz(address);
+			memset(address, 0, len);
+		}
+		accepted->fd = accept(sock->fd, toaddr(address), &len);
+		if (accepted->fd >= 0) {
+			accepted->domain = sock->domain;
+			return LOSI_ERRNONE;
+		}
+	} while (errno == EINTR);
 	switch (errno) {
 #if EAGAIN != EWOULDBLOCK
 		case EAGAIN:
 #endif
-		case EWOULDBLOCK:
-		case EINTR: return LOSI_ERRUNFULFILLED;
+		case EWOULDBLOCK: return LOSI_ERRUNFULFILLED;
 		case ECONNABORTED: return LOSI_ERRABORTED;
 		case EMFILE:
 		case ENFILE:
@@ -571,9 +576,9 @@ LOSIDRV_API losi_ErrorCode losiN_listensock (losi_NetDriver *drv,
 LOSIDRV_API losi_ErrorCode losiN_closesock (losi_NetDriver *drv,
                                             losi_Socket *sock)
 {
-	if (close(sock->fd) == 0) return LOSI_ERRNONE;
+	do if (close(sock->fd) == 0) return LOSI_ERRNONE;
+	while (errno == EINTR);
 	switch (errno) {
-		case EINTR: return LOSI_ERRUNFULFILLED;
 		case EIO: return LOSI_ERRSYSTEMFAIL;
 		case EBADF: return LOSI_ERRUNEXPECTED;
 	}
