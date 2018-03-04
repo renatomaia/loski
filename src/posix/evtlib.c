@@ -73,6 +73,7 @@ LOSIDRV_API losi_ErrorCode losiE_waitevent(losi_EventDriver *drv,
                                            losi_EventWatcher *watcher,
                                            lua_Number timeout)
 {
+	if (timeout > LOSI_TIME_MAX) return LOSI_ERRTOOMUCH;
 	if (watcher->maxfd == 0) return LOSI_ERRINVALID;
 	watcher->maxvisited = 0;
 	watcher->selected[0] = watcher->sets[0];
