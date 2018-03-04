@@ -76,7 +76,7 @@ Otherwise, `data` is a string with the information to be stored in the structure
 
 If `type` is `"file"` then `data` contains a file path and other parameters are ignored.
 
-For other values of `type`, if only `data` is provided, it must be a literal address as formatted inside a URI, like `"192.0.2.128:80"` (`type` is `"ipv4"`) or `"[::ffff:c000:0280]:80"` (`type` is `"ipv6"`).
+For other values of `type`, if only `data` is provided, it must be a literal address as formatted inside a URI, like `"192.0.2.128:80"` (IPv4) or `"[::ffff:c000:0280]:80"` (IPv6).
 Moreover, if `port` is provided, `data` is a host address and `port` is a port number to be used to initialize the address structure.
 The string `mode` controls whether `data` is text (literal) or binary.
 It may be the string `"b"` (binary data) or `"t"` (text data).
@@ -86,16 +86,18 @@ In case of errors, returns `nil` plus an error message.
 Otherwise, returns a structure that provides the following fields:
 
 `type`
-:	is either the string `"ipv4"` or `"ipv6"` to indicate the address is a IPv4 or IPv6 address, respectively.
+:	is either the string `"ipv4"`, `"ipv6"`, or `"file"` to indicate the address is a IPv4, IPv6 or file path address, respectively.
 
 `literal`
-:	is the text (literal) representation of the address, like `"192.0.2.128"` (IPv4) or `"::ffff:c000:0280"` (IPv6).
+:	is the text (literal) representation of the address, like `"192.0.2.128"` (IPv4), `"::ffff:c000:0280"` (IPv6), or `"/tmp/losi_tmp0280.sock"` (file path).
 
 `binary`
 :	is the binary representation of the address, like `"\192\0\2\128"` (IPv4) or `"\0\0\0\0\0\0\0\0\0\0\255\255\192\0\2\128"` (IPv6).
+For file path addresses this field contain the literal path followed by one or more `'\0'`.
 
 `port`
-:	is the port number of the address.
+:	is the port number of IPv4 and IPv6 address.
+For file path addresses this field is `nil`.
 
 Moreover, you can pass the object to the standard function `tostring` to obtain the address as a string inside a URI, like `"192.0.2.128:80"` (IPv4) or `[::ffff:c000:0280]:80` (IPv6).
 
@@ -243,7 +245,6 @@ Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#error-messages).
 
-- `"unfulfilled"` (interrupted by signal)
 - `"system error"`
 
 ### `success [, errmsg] = socket:bind (address)`
@@ -292,7 +293,7 @@ Sockets of type `"stream"` accept the additional options:
 
 - `"linger"`: is the number of seconds that `socket:close` shall be delayed when there is pending data to be sent to indicate if the connection closes successfully;
 is zero when `close` shall abort the connection and return immediately without errors;
-is `nil` when this this option disabled and the connection terminations shall happen in backgroud after `close` returns without errors.
+is `nil` when this option is disabled and the connection termination shall happen in backgroud after `close` returns without errors.
 - `"keepalive"`: is `true` when periodic transmission of messages is enabled for `socket`, or `false` otherwise.
 - `"nodelay"`: is `true` when coalescing of small segments shall be avoided in `socket`, or `false` otherwise.
 
@@ -400,12 +401,12 @@ The current standard implementation of this operation may return the following [
 ### `bytes [, errmsg] = socket:receive (buffer [, i [, j [, mode [, address]]]])`
 
 Receives from socket at most the number of bytes necessary to fill [memory](https://github.com/renatomaia/lua-memory) `buffer` from position `i` until `j`; `i` and `j` can be negative.
-If `j` is absent, then it is assumed to be equal to -1 (which is the same as the string length).
+If `j` is absent, then it is assumed to be equal to -1 (which is the same as the buffer size).
 
 The `mode` string can contain any of the following characters:
 
 - `p`: only peeks at an incoming message, leaving the returned data as unread in `socket`.
-- `a`: only returns successfully when all the `size` bytes were received (only for `stream` sockets).
+- `a`: preferably return only when all the `size` bytes were received (only for `stream` sockets).
 
 By default, `mode` is the empty string, which disables all options.
 
@@ -495,7 +496,7 @@ Returns the status of process `proc`, as a string:
 "running", if the process is running;
 "suspended", if the process is suspended;
 and "dead" if the process terminated.
-In the last case, operation [`process.exitval`]{#process.exitval} can be used to get the exit value of the process.
+In the last case, operation ([`process.exitval`](#number--errmsg--processexitval-proc)) can be used to get the exit value of the process.
 
 ### `number [, errmsg] = process.exitval (proc)`
 
@@ -546,7 +547,7 @@ Otherwise it returns `nil` plus an error message.
 
 ### `map [, errmsg] = watcher:wait ([timeout])`
 
-Waits until for any of the events watched by `watcher` happens.
+Waits for any of the events watched by `watcher` happens.
 
 `timeout` is an optional timeout for the operation.
 If no `timeout` is provided, the call waits indefinetaly for one of the wached events to happen.
@@ -556,7 +557,7 @@ Otherwise it returns `nil` plus an error message.
 
 The current standard implementation of this operation may return the following [error messages](#error-messages).
 
-- `"unfulfilled"` (interrupted by signal)
+- `"unfulfilled"`
 
 ### `succ [, errmsg] = watcher:close ()`
 
