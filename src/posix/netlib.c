@@ -398,8 +398,8 @@ LOSIDRV_API losi_ErrorCode losiN_connectsock (losi_NetDriver *drv,
 		case EALREADY:
 		case EINPROGRESS: return LOSI_ERRUNFULFILLED;
 		case ETIMEDOUT: return LOSI_ERRTIMEOUT;
-		case EISCONN:
-		case EADDRINUSE: return LOSI_ERRINUSE;
+		case EISCONN: return LOSI_ERRINUSE;
+		case EADDRINUSE: return LOSI_ERRNORESOURCES;
 		case EADDRNOTAVAIL: return LOSI_ERRUNAVAILABLE;
 		case ECONNRESET: return LOSI_ERRCLOSED;
 		case EHOSTUNREACH:
