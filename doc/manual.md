@@ -362,7 +362,8 @@ Otherwise it returns `nil` plus an error message.
 The current standard implementation of this operation may return the following [error messages](#error-messages).
 
 - `"unfulfilled"`
-- `"in use"` (socket is connected or address in use)
+- `"in use"` (socket is connected)
+- `"no resources"` (address in use)
 - `"unavailable"` (address not available)
 - `"unreachable"` (address in unreachable)
 - `"refused"` (connection refused by peer)
