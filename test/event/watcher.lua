@@ -1,7 +1,7 @@
 local event = require "event"
 local network = require "network"
 local time = require "time"
-local testutils = require "test.utils"
+local testutils = require "test.network.utils"
 
 do
 	local watcher = assert(event.watcher())
