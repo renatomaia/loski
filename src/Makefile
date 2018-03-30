@@ -33,18 +33,21 @@ RTL_O=	lauxlib.o \
       	$(PLAT_DIR)/timelib.o $(PLAT_DIR)/ltimelib.o \
       	$(PLAT_DIR)/proclib.o lproclib.o \
       	$(PLAT_DIR)/st/procmgr.o $(PLAT_DIR)/proctab.o \
+      	$(PLAT_DIR)/filelib.o lfilelib.o \
       	$(PLAT_DIR)/netlib.o lnetlib.o \
       	$(PLAT_DIR)/evtlib.o levtlib.o
 LIB_O=	luaosi.o
 TIM_O=	ltimemod.o
 PRC_O=	lprocmod.o
+FIL_O=	lfilemod.o
 NET_O=	lnetmod.o
 EVT_O=	levtmod.o
 
-ALL_O=	$(RTL_O) $(LIB_O) $(TIM_O) $(PRC_O) $(NET_O) $(EVT_O) $(MYOBJS)
+ALL_O=	$(RTL_O) $(LIB_O) $(TIM_O) $(PRC_O) $(FIL_O) $(NET_O) $(EVT_O) \
+      	$(MYOBJS)
 ALL_A=	$(LIB_A)
 ALL_S=	$(LIB_S) $(RTL_S)
-ALL_M=	$(TIM_M) $(PRC_M) $(NET_M) $(EVT_M)
+ALL_M=	$(TIM_M) $(PRC_M) $(FIL_M) $(NET_M) $(EVT_M)
 ALL_T=	$(ALL_A) $(ALL_S) $(ALL_M)
 
 # Targets start here.
@@ -68,6 +71,9 @@ $(TIM_M): $(TIM_O) $(RTL_S)
 
 $(PRC_M): $(PRC_O) $(RTL_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
+
+$(FIL_M): $(FIL_O) $(RTL_S)
+	$(LD) -o $@ -lluamemlib $(LDFLAGS) $^ $(LIBS)
 
 $(NET_M): $(NET_O) $(RTL_S)
 	$(LD) -o $@ -lluamemlib $(LDFLAGS) $^ $(LIBS)
@@ -114,7 +120,7 @@ macosx:
 	$(MAKE) $(ALL) SYSCFLAGS="-fno-common" \
 	               SYSLDFLAGS="-bundle -undefined dynamic_lookup" \
 	               CC='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc' \
-                   LD='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc'
+	               LD='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc'
 
 solaris:
 	$(MAKE) $(ALL) SYSCFLAGS="-fpic" SYSLDFLAGS="-O -shared"

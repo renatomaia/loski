@@ -35,7 +35,7 @@ PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris
 # What to install.
 TO_INC= luaosi.h
 TO_LIB= $(LIB_A)
-TO_CLIB= $(TIM_M) $(PRC_M) $(NET_M)
+TO_CLIB= $(TIM_M) $(PRC_M) $(FIL_M) $(NET_M) $(EVT_M)
 
 # Targets start here.
 all:	$(PLAT)

@@ -44,6 +44,23 @@ Index
 Manual
 ======
 
+File System Facilities
+----------------------
+
+### `file [, errmsg] = filesys.open(path [, mode [, uperm [, gperm [, operm]]]])`
+
+### `rfile, wfile = filesys.pipe()`
+
+### `succ [, errmsg] = file:close()`
+
+### `value [, errmsg] = file:getoption(name)`
+
+### `succ [, errmsg] = file:setoption(name, value)`
+
+### `bytes [, errmsg] = file:write(data [, i [, j]])`
+
+### `bytes [, errmsg] = file:read(memory [, i [, j]])`
+
 Time Facilities
 ---------------
 

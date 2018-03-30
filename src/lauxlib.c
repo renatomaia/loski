@@ -49,7 +49,7 @@ LUALIB_API void luaL_newclass(lua_State *L,
 	lua_pushvalue(L, -1);  /* push metatable */
 	lua_setfield(L, -2, "__index");  /* metatable.__index = metatable */
 	lua_insert(L, -(nup+1));  /* place new metatable under the upvalues */
-	luaL_setfuncs(L, mth, nup);  /* add methods to new metatable */
+	if (mth) luaL_setfuncs(L, mth, nup);  /* add methods to new metatable */
 	if (super) {
 		luaL_getmetatable(L, super);
 		for (i=0; metameth[i]; ++i) {

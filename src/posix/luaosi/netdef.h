@@ -2,13 +2,14 @@
 #define luaosi_netdef_h
 
 
+typedef void losi_NetDriver;
+
+
 /* Addresses */
 
 #include <netinet/in.h>  /* network addresses */
 #include <arpa/inet.h>  /* IP addresses */
 #include <sys/un.h>  /* UNIX domain addresses */
-
-typedef void losi_NetDriver;
 
 typedef struct sockaddr losi_Address;
 
