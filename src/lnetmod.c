@@ -8,11 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifndef LOSI_DISABLE_LUAMEMORY
 #include <lmemlib.h>
-#else
-#define luamem_checkstring luaL_checklstring
-#endif
 
 #ifdef LOSI_DISABLE_NETDRV
 #define DRVUPV	0

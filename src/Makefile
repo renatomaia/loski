@@ -10,7 +10,7 @@ CC= gcc -std=gnu99
 LD= ld
 CFLAGS= -O2 -Wall -I. -I$(LUA_INC) -I$(LUAMEM_INC) -I$(PLAT_DIR) \
         $(SYSCFLAGS) $(MYCFLAGS)
-LDFLAGS= -L$(LUAMEM_LIB) -lluamemlib $(SYSLDFLAGS) $(MYLDFLAGS)
+LDFLAGS= -L$(LUAMEM_LIB) $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= $(SYSLIBS) $(MYLIBS)
 
 AR= ar rcu
@@ -70,7 +70,7 @@ $(PRC_M): $(PRC_O) $(RTL_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
 
 $(NET_M): $(NET_O) $(RTL_S)
-	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
+	$(LD) -o $@ -lluamemlib $(LDFLAGS) $^ $(LIBS)
 
 $(EVT_M): $(EVT_O) $(RTL_S)
 	$(LD) -o $@ $(LDFLAGS) $^ $(LIBS)
