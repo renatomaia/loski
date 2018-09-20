@@ -193,7 +193,8 @@ do
 			tests.runscript{
 				script = [=[
 					assert(io.stdin:write("stdin") == nil)   -- bad file descriptor
-					assert(io.stdout:read("*a") == "stdout") -- TODO: shouldn't fail?
+					local res = io.stdout:read("*a")
+					assert(res == nil or res == "stdout")
 					assert(io.stderr:write("stderr"))
 				]=],
 				stdin = io.stderr,
